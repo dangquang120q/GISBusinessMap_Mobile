@@ -41,7 +41,7 @@ const ProfileScreen = () => {
           onPress={() => navigation.navigate('EditProfileScreen')}
         >
           <Ionicons name="person-outline" size={24} color="#AD40AF" />
-          <Text style={styles.menuText}>Edit Profile</Text>
+          <Text style={styles.menuText}>Chỉnh sửa thông tin</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
 
@@ -50,7 +50,7 @@ const ProfileScreen = () => {
           onPress={() => navigation.navigate('NotificationsScreen')}
         >
           <Ionicons name="notifications-outline" size={24} color="#AD40AF" />
-          <Text style={styles.menuText}>Notifications</Text>
+          <Text style={styles.menuText}>Thông báo</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
 
@@ -59,13 +59,13 @@ const ProfileScreen = () => {
           onPress={() => navigation.navigate('PrivacyScreen')}
         >
           <Ionicons name="lock-closed-outline" size={24} color="#AD40AF" />
-          <Text style={styles.menuText}>Privacy</Text>
+          <Text style={styles.menuText}>Quyền riêng tư</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuItem}>
           <Ionicons name="help-circle-outline" size={24} color="#AD40AF" />
-          <Text style={styles.menuText}>Help & Support</Text>
+          <Text style={styles.menuText}>Trợ giúp & Hỗ trợ</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
       </View>

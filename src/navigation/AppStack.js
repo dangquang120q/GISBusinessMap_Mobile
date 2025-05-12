@@ -7,8 +7,6 @@ import CustomDrawer from '../components/CustomDrawer';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import ProfileScreen from '../screens/ProfileScreen';
-import MessagesScreen from '../screens/MessagesScreen';
-import MomentsScreen from '../screens/MomentsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
 import ReviewDetailScreen from '../screens/ReviewDetailScreen';
@@ -16,6 +14,7 @@ import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
+import NotificationsListScreen from '../screens/NotificationsListScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 
 import TabNavigator from './TabNavigator';
@@ -32,6 +31,7 @@ const AppNavigator = () => {
       <Stack.Screen name="FeedbackDetail" component={FeedbackDetailScreen} />
       <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
       <Stack.Screen name="NotificationsScreen" component={NotificationsScreen} />
+      <Stack.Screen name="NotificationsListScreen" component={NotificationsListScreen} />
       <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
     </Stack.Navigator>
   );
@@ -72,11 +72,12 @@ const DrawerScreens = () => {
         }}
       />
       <Drawer.Screen
-        name="Messages"
-        component={MessagesScreen}
+        name="NotificationsList"
+        component={NotificationsListScreen}
         options={{
+          title: "Danh sách thông báo",
           drawerIcon: ({color}) => (
-            <Ionicons name="chatbox-ellipses-outline" size={22} color={color} />
+            <Ionicons name="notifications-outline" size={22} color={color} />
           ),
         }}
       />
@@ -97,15 +98,6 @@ const DrawerScreens = () => {
           title: "Phản hồi từ cơ quan chức năng",
           drawerIcon: ({color}) => (
             <Ionicons name="chatbubbles-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="Moments"
-        component={MomentsScreen}
-        options={{
-          drawerIcon: ({color}) => (
-            <Ionicons name="timer-outline" size={22} color={color} />
           ),
         }}
       />

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,25 +6,104 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
+  Alert,
+  Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { AuthContext } from '../context/AuthContext';
 
 const SettingsScreen = () => {
+  const {logout} = useContext(AuthContext);
   const navigation = useNavigation();
-  const [notifications, setNotifications] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(false);
-  const [locationServices, setLocationServices] = React.useState(true);
+  
+  // Trạng thái cài đặt
+  const [notifications, setNotifications] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+  const [locationServices, setLocationServices] = useState(true);
+  const [notificationPermissionStatus, setNotificationPermissionStatus] = useState('granted');
 
-  const renderSettingItem = (icon, title, rightElement) => (
-    <View style={styles.settingItem}>
+  useEffect(() => {
+    // Trong ứng dụng thực tế, kiểm tra trạng thái quyền thông báo hiện tại
+    checkNotificationPermission();
+  }, []);
+
+  const checkNotificationPermission = async () => {
+    // Giả lập kiểm tra quyền thông báo
+    // Trong ứng dụng thực tế, sử dụng thư viện như react-native-permissions
+    // hoặc API của từng nền tảng (iOS, Android)
+    
+    // Mô phỏng kiểm tra quyền
+    setNotificationPermissionStatus('granted'); // hoặc 'denied', 'blocked'
+  };
+
+  const requestNotificationPermission = async () => {
+    // Trong ứng dụng thực tế, yêu cầu cấp quyền thông báo
+    Alert.alert(
+      'Cấp quyền thông báo',
+      'Ứng dụng cần quyền gửi thông báo để thông báo cho bạn về các hoạt động mới.',
+      [
+        { 
+          text: 'Để sau', 
+          style: 'cancel' 
+        },
+        { 
+          text: 'Mở cài đặt', 
+          onPress: () => {
+            // Mở cài đặt của thiết bị
+            setNotificationPermissionStatus('granted');
+            setNotifications(true);
+          } 
+        }
+      ]
+    );
+  };
+
+  const toggleNotifications = (value) => {
+    if (value && notificationPermissionStatus !== 'granted') {
+      requestNotificationPermission();
+    } else {
+      setNotifications(value);
+    }
+  };
+
+  const toggleDarkMode = (value) => {
+    setDarkMode(value);
+    // Trong ứng dụng thực tế, cập nhật theme của ứng dụng
+    // updateAppTheme(value ? 'dark' : 'light');
+  };
+
+  const renderSettingItem = (icon, title, rightElement, onPress = null) => (
+    <TouchableOpacity 
+      style={styles.settingItem}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.settingLeft}>
         <Ionicons name={icon} size={24} color="#AD40AF" />
         <Text style={styles.settingText}>{title}</Text>
       </View>
       {rightElement}
-    </View>
+    </TouchableOpacity>
   );
+
+  const goToEditProfile = () => {
+    navigation.navigate('EditProfileScreen');
+  };
+
+  const goToPrivacySettings = () => {
+    navigation.navigate('PrivacyScreen');
+  };
+
+  const goToHelpCenter = () => {
+    // Điều hướng đến trang trung tâm trợ giúp
+    Alert.alert('Thông báo', 'Tính năng đang được phát triển');
+  };
+
+  const goToAbout = () => {
+    // Điều hướng đến trang giới thiệu
+    Alert.alert('Thông báo', 'Tính năng đang được phát triển');
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -35,78 +114,80 @@ const SettingsScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>Cài đặt</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferences</Text>
+        <Text style={styles.sectionTitle}>Tùy chọn</Text>
         {renderSettingItem(
           'notifications-outline',
-          'Notifications',
+          'Thông báo',
           <Switch
             value={notifications}
-            onValueChange={setNotifications}
+            onValueChange={toggleNotifications}
             trackColor={{false: '#767577', true: '#AD40AF'}}
             thumbColor={notifications ? '#fff' : '#f4f3f4'}
           />,
         )}
+        
+        {notificationPermissionStatus !== 'granted' && notifications && (
+          <View style={styles.permissionWarning}>
+            <Ionicons name="warning-outline" size={18} color="#FFA500" />
+            <Text style={styles.permissionWarningText}>
+              Chưa cấp quyền thông báo. 
+              <Text style={styles.permissionActionText} onPress={requestNotificationPermission}>
+                {' '}Cấp quyền ngay
+              </Text>
+            </Text>
+          </View>
+        )}
+        
         {renderSettingItem(
           'moon-outline',
-          'Dark Mode',
+          'Chế độ tối',
           <Switch
             value={darkMode}
-            onValueChange={setDarkMode}
+            onValueChange={toggleDarkMode}
             trackColor={{false: '#767577', true: '#AD40AF'}}
             thumbColor={darkMode ? '#fff' : '#f4f3f4'}
           />,
         )}
-        {renderSettingItem(
-          'location-outline',
-          'Location Services',
-          <Switch
-            value={locationServices}
-            onValueChange={setLocationServices}
-            trackColor={{false: '#767577', true: '#AD40AF'}}
-            thumbColor={locationServices ? '#fff' : '#f4f3f4'}
-          />,
-        )}
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
+        <Text style={styles.sectionTitle}>Tài khoản</Text>
         {renderSettingItem(
           'person-outline',
-          'Account Information',
+          'Thông tin tài khoản',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToEditProfile
         )}
         {renderSettingItem(
           'lock-closed-outline',
-          'Privacy & Security',
+          'Quyền riêng tư & Bảo mật',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
-        )}
-        {renderSettingItem(
-          'card-outline',
-          'Payment Methods',
-          <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToPrivacySettings
         )}
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support</Text>
+        <Text style={styles.sectionTitle}>Hỗ trợ</Text>
         {renderSettingItem(
           'help-circle-outline',
-          'Help Center',
+          'Trung tâm trợ giúp',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToHelpCenter
         )}
         {renderSettingItem(
           'information-circle-outline',
-          'About',
+          'Giới thiệu',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToAbout
         )}
       </View>
 
-      <TouchableOpacity style={styles.logoutButton}>
-        <Text style={styles.logoutText}>Log Out</Text>
+      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+        <Text style={styles.logoutText}>Đăng xuất</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -160,6 +241,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
     marginLeft: 15,
+  },
+  permissionWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 40,
+    marginTop: -5,
+    marginBottom: 10,
+  },
+  permissionWarningText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 5,
+  },
+  permissionActionText: {
+    color: '#AD40AF',
+    fontWeight: 'bold',
   },
   logoutButton: {
     margin: 20,

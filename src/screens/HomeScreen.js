@@ -44,10 +44,8 @@ export default function HomeScreen() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filteredFacilities, setFilteredFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
-  const [tempMarker, setTempMarker] = useState(null);
   
   // States for modals
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [isReviewListVisible, setIsReviewListVisible] = useState(false);
   
@@ -56,15 +54,6 @@ export default function HomeScreen() {
     restaurant: true,
     hotel: true,
     shop: true,
-  });
-  
-  // State for new facility
-  const [newFacility, setNewFacility] = useState({
-    name: '',
-    type: 'Nhà hàng',
-    address: '',
-    latitude: 0,
-    longitude: 0,
   });
   
   // State for reviews
@@ -85,6 +74,7 @@ export default function HomeScreen() {
       <title>Leaflet Map</title>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       <style>
         body, html, #map {
           margin: 0;
@@ -92,91 +82,180 @@ export default function HomeScreen() {
           width: 100%;
           height: 100%;
         }
+        
+        .custom-popup .leaflet-popup-content-wrapper {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 12px;
+          box-shadow: 0 3px 14px rgba(0,0,0,0.2);
+        }
+        
+        .custom-popup .leaflet-popup-content {
+          margin: 12px 12px;
+          font-family: 'Arial', sans-serif;
+          min-width: 200px;
+        }
+        
+        .custom-popup .leaflet-popup-tip {
+          background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .facility-header {
+          border-bottom: 1px solid #eee;
+          padding-bottom: 8px;
+          margin-bottom: 8px;
+        }
+        
+        .facility-title {
+          font-weight: bold;
+          font-size: 16px;
+          color: #333;
+          margin-bottom: 3px;
+        }
+        
+        .facility-info {
+          margin-bottom: 12px;
+          font-size: 14px;
+          color: #555;
+        }
+        
+        .facility-actions {
+          display: flex;
+          justify-content: space-between;
+        }
+        
+        .action-button {
+          background-color: #AD40AF;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 12px;
+          font-size: 14px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        
+        .action-button:hover {
+          background-color: #9C27B0;
+        }
+        
+        .action-button.secondary {
+          background-color: #6c757d;
+        }
+        
+        .action-button.secondary:hover {
+          background-color: #5a6268;
+        }
+        
+        .zoom-controls {
+          position: absolute;
+          right: 15px;
+          bottom: 80px;
+          display: flex;
+          flex-direction: column;
+          z-index: 1000;
+        }
+        
+        .zoom-button {
+          background-color: white;
+          border: 2px solid rgba(0,0,0,0.2);
+          border-radius: 4px;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          font-weight: bold;
+          color: #333;
+          margin-bottom: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        
+        .zoom-button:active {
+          background-color: #f4f4f4;
+          transform: scale(0.95);
+        }
       </style>
     </head>
     <body>
       <div id="map"></div>
+      <div class="zoom-controls">
+        <div class="zoom-button" id="zoom-in">+</div>
+        <div class="zoom-button" id="zoom-out">-</div>
+      </div>
       <script>
         // Initialize map
-        const map = L.map('map').setView([${initialCenter.latitude}, ${initialCenter.longitude}], ${initialCenter.zoom});
+        const map = L.map('map', {
+          zoomControl: false // Disable default zoom controls
+        }).setView([${initialCenter.latitude}, ${initialCenter.longitude}], ${initialCenter.zoom});
         
         // Add OpenStreetMap tiles
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: ''
         }).addTo(map);
         
-        // Create custom icons
-        const createIcon = (type) => {
-          let iconUrl;
+        // Create custom icons based on zoom level
+        const createIcon = (type, zoom) => {
+          let iconName;
           let iconColor;
+          let iconSize;
           
+          // Determine icon and color based on facility type
           switch(type) {
             case 'Nhà hàng':
+              iconName = 'fa-utensils';
               iconColor = '#FF5252';
               break;
             case 'Khách sạn':
+              iconName = 'fa-bed';
               iconColor = '#2979FF';
               break;
             case 'Cửa hàng':
+              iconName = 'fa-store';
               iconColor = '#00C853';
               break;
             default:
+              iconName = 'fa-building';
               iconColor = '#9C27B0';
+          }
+          
+          // Determine size based on zoom level
+          if (zoom >= 18) {
+            iconSize = 32;
+          } else if (zoom >= 16) {
+            iconSize = 24;
+          } else if (zoom >= 14) {
+            iconSize = 18;
+          } else if (zoom >= 12) {
+            iconSize = 14;
+          } else {
+            iconSize = 10;
           }
           
           return L.divIcon({
             className: 'custom-marker',
-            html: \`<div style="background-color:\${iconColor};border-radius:50%;width:20px;height:20px;"></div>\`,
-            iconSize: [20, 20],
-            iconAnchor: [10, 10],
-            popupAnchor: [0, -10]
+            html: \`<div style="display:flex;justify-content:center;align-items:center;width:\${iconSize + 8}px;height:\${iconSize + 8}px;background-color:white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+              <i class="fas \${iconName}" style="color:\${iconColor};font-size:\${iconSize}px;"></i>
+            </div>\`,
+            iconSize: [iconSize + 8, iconSize + 8],
+            iconAnchor: [(iconSize + 8)/2, (iconSize + 8)/2],
+            popupAnchor: [0, -((iconSize + 8)/2)]
           });
         };
         
-        // Handle map click events
-        let tempMarker = null;
-        map.on('click', function(e) {
-          if (tempMarker) {
-            map.removeLayer(tempMarker);
+        // Update markers when zoom changes
+        map.on('zoomend', function() {
+          if (window.markersData && window.markersData.length > 0) {
+            updateMarkers(window.markersData);
           }
-          
-          tempMarker = L.marker(e.latlng).addTo(map);
-          tempMarker.bindPopup(
-            '<div><strong>Thêm mới</strong><br>' +
-            '<button onclick="addFacility(' + e.latlng.lat + ', ' + e.latlng.lng + ')">Thêm cơ sở kinh doanh</button><br>' +
-            '<button onclick="cancelMarker()">Hủy</button></div>'
-          ).openPopup();
-          
-           window.ReactNativeWebView.postMessage(JSON.stringify({
-             type: 'mapClick',
-             latitude: e.latlng.lat,
-             longitude: e.latlng.lng
-           }));
         });
         
-        // Function to add facility (called from popup)
-        window.addFacility = function(lat, lng) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'addFacility',
-            latitude: lat,
-            longitude: lng
-          }));
-        };
-        
-        // Function to cancel temp marker
-        window.cancelMarker = function() {
-          if (tempMarker) {
-            map.removeLayer(tempMarker);
-            tempMarker = null;
-          }
-            // window.ReactNativeWebView.postMessage(JSON.stringify({
-            //   type: 'cancelMarker'
-            // }));
-        };
-        
-        // Function to add markers (called from React Native)
-        window.addMarkers = function(markersData) {
-          const markers = JSON.parse(markersData);
+        // Function to update markers based on current zoom level
+        function updateMarkers(markers) {
+          const currentZoom = map.getZoom();
           
           // Clear existing markers first
           if (window.markersLayer) {
@@ -185,20 +264,37 @@ export default function HomeScreen() {
           
           window.markersLayer = L.layerGroup().addTo(map);
           
+          // Don't show markers below zoom level 10
+          if (currentZoom < 10) return;
+          
           markers.forEach(marker => {
             const leafletMarker = L.marker(
               [marker.latitude, marker.longitude],
-              { icon: createIcon(marker.type) }
+              { icon: createIcon(marker.type, currentZoom) }
             ).addTo(window.markersLayer);
             
             leafletMarker.bindPopup(
-              '<div><strong>' + marker.name + '</strong><br>' +
-              'Loại hình: ' + marker.type + '<br>' +
-              'Địa chỉ: ' + marker.address + '<br><br>' +
-              '<button onclick="reviewFacility(' + marker.id + ')">Đánh giá</button> ' +
-              '<button onclick="viewReviews(' + marker.id + ')">Xem đánh giá</button></div>'
+              '<div class="facility-header">' +
+              '<div class="facility-title">' + marker.name + '</div>' +
+              '</div>' +
+              '<div class="facility-info">' +
+              '<strong>Loại hình:</strong> ' + marker.type + '<br>' +
+              '<strong>Địa chỉ:</strong> ' + marker.address +
+              '</div>' +
+              '<div class="facility-actions">' +
+              '<button class="action-button" onclick="reviewFacility(' + marker.id + ')">Đánh giá</button> ' +
+              '<button class="action-button secondary" onclick="viewReviews(' + marker.id + ')">Xem đánh giá</button>' +
+              '</div>',
+              { className: 'custom-popup' }
             );
           });
+        }
+        
+        // Function to add markers (called from React Native)
+        window.addMarkers = function(markersData) {
+          const markers = JSON.parse(markersData);
+          window.markersData = markers; // Save for zoom updates
+          updateMarkers(markers);
         };
         
         // Function to review facility
@@ -221,6 +317,15 @@ export default function HomeScreen() {
         window.focusOnFacility = function(lat, lng, zoom) {
           map.setView([lat, lng], zoom || 18);
         };
+        
+        // Custom zoom controls
+        document.getElementById('zoom-in').addEventListener('click', () => {
+          map.zoomIn();
+        });
+        
+        document.getElementById('zoom-out').addEventListener('click', () => {
+          map.zoomOut();
+        });
         
         // Send message when map is ready
         window.onload = function() {
@@ -325,24 +430,10 @@ export default function HomeScreen() {
           break;
           
         case 'mapClick':
-          setTempMarker({
+          setSelectedFacility({
             latitude: data.latitude,
             longitude: data.longitude,
           });
-          
-          setNewFacility({
-            ...newFacility,
-            latitude: data.latitude,
-            longitude: data.longitude,
-          });
-          break;
-          
-        case 'addFacility':
-          setIsAddModalVisible(true);
-          break;
-          
-        case 'cancelMarker':
-          setTempMarker(null);
           break;
           
         case 'reviewFacility':
@@ -373,35 +464,6 @@ export default function HomeScreen() {
       .replace(/Đ/g, 'D');
   };
 
-  const handleAddFacility = () => {
-    setIsAddModalVisible(false);
-    
-    // In a real app, make an API call to add the facility
-    // For now, add to local state
-    const newFacilityObj = {
-      id: facilities.length + 1,
-      ...newFacility,
-    };
-    
-    setFacilities([...facilities, newFacilityObj]);
-    setTempMarker(null);
-    setNewFacility({
-      name: '',
-      type: 'Nhà hàng',
-      address: '',
-      latitude: 0,
-      longitude: 0,
-    });
-    
-    // Clear temporary marker on the map
-    if (webViewRef.current) {
-      webViewRef.current.injectJavaScript(`
-        window.cancelMarker();
-        true;
-      `);
-    }
-  };
-
   const handleAddReview = () => {
     if (!selectedFacility) return;
     
@@ -428,16 +490,39 @@ export default function HomeScreen() {
     const mockReviews = [
       {
         id: 1,
-        reviewerName: 'Người dùng 1',
+        reviewerName: 'Nguyễn Văn A',
         rating: 5,
-        content: 'Rất tuyệt vời!',
+        content: 'Dịch vụ rất tuyệt vời! Nhân viên phục vụ chuyên nghiệp, không gian sạch sẽ và thoáng mát. Tôi sẽ quay lại vào lần sau.',
+        date: '15/08/2023'
       },
       {
         id: 2,
-        reviewerName: 'Người dùng 2',
+        reviewerName: 'Trần Thị B',
         rating: 4,
-        content: 'Dịch vụ tốt.',
+        content: 'Dịch vụ tốt, giá cả phải chăng. Tuy nhiên, thời gian chờ đợi hơi lâu vào giờ cao điểm.',
+        date: '20/07/2023'
       },
+      {
+        id: 3,
+        reviewerName: 'Lê Văn C',
+        rating: 3,
+        content: 'Chất lượng dịch vụ ở mức trung bình. Cần cải thiện thêm về thái độ phục vụ của một số nhân viên.',
+        date: '05/06/2023'
+      },
+      {
+        id: 4,
+        reviewerName: 'Phạm Thị D',
+        rating: 5,
+        content: 'Rất hài lòng với trải nghiệm tại đây. Không gian thoáng, sạch sẽ và nhân viên rất thân thiện.',
+        date: '12/05/2023'
+      },
+      {
+        id: 5,
+        reviewerName: 'Hoàng Văn E',
+        rating: 2,
+        content: 'Không hài lòng lắm. Giá cả hơi cao so với chất lượng dịch vụ. Cần cải thiện nhiều.',
+        date: '03/04/2023'
+      }
     ];
     
     setReviews(mockReviews);
@@ -495,22 +580,100 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header with back button */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>GIS Business Map</Text>
-      </View>
+      {/* Map View */}
+      <WebView
+        ref={webViewRef}
+        originWhitelist={['*']}
+        source={{ html: leafletHtml }}
+        style={styles.map}
+        onMessage={handleWebViewMessage}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        geolocationEnabled={true}
+      />
       
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#666" />
+          <Ionicons name="search" size={20} color="#AD40AF" />
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm cơ sở..."
             value={searchKeyword}
             onChangeText={setSearchKeyword}
+            placeholderTextColor="#888"
           />
+          {searchKeyword.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchKeyword('')}>
+              <Ionicons name="close-circle" size={20} color="#AD40AF" />
+            </TouchableOpacity>
+          )}
         </View>
+        
+        {/* Filter Controls - Google Maps Style */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScrollView}
+          contentContainerStyle={styles.filterScrollContent}
+        >
+          <TouchableOpacity 
+            style={[
+              styles.filterButton,
+              filters.restaurant && styles.filterButtonActive
+            ]}
+            onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
+          >
+            <Ionicons 
+              name="restaurant" 
+              size={18} 
+              color={filters.restaurant ? "#fff" : "#666"} 
+              style={styles.filterButtonIcon}
+            />
+            <Text style={[
+              styles.filterButtonText,
+              filters.restaurant && styles.filterButtonTextActive
+            ]}>Nhà hàng</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.filterButton,
+              filters.hotel && styles.filterButtonActive
+            ]}
+            onPress={() => handleFilterChange('hotel', !filters.hotel)}
+          >
+            <Ionicons 
+              name="bed" 
+              size={18} 
+              color={filters.hotel ? "#fff" : "#666"}
+              style={styles.filterButtonIcon}
+            />
+            <Text style={[
+              styles.filterButtonText,
+              filters.hotel && styles.filterButtonTextActive
+            ]}>Khách sạn</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[
+              styles.filterButton,
+              filters.shop && styles.filterButtonActive
+            ]}
+            onPress={() => handleFilterChange('shop', !filters.shop)}
+          >
+            <Ionicons 
+              name="cart" 
+              size={18} 
+              color={filters.shop ? "#fff" : "#666"}
+              style={styles.filterButtonIcon}
+            />
+            <Text style={[
+              styles.filterButtonText,
+              filters.shop && styles.filterButtonTextActive
+            ]}>Cửa hàng</Text>
+          </TouchableOpacity>
+        </ScrollView>
         
         {/* Search Results */}
         {filteredFacilities.length > 0 && (
@@ -522,10 +685,21 @@ export default function HomeScreen() {
                 <TouchableOpacity
                   style={styles.searchResultItem}
                   onPress={() => focusFacility(item)}>
-                  <Ionicons name="location" size={16} color="#AD40AF" />
-                  <Text style={styles.searchResultText}>
-                    {item.name} — {item.address}
-                  </Text>
+                  <View style={styles.searchResultIconContainer}>
+                    <Ionicons 
+                      name={
+                        item.type === 'Nhà hàng' ? "restaurant" : 
+                        item.type === 'Khách sạn' ? "bed" : "cart"
+                      } 
+                      size={16} 
+                      color="#fff" 
+                    />
+                  </View>
+                  <View style={styles.searchResultTextContainer}>
+                    <Text style={styles.searchResultName}>{item.name}</Text>
+                    <Text style={styles.searchResultAddress}>{item.address}</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color="#AD40AF" />
                 </TouchableOpacity>
               )}
             />
@@ -533,163 +707,6 @@ export default function HomeScreen() {
         )}
       </View>
       
-      {/* Filter Controls */}
-      <View style={styles.filterContainer}>
-        <View style={styles.filterOption}>
-          <Text style={styles.filterLabel}>Nhà hàng</Text>
-          <Switch
-            value={filters.restaurant}
-            onValueChange={(value) => handleFilterChange('restaurant', value)}
-            thumbColor={filters.restaurant ? '#AD40AF' : '#f4f3f4'}
-            trackColor={{false: '#767577', true: '#e0b0e0'}}
-          />
-        </View>
-        
-        <View style={styles.filterOption}>
-          <Text style={styles.filterLabel}>Khách sạn</Text>
-          <Switch
-            value={filters.hotel}
-            onValueChange={(value) => handleFilterChange('hotel', value)}
-            thumbColor={filters.hotel ? '#AD40AF' : '#f4f3f4'}
-            trackColor={{false: '#767577', true: '#e0b0e0'}}
-          />
-        </View>
-        
-        <View style={styles.filterOption}>
-          <Text style={styles.filterLabel}>Cửa hàng</Text>
-          <Switch
-            value={filters.shop}
-            onValueChange={(value) => handleFilterChange('shop', value)}
-            thumbColor={filters.shop ? '#AD40AF' : '#f4f3f4'}
-            trackColor={{false: '#767577', true: '#e0b0e0'}}
-          />
-        </View>
-      </View>
-      
-      {/* Map View */}
-       <WebView
-        ref={webViewRef}
-        originWhitelist={['*']}
-        source={{ html: leafletHtml }}
-        style={styles.map}
-        onMessage={handleWebViewMessage}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        geolocationEnabled={true}
-      />
-      
-      {/* Add Facility Modal */}
-      <Modal
-        visible={isAddModalVisible}
-        transparent={true}
-        animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Thêm cơ sở kinh doanh</Text>
-              <TouchableOpacity onPress={() => setIsAddModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Tên cơ sở:</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newFacility.name}
-                  onChangeText={(text) => setNewFacility({...newFacility, name: text})}
-                  placeholder="Nhập tên cơ sở"
-                />
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Loại hình:</Text>
-                <View style={styles.pickerContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.pickerItem,
-                      newFacility.type === 'Nhà hàng' && styles.pickerItemActive,
-                    ]}
-                    onPress={() => setNewFacility({...newFacility, type: 'Nhà hàng'})}>
-                    <Text 
-                      style={[
-                        styles.pickerText,
-                        newFacility.type === 'Nhà hàng' && styles.pickerTextActive,
-                      ]}>
-                      Nhà hàng
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.pickerItem,
-                      newFacility.type === 'Khách sạn' && styles.pickerItemActive,
-                    ]}
-                    onPress={() => setNewFacility({...newFacility, type: 'Khách sạn'})}>
-                    <Text 
-                      style={[
-                        styles.pickerText,
-                        newFacility.type === 'Khách sạn' && styles.pickerTextActive,
-                      ]}>
-                      Khách sạn
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.pickerItem,
-                      newFacility.type === 'Cửa hàng' && styles.pickerItemActive,
-                    ]}
-                    onPress={() => setNewFacility({...newFacility, type: 'Cửa hàng'})}>
-                    <Text 
-                      style={[
-                        styles.pickerText,
-                        newFacility.type === 'Cửa hàng' && styles.pickerTextActive,
-                      ]}>
-                      Cửa hàng
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Địa chỉ:</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newFacility.address}
-                  onChangeText={(text) => setNewFacility({...newFacility, address: text})}
-                  placeholder="Nhập địa chỉ"
-                />
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Tọa độ:</Text>
-                <View style={styles.coordinateContainer}>
-                  <View style={styles.coordinate}>
-                    <Text style={styles.coordinateLabel}>Kinh độ:</Text>
-                    <Text style={styles.coordinateValue}>
-                      {newFacility.longitude.toFixed(6)}
-                    </Text>
-                  </View>
-                  <View style={styles.coordinate}>
-                    <Text style={styles.coordinateLabel}>Vĩ độ:</Text>
-                    <Text style={styles.coordinateValue}>
-                      {newFacility.latitude.toFixed(6)}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleAddFacility}>
-                <Text style={styles.submitButtonText}>Lưu</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
       
       {/* Add Review Modal */}
       <Modal
@@ -699,37 +716,42 @@ export default function HomeScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Gửi đánh giá cho {selectedFacility?.name}
-              </Text>
+              <Text style={styles.modalTitle}>Đánh giá cơ sở</Text>
               <TouchableOpacity onPress={() => setIsReviewModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
             
             <ScrollView style={styles.modalBody}>
+              {selectedFacility && (
+                <View style={styles.selectedFacilityInfo}>
+                  <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
+                  <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
+                </View>
+              )}
+              
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Người đánh giá:</Text>
+                <Text style={styles.label}>Tên của bạn:</Text>
                 <TextInput
                   style={styles.input}
                   value={newReview.reviewerName}
                   onChangeText={(text) => setNewReview({...newReview, reviewerName: text})}
-                  placeholder="Tên bạn"
+                  placeholder="Nhập tên của bạn"
                 />
               </View>
               
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Đánh giá (1-5 sao):</Text>
-                <View style={styles.ratingInput}>
+                <View style={styles.ratingContainer}>
                   {[1, 2, 3, 4, 5].map((star) => (
                     <TouchableOpacity
                       key={star}
                       onPress={() => setNewReview({...newReview, rating: star})}>
                       <Ionicons
-                        name={star <= newReview.rating ? 'star' : 'star-outline'}
+                        name={star <= newReview.rating ? "star" : "star-outline"}
                         size={30}
                         color="#FFD700"
-                        style={{marginRight: 10}}
+                        style={styles.starIcon}
                       />
                     </TouchableOpacity>
                   ))}
@@ -737,28 +759,28 @@ export default function HomeScreen() {
               </View>
               
               <View style={styles.formGroup}>
-                <Text style={styles.label}>Bình luận:</Text>
+                <Text style={styles.label}>Nội dung đánh giá:</Text>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   value={newReview.content}
                   onChangeText={(text) => setNewReview({...newReview, content: text})}
-                  placeholder="Nhập bình luận của bạn"
+                  placeholder="Nhập nội dung đánh giá..."
                   multiline={true}
-                  numberOfLines={4}
+                  numberOfLines={5}
                 />
               </View>
               
               <TouchableOpacity
                 style={styles.submitButton}
                 onPress={handleAddReview}>
-                <Text style={styles.submitButtonText}>Gửi đánh giá</Text>
+                <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
         </View>
       </Modal>
       
-      {/* View Reviews Modal */}
+      {/* Reviews List Modal */}
       <Modal
         visible={isReviewListVisible}
         transparent={true}
@@ -766,40 +788,63 @@ export default function HomeScreen() {
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Đánh giá cho {selectedFacility?.name}
-              </Text>
+              <Text style={styles.modalTitle}>Đánh giá về cơ sở</Text>
               <TouchableOpacity onPress={() => setIsReviewListVisible(false)}>
                 <Ionicons name="close" size={24} color="#333" />
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.modalBody}>
-              {reviews.length > 0 ? (
-                reviews.map((review) => (
-                  <View key={review.id} style={styles.reviewItem}>
-                    <View style={styles.reviewHeader}>
-                      <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                      <View style={styles.reviewRating}>
-                        {renderStars(review.rating)}
-                      </View>
-                    </View>
-                    <Text style={styles.reviewContent}>{review.content}</Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.noReviewsText}>Chưa có đánh giá nào.</Text>
+            <View style={styles.modalBody}>
+              {selectedFacility && (
+                <View style={styles.selectedFacilityInfo}>
+                  <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
+                  <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
+                </View>
               )}
               
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={() => {
-                  setIsReviewListVisible(false);
-                  setIsReviewModalVisible(true);
-                }}>
-                <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
-              </TouchableOpacity>
-            </ScrollView>
+              {reviews.length > 0 ? (
+                <FlatList
+                  data={reviews}
+                  keyExtractor={(item) => item.id.toString()}
+                  renderItem={({item}) => (
+                    <View style={styles.reviewItem}>
+                      <View style={styles.reviewHeader}>
+                        <View style={styles.reviewerInfo}>
+                          <View style={styles.avatarContainer}>
+                            <Text style={styles.avatarText}>
+                              {item.reviewerName.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text style={styles.reviewerName}>{item.reviewerName}</Text>
+                            <Text style={styles.reviewDate}>{item.date}</Text>
+                          </View>
+                        </View>
+                        <View style={styles.ratingRow}>
+                          {renderStars(item.rating)}
+                        </View>
+                      </View>
+                      <Text style={styles.reviewContent}>{item.content}</Text>
+                    </View>
+                  )}
+                  ItemSeparatorComponent={() => <View style={styles.reviewSeparator} />}
+                  style={styles.reviewsList}
+                />
+              ) : (
+                <View style={styles.emptyReviews}>
+                  <Ionicons name="star-outline" size={50} color="#ccc" />
+                  <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
+                  <TouchableOpacity 
+                    style={styles.addReviewButton}
+                    onPress={() => {
+                      setIsReviewListVisible(false);
+                      setIsReviewModalVisible(true);
+                    }}>
+                    <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -812,38 +857,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 30,
-  },
   searchContainer: {
-    padding: 10,
-    position: 'relative',
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 30,
+    left: 10,
+    right: 10,
     zIndex: 10,
   },
   searchInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#ffffff',
     borderRadius: 10,
     paddingHorizontal: 10,
     borderWidth: 1,
     borderColor: '#eee',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   searchInput: {
     flex: 1,
@@ -852,17 +888,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchResults: {
-    position: 'absolute',
-    top: 60,
-    left: 10,
-    right: 10,
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#eee',
     elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
     maxHeight: 200,
     zIndex: 100,
+    position: 'absolute',
+    top: 105,
+    left: 0,
+    right: 0,
   },
   searchResultItem: {
     flexDirection: 'row',
@@ -871,31 +914,72 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
-  searchResultText: {
-    marginLeft: 10,
-    fontSize: 14,
-    color: '#333',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 10,
-    backgroundColor: '#f8f8f8',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    zIndex: 5,
-  },
-  filterOption: {
-    flexDirection: 'row',
+  searchResultIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#AD40AF',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  filterLabel: {
-    marginRight: 5,
+  searchResultTextContainer: {
+    flex: 1,
+    marginHorizontal: 10,
+  },
+  searchResultName: {
     fontSize: 14,
     color: '#333',
   },
+  searchResultAddress: {
+    fontSize: 12,
+    color: '#666',
+  },
+  filterScrollView: {
+    marginTop: 10,
+    marginBottom: 5,
+    height: 45,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 5,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginHorizontal: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+  filterButtonActive: {
+    backgroundColor: '#AD40AF',
+  },
+  filterButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 5,
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+  },
+  filterButtonIcon: {
+    marginRight: 5,
+  },
   map: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
   },
@@ -1000,39 +1084,120 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  ratingInput: {
+  ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 10,
   },
+  starIcon: {
+    marginRight: 10,
+  },
+  selectedFacilityInfo: {
+    marginBottom: 15,
+  },
+  selectedFacilityName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  selectedFacilityAddress: {
+    fontSize: 14,
+    color: '#666',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#AD40AF',
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 10,
+  },
+  reviewsList: {
+    maxHeight: '80%',
+  },
   reviewItem: {
-    backgroundColor: '#f8f8f8',
     padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
   },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 5,
+    marginBottom: 10,
+  },
+  reviewerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatarContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#AD40AF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   reviewerName: {
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: '500',
     color: '#333',
   },
-  reviewRating: {
+  reviewDate: {
+    fontSize: 12,
+    color: '#666',
+  },
+  ratingRow: {
     flexDirection: 'row',
   },
   reviewContent: {
     fontSize: 14,
-    color: '#666',
+    color: '#555',
+    lineHeight: 20,
   },
-  noReviewsText: {
-    textAlign: 'center',
+  reviewSeparator: {
+    height: 1,
+    backgroundColor: '#eee',
+    marginVertical: 10,
+  },
+  emptyReviews: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  emptyReviewsText: {
     fontSize: 16,
-    color: '#666',
-    marginVertical: 20,
+    color: '#999',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  addReviewButton: {
+    backgroundColor: '#AD40AF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  addReviewButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
 });

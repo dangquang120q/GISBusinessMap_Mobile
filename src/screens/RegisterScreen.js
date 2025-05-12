@@ -24,7 +24,7 @@ import CustomButton from '../components/CustomButton';
 const RegisterScreen = ({navigation}) => {
   const [date, setDate] = useState(new Date());
   const [open, setOpen] = useState(false);
-  const [dobLabel, setDobLabel] = useState('Date of Birth');
+  const [dobLabel, setDobLabel] = useState('Ngày sinh');
 
   return (
     <SafeAreaView style={{flex: 1, justifyContent: 'center'}}>
@@ -47,7 +47,7 @@ const RegisterScreen = ({navigation}) => {
             color: '#333',
             marginBottom: 30,
           }}>
-          Register
+          Đăng ký
         </Text>
 
         <View
@@ -92,11 +92,11 @@ const RegisterScreen = ({navigation}) => {
         </View>
 
         <Text style={{textAlign: 'center', color: '#666', marginBottom: 30}}>
-          Or, register with email ...
+          Hoặc, đăng ký bằng email ...
         </Text>
 
         <InputField
-          label={'Full Name'}
+          label={'Họ và tên'}
           icon={
             <Ionicons
               name="person-outline"
@@ -108,7 +108,7 @@ const RegisterScreen = ({navigation}) => {
         />
 
         <InputField
-          label={'Email ID'}
+          label={'Email'}
           icon={
             <MaterialIcons
               name="alternate-email"
@@ -121,7 +121,7 @@ const RegisterScreen = ({navigation}) => {
         />
 
         <InputField
-          label={'Password'}
+          label={'Mật khẩu'}
           icon={
             <Ionicons
               name="ios-lock-closed-outline"
@@ -134,7 +134,7 @@ const RegisterScreen = ({navigation}) => {
         />
 
         <InputField
-          label={'Confirm Password'}
+          label={'Xác nhận mật khẩu'}
           icon={
             <Ionicons
               name="ios-lock-closed-outline"
@@ -184,7 +184,7 @@ const RegisterScreen = ({navigation}) => {
           }}
         />
 
-        <CustomButton label={'Register'} onPress={() => {}} />
+        <CustomButton label={'Đăng ký'} onPress={() => {}} />
 
         <View
           style={{
@@ -192,9 +192,9 @@ const RegisterScreen = ({navigation}) => {
             justifyContent: 'center',
             marginBottom: 30,
           }}>
-          <Text>Already registered?</Text>
+          <Text>Bạn đã có tài khoản?</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={{color: '#AD40AF', fontWeight: '700'}}> Login</Text>
+            <Text style={{color: '#AD40AF', fontWeight: '700'}}> Đăng nhập</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

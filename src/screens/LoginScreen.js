@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
 } from 'react-native';
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -25,7 +26,15 @@ const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   return (
-    <SafeAreaView style={{flex: 1, justifyContent: 'center'}}>
+    <SafeAreaView style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton} 
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={24} color="#333" />
+        <Text style={styles.backButtonText}>Quay lại bản đồ</Text>
+      </TouchableOpacity>
+
       <View style={{paddingHorizontal: 25}}>
         <View style={{alignItems: 'center'}}>
           <LoginSVG
@@ -43,10 +52,10 @@ const LoginScreen = ({navigation}) => {
             color: '#333',
             marginBottom: 30,
           }}>
-          Login
+          Đăng nhập
         </Text>
         <InputField
-          label={'Email ID'}
+          label={'Email'}
           icon={
             <MaterialIcons
             name="alternate-email"
@@ -61,7 +70,7 @@ const LoginScreen = ({navigation}) => {
         />
 
 <InputField
-          label={'Password'}
+          label={'Mật khẩu'}
           icon={
             <Ionicons
             name="ios-lock-closed-outline"
@@ -71,16 +80,16 @@ const LoginScreen = ({navigation}) => {
           />
           }
           inputType="password"
-          fieldButtonLabel={"Forgot?"}
+          fieldButtonLabel={"Quên?"}
           fieldButtonFunction={() => {}}
           value={password}
           onChangeText={setPassword}
         />
         
-        <CustomButton label={"Login"} onPress={() => {login(email, password)}} />
+        <CustomButton label={"Đăng nhập"} onPress={() => {login(email, password)}} />
 
         <Text style={{textAlign: 'center', color: '#666', marginBottom: 30}}>
-          Or, login with ...
+          Hoặc, đăng nhập bằng ...
         </Text>
 
         <View
@@ -130,14 +139,34 @@ const LoginScreen = ({navigation}) => {
             justifyContent: 'center',
             marginBottom: 30,
           }}>
-          <Text>New to the app?</Text>
+          <Text>Bạn chưa có tài khoản?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={{color: '#AD40AF', fontWeight: '700'}}> Register</Text>
+            <Text style={{color: '#AD40AF', fontWeight: '700'}}> Đăng ký</Text>
           </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  backButtonText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+});
 
 export default LoginScreen;
