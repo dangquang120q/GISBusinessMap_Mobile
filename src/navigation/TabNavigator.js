@@ -7,9 +7,14 @@ import HomeScreen from '../screens/HomeScreen';
 import CartScreen from '../screens/CartScreen';
 import FavoriteScreen from '../screens/FavoriteScreen';
 import GameDetailsScreen from '../screens/GameDetailsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import MessagesScreen from '../screens/MessagesScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Feather from 'react-native-vector-icons/Feather';
+import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -57,22 +62,42 @@ const TabNavigator = () => {
         })}
       />
       <Tab.Screen
-        name="Cart"
-        component={CartScreen}
+        name="Review"
+        component={ReviewHistoryScreen}
         options={{
           tabBarBadge: 3,
           tabBarBadgeStyle: {backgroundColor: 'yellow'},
           tabBarIcon: ({color, size}) => (
-            <Feather name="shopping-bag" color={color} size={size} />
+            <Ionicons name="pencil-outline" color={color} size={size} />
           ),
         }}
       />
       <Tab.Screen
-        name="Favorite"
-        component={FavoriteScreen}
+        name="Messages"
+        component={FeedbackHistoryScreen}
+        options={{
+          tabBarBadge: 3,
+          tabBarBadgeStyle: {backgroundColor: 'yellow'},
+          tabBarIcon: ({color, size}) => (
+            <Ionicons name="warning-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
         options={{
           tabBarIcon: ({color, size}) => (
-            <Ionicons name="heart-outline" color={color} size={size} />
+            <Ionicons name="person-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          tabBarIcon: ({color, size}) => (
+            <Ionicons name="settings-outline" color={color} size={size} />
           ),
         }}
       />
