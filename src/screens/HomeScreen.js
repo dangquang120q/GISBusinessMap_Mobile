@@ -51,6 +51,7 @@ export default function HomeScreen() {
   // States for modals
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [isReviewListVisible, setIsReviewListVisible] = useState(false);
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
   
   // States for filters
   const [filters, setFilters] = useState({
@@ -64,6 +65,15 @@ export default function HomeScreen() {
   const [newReview, setNewReview] = useState({
     reviewerName: '',
     rating: 5,
+    content: '',
+  });
+
+  // State for reports
+  const [reportData, setReportData] = useState({
+    reporterName: '',
+    phone: '',
+    email: '',
+    reportType: 'violation',
     content: '',
   });
 
@@ -699,6 +709,53 @@ export default function HomeScreen() {
     return <View style={{flexDirection: 'row'}}>{stars}</View>;
   };
 
+  // Handle report submission
+  const handleReportSubmit = () => {
+    if (!selectedFacility) return;
+    
+    // Validate form
+    if (!reportData.reporterName.trim()) {
+      Alert.alert('Thông báo', 'Vui lòng nhập tên người báo cáo');
+      return;
+    }
+    
+    if (!reportData.phone.trim() && !reportData.email.trim()) {
+      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại hoặc email');
+      return;
+    }
+    
+    if (!reportData.content.trim()) {
+      Alert.alert('Thông báo', 'Vui lòng nhập nội dung phản ánh');
+      return;
+    }
+    
+    // In a real app, make an API call to submit the report
+    console.log('Report submitted:', {
+      facilityId: selectedFacility.id,
+      facilityName: selectedFacility.name,
+      ...reportData,
+    });
+    
+    // Close modal and reset form
+    setIsReportModalVisible(false);
+    
+    // Show success message
+    Alert.alert(
+      'Thành công',
+      'Phản ánh của bạn đã được gửi thành công tới cơ quan chức năng',
+      [{ text: 'OK' }]
+    );
+    
+    // Reset form data
+    setReportData({
+      reporterName: '',
+      phone: '',
+      email: '',
+      reportType: 'violation',
+      content: '',
+    });
+  };
+
   // Thêm component cho tab content
   const renderOverviewTab = () => {
     if (!selectedFacility) {
@@ -799,15 +856,23 @@ export default function HomeScreen() {
           )}
         </View>
         
-        {/* <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity 
+        <View style={styles.actionButtonsContainer}>
+          {/* <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => setIsReviewModalVisible(true)}
           >
             <Ionicons name="star-outline" size={20} color="#fff" />
             <Text style={styles.actionButtonText}>Đánh giá</Text>
           </TouchableOpacity>
-        </View> */}
+           */}
+          <TouchableOpacity 
+            style={[styles.actionButton, {backgroundColor: '#e74c3c'}]}
+            onPress={() => setIsReportModalVisible(true)}
+          >
+            <Ionicons name="warning-outline" size={20} color="#fff" />
+            <Text style={styles.actionButtonText}>Phản ánh lên cơ quan chức năng</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     );
   };
@@ -1244,6 +1309,126 @@ export default function HomeScreen() {
                 style={styles.submitButton}
                 onPress={handleAddReview}>
                 <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Add Report Modal */}
+      <Modal
+        visible={isReportModalVisible}
+        transparent={true}
+        animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Phản ánh lên cơ quan chức năng</Text>
+              <TouchableOpacity onPress={() => setIsReportModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody}>
+              {selectedFacility && (
+                <View style={styles.selectedFacilityInfo}>
+                  <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
+                  <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
+                </View>
+              )}
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Họ tên người phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
+                <TextInput
+                  style={styles.input}
+                  value={reportData.reporterName}
+                  onChangeText={(text) => setReportData({...reportData, reporterName: text})}
+                  placeholder="Nhập họ tên"
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Số điện thoại:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={reportData.phone}
+                  onChangeText={(text) => setReportData({...reportData, phone: text})}
+                  placeholder="Nhập số điện thoại"
+                  keyboardType="phone-pad"
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Email:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={reportData.email}
+                  onChangeText={(text) => setReportData({...reportData, email: text})}
+                  placeholder="Nhập email"
+                  keyboardType="email-address"
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Loại phản ánh:</Text>
+                <View style={styles.reportTypeContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.reportTypeOption,
+                      reportData.reportType === 'violation' && styles.reportTypeOptionActive
+                    ]}
+                    onPress={() => setReportData({...reportData, reportType: 'violation'})}
+                  >
+                    <Text style={[
+                      styles.reportTypeText,
+                      reportData.reportType === 'violation' && styles.reportTypeTextActive
+                    ]}>Vi phạm pháp luật</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.reportTypeOption,
+                      reportData.reportType === 'service' && styles.reportTypeOptionActive
+                    ]}
+                    onPress={() => setReportData({...reportData, reportType: 'service'})}
+                  >
+                    <Text style={[
+                      styles.reportTypeText,
+                      reportData.reportType === 'service' && styles.reportTypeTextActive
+                    ]}>Phản ánh dịch vụ</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
+                      styles.reportTypeOption,
+                      reportData.reportType === 'other' && styles.reportTypeOptionActive
+                    ]}
+                    onPress={() => setReportData({...reportData, reportType: 'other'})}
+                  >
+                    <Text style={[
+                      styles.reportTypeText,
+                      reportData.reportType === 'other' && styles.reportTypeTextActive
+                    ]}>Khác</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Nội dung phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={reportData.content}
+                  onChangeText={(text) => setReportData({...reportData, content: text})}
+                  placeholder="Nhập nội dung phản ánh chi tiết..."
+                  multiline={true}
+                  numberOfLines={5}
+                />
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.submitButton, {backgroundColor: '#e74c3c'}]}
+                onPress={handleReportSubmit}>
+                <Text style={styles.submitButtonText}>Gửi phản ánh</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>

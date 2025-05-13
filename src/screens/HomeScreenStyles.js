@@ -143,6 +143,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxHeight: '80%',
     elevation: 5,
+    padding: 10,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -473,9 +474,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actionButtonsContainer: {
+    flexDirection: 'column',
+  },
+  actionButton: {
+    backgroundColor: '#085924',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    justifyContent: 'center',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: '500',
+    marginLeft: 8,
   },
   aboutText: {
     fontSize: 16,
@@ -642,6 +654,34 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 5,
+  },
+  // Report form styles
+  reportTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 5,
+  },
+  reportTypeOption: {
+    flex: 1,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  reportTypeOptionActive: {
+    backgroundColor: '#e74c3c',
+    borderColor: '#e74c3c',
+  },
+  reportTypeText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  reportTypeTextActive: {
+    color: '#fff',
+    fontWeight: '500',
   },
 });
 
