@@ -6,12 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
+  Dimensions,
 } from 'react-native';
-
+import { Image } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import LoginSVG from '../assets/images/misc/login.svg';
 import GoogleSVG from '../assets/images/misc/google.svg';
 import FacebookSVG from '../assets/images/misc/facebook.svg';
 import TwitterSVG from '../assets/images/misc/twitter.svg';
@@ -31,16 +31,16 @@ const LoginScreen = ({navigation}) => {
         style={styles.backButton} 
         onPress={() => navigation.goBack()}
       >
-        <Ionicons name="arrow-back" size={24} color="#333" />
+        <Ionicons name="arrow-back" size={24} color="#085924" />
         <Text style={styles.backButtonText}>Quay lại bản đồ</Text>
       </TouchableOpacity>
 
       <View style={{paddingHorizontal: 25}}>
-        <View style={{alignItems: 'center'}}>
-          <LoginSVG
-            height={300}
-            width={300}
-            style={{transform: [{rotate: '-5deg'}]}}
+        <View style={styles.logoContainer}>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
           />
         </View>
 
@@ -49,8 +49,9 @@ const LoginScreen = ({navigation}) => {
             fontFamily: 'Roboto-Medium',
             fontSize: 28,
             fontWeight: '500',
-            color: '#333',
+            color: '#085924',
             marginBottom: 30,
+            textAlign:'center'
           }}>
           Đăng nhập
         </Text>
@@ -80,57 +81,34 @@ const LoginScreen = ({navigation}) => {
           />
           }
           inputType="password"
-          fieldButtonLabel={"Quên?"}
-          fieldButtonFunction={() => {}}
+          // fieldButtonLabel={"Quên?"}
+          // fieldButtonFunction={() => {}}
           value={password}
           onChangeText={setPassword}
         />
         
         <CustomButton label={"Đăng nhập"} onPress={() => {login(email, password)}} />
 
-        <Text style={{textAlign: 'center', color: '#666', marginBottom: 30}}>
+        <Text style={styles.orText}>
           Hoặc, đăng nhập bằng ...
         </Text>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 30,
-          }}>
+        <View style={styles.socialButtonsContainer}>
           <TouchableOpacity
             onPress={() => {}}
-            style={{
-              borderColor: '#ddd',
-              borderWidth: 2,
-              borderRadius: 10,
-              paddingHorizontal: 30,
-              paddingVertical: 10,
-            }}>
+            style={styles.socialButton}>
             <GoogleSVG height={24} width={24} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {}}
-            style={{
-              borderColor: '#ddd',
-              borderWidth: 2,
-              borderRadius: 10,
-              paddingHorizontal: 30,
-              paddingVertical: 10,
-            }}>
+            style={styles.socialButton}>
             <FacebookSVG height={24} width={24} />
           </TouchableOpacity>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => {}}
-            style={{
-              borderColor: '#ddd',
-              borderWidth: 2,
-              borderRadius: 10,
-              paddingHorizontal: 30,
-              paddingVertical: 10,
-            }}>
+            style={styles.socialButton}>
             <TwitterSVG height={24} width={24} />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <View
@@ -141,7 +119,7 @@ const LoginScreen = ({navigation}) => {
           }}>
           <Text>Bạn chưa có tài khoản?</Text>
           <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={{color: '#AD40AF', fontWeight: '700'}}> Đăng ký</Text>
+            <Text style={{color: '#085924', fontWeight: '700'}}> Đăng ký</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -165,7 +143,52 @@ const styles = StyleSheet.create({
   backButtonText: {
     marginLeft: 10,
     fontSize: 16,
-    color: '#333',
+    color: '#085924',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  logo: {
+    height: Dimensions.get('window').width * 0.4,
+    width: Dimensions.get('window').width * 0.4,
+    marginTop: 30,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  orText: {
+    textAlign: 'center', 
+    color: '#666', 
+    marginBottom: 20,
+    fontSize: 16,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 30,
+    gap: 20,
+  },
+  socialButton: {
+    borderColor: '#ddd',
+    borderWidth: 2,
+    borderRadius: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    backgroundColor: 'white',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.00,
+    elevation: 1,
   },
 });
 

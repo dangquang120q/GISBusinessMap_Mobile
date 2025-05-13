@@ -101,7 +101,7 @@ const NotificationsListScreen = () => {
   };
 
   const getNotificationIcon = (type, read) => {
-    const iconColor = read ? '#999' : '#AD40AF';
+    const iconColor = read ? '#999' : '#085924';
     
     switch (type) {
       case 'review':
@@ -162,7 +162,7 @@ const NotificationsListScreen = () => {
 
       {loading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#AD40AF" />
+          <ActivityIndicator size="large" color="#085924" />
           <Text style={styles.loadingText}>Đang tải thông báo...</Text>
         </View>
       ) : notifications.length > 0 ? (
@@ -209,7 +209,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   clearText: {
-    color: '#AD40AF',
+    color: '#085924',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   },
   unreadItem: {
     borderLeftWidth: 4,
-    borderLeftColor: '#AD40AF',
+    borderLeftColor: '#085924',
   },
   readItem: {
     borderLeftWidth: 4,

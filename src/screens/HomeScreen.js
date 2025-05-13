@@ -124,7 +124,7 @@ export default function HomeScreen() {
         }
         
         .action-button {
-          background-color: #AD40AF;
+          background-color: #085924;
           color: white;
           border: none;
           border-radius: 6px;
@@ -135,7 +135,7 @@ export default function HomeScreen() {
         }
         
         .action-button:hover {
-          background-color: #9C27B0;
+          background-color: #085924;
         }
         
         .action-button.secondary {
@@ -595,7 +595,7 @@ export default function HomeScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#AD40AF" />
+          <Ionicons name="search" size={20} color="#085924" />
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm cơ sở..."
@@ -605,7 +605,7 @@ export default function HomeScreen() {
           />
           {searchKeyword.length > 0 && (
             <TouchableOpacity onPress={() => setSearchKeyword('')}>
-              <Ionicons name="close-circle" size={20} color="#AD40AF" />
+              <Ionicons name="close-circle" size={20} color="#085924" />
             </TouchableOpacity>
           )}
         </View>
@@ -617,16 +617,16 @@ export default function HomeScreen() {
           style={styles.filterScrollView}
           contentContainerStyle={styles.filterScrollContent}
         >
-          <TouchableOpacity 
-            style={[
+                  <TouchableOpacity
+                    style={[
               styles.filterButton,
               filters.restaurant && styles.filterButtonActive
-            ]}
+                    ]}
             onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
           >
-            <Ionicons 
+                    <Ionicons 
               name="restaurant" 
-              size={18} 
+                      size={18} 
               color={filters.restaurant ? "#fff" : "#666"} 
               style={styles.filterButtonIcon}
             />
@@ -634,18 +634,18 @@ export default function HomeScreen() {
               styles.filterButtonText,
               filters.restaurant && styles.filterButtonTextActive
             ]}>Nhà hàng</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
               styles.filterButton,
               filters.hotel && styles.filterButtonActive
-            ]}
+                    ]}
             onPress={() => handleFilterChange('hotel', !filters.hotel)}
           >
-            <Ionicons 
+                    <Ionicons 
               name="bed" 
-              size={18} 
+                      size={18} 
               color={filters.hotel ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -653,18 +653,18 @@ export default function HomeScreen() {
               styles.filterButtonText,
               filters.hotel && styles.filterButtonTextActive
             ]}>Khách sạn</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
               styles.filterButton,
               filters.shop && styles.filterButtonActive
-            ]}
+                    ]}
             onPress={() => handleFilterChange('shop', !filters.shop)}
           >
-            <Ionicons 
-              name="cart" 
-              size={18} 
+                    <Ionicons 
+                      name="cart" 
+                      size={18} 
               color={filters.shop ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -672,7 +672,7 @@ export default function HomeScreen() {
               styles.filterButtonText,
               filters.shop && styles.filterButtonTextActive
             ]}>Cửa hàng</Text>
-          </TouchableOpacity>
+                  </TouchableOpacity>
         </ScrollView>
         
         {/* Search Results */}
@@ -693,19 +693,19 @@ export default function HomeScreen() {
                       } 
                       size={16} 
                       color="#fff" 
-                    />
-                  </View>
+                />
+              </View>
                   <View style={styles.searchResultTextContainer}>
                     <Text style={styles.searchResultName}>{item.name}</Text>
                     <Text style={styles.searchResultAddress}>{item.address}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={16} color="#AD40AF" />
-                </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={16} color="#085924" />
+              </TouchableOpacity>
               )}
             />
           </View>
         )}
-      </View>
+        </View>
       
       
       {/* Add Review Modal */}
@@ -918,7 +918,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -960,7 +960,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   filterButtonActive: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
   },
   filterButtonText: {
     color: '#666',
@@ -1045,8 +1045,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   pickerItemActive: {
-    backgroundColor: '#AD40AF',
-    borderColor: '#AD40AF',
+    backgroundColor: '#085924',
+    borderColor: '#085924',
   },
   pickerText: {
     color: '#333',
@@ -1072,7 +1072,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   submitButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
@@ -1108,7 +1108,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     borderRadius: 24,
     width: 48,
     height: 48,
@@ -1146,7 +1146,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -1190,7 +1190,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   addReviewButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,

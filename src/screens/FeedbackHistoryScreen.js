@@ -153,7 +153,7 @@ const FeedbackHistoryScreen = () => {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#AD40AF" />
+          <ActivityIndicator size="large" color="#085924" />
         </View>
       ) : feedback.length > 0 ? (
         <FlatList

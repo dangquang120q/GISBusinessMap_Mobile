@@ -70,7 +70,7 @@ const NotificationsScreen = () => {
 
   const renderSectionHeader = (title, icon) => (
     <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={24} color="#AD40AF" />
+      <Ionicons name={icon} size={24} color="#085924" />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
@@ -80,7 +80,7 @@ const NotificationsScreen = () => {
       <Text style={styles.toggleLabel}>{label}</Text>
       <Switch
         trackColor={{ false: "#d1d1d1", true: "#eba6ef" }}
-        thumbColor={value ? "#AD40AF" : "#f4f3f4"}
+        thumbColor={value ? "#085924" : "#f4f3f4"}
         ios_backgroundColor="#d1d1d1"
         onValueChange={onToggle}
         value={value}
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   saveButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     margin: 16,
     padding: 15,
     borderRadius: 30,

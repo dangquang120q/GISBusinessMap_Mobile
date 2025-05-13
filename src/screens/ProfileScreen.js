@@ -40,7 +40,7 @@ const ProfileScreen = () => {
           style={styles.menuItem}
           onPress={() => navigation.navigate('EditProfileScreen')}
         >
-          <Ionicons name="person-outline" size={24} color="#AD40AF" />
+          <Ionicons name="person-outline" size={24} color="#085924" />
           <Text style={styles.menuText}>Chỉnh sửa thông tin</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
@@ -49,7 +49,7 @@ const ProfileScreen = () => {
           style={styles.menuItem}
           onPress={() => navigation.navigate('NotificationsScreen')}
         >
-          <Ionicons name="notifications-outline" size={24} color="#AD40AF" />
+          <Ionicons name="notifications-outline" size={24} color="#085924" />
           <Text style={styles.menuText}>Thông báo</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
@@ -58,13 +58,13 @@ const ProfileScreen = () => {
           style={styles.menuItem}
           onPress={() => navigation.navigate('PrivacyScreen')}
         >
-          <Ionicons name="lock-closed-outline" size={24} color="#AD40AF" />
+          <Ionicons name="lock-closed-outline" size={24} color="#085924" />
           <Text style={styles.menuText}>Quyền riêng tư</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuItem}>
-          <Ionicons name="help-circle-outline" size={24} color="#AD40AF" />
+          <Ionicons name="help-circle-outline" size={24} color="#085924" />
           <Text style={styles.menuText}>Trợ giúp & Hỗ trợ</Text>
           <Ionicons name="chevron-forward" size={24} color="#666" />
         </TouchableOpacity>
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
   },
   backButton: {
     position: 'absolute',
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     padding: 8,
     borderRadius: 20,
     borderWidth: 2,

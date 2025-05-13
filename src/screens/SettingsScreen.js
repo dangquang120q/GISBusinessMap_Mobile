@@ -80,7 +80,7 @@ const SettingsScreen = () => {
       disabled={!onPress}
     >
       <View style={styles.settingLeft}>
-        <Ionicons name={icon} size={24} color="#AD40AF" />
+        <Ionicons name={icon} size={24} color="#085924" />
         <Text style={styles.settingText}>{title}</Text>
       </View>
       {rightElement}
@@ -125,7 +125,7 @@ const SettingsScreen = () => {
           <Switch
             value={notifications}
             onValueChange={toggleNotifications}
-            trackColor={{false: '#767577', true: '#AD40AF'}}
+            trackColor={{false: '#767577', true: '#085924'}}
             thumbColor={notifications ? '#fff' : '#f4f3f4'}
           />,
         )}
@@ -148,7 +148,7 @@ const SettingsScreen = () => {
           <Switch
             value={darkMode}
             onValueChange={toggleDarkMode}
-            trackColor={{false: '#767577', true: '#AD40AF'}}
+            trackColor={{false: '#767577', true: '#085924'}}
             thumbColor={darkMode ? '#fff' : '#f4f3f4'}
           />,
         )}
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     marginLeft: 5,
   },
   permissionActionText: {
-    color: '#AD40AF',
+    color: '#085924',
     fontWeight: 'bold',
   },
   logoutButton: {

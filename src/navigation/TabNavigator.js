@@ -10,16 +10,40 @@ import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import NotificationsListScreen from '../screens/NotificationsListScreen';
 import LoginButton from '../components/LoginButton';
+import ReviewDetailScreen from '../screens/ReviewDetailScreen';
+import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
 
 import { AuthContext } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const ReviewStack = createNativeStackNavigator();
+const FeedbackStack = createNativeStackNavigator();
 
 // Wrapper components to avoid inline functions
 const AuthenticatedHomeScreen = () => <HomeScreen />;
 const GuestHomeScreenWrapper = () => <GuestHomeScreen />;
+
+// Review Stack Navigator
+const ReviewStackScreen = () => {
+  return (
+    <ReviewStack.Navigator screenOptions={{headerShown: false}}>
+      <ReviewStack.Screen name="ReviewHistory" component={ReviewHistoryScreen} />
+      <ReviewStack.Screen name="ReviewDetail" component={ReviewDetailScreen} />
+    </ReviewStack.Navigator>
+  );
+};
+
+// Feedback Stack Navigator
+const FeedbackStackScreen = () => {
+  return (
+    <FeedbackStack.Navigator screenOptions={{headerShown: false}}>
+      <FeedbackStack.Screen name="FeedbackHistory" component={FeedbackHistoryScreen} />
+      <FeedbackStack.Screen name="FeedbackDetail" component={FeedbackDetailScreen} />
+    </FeedbackStack.Navigator>
+  );
+};
 
 // Wrapper component to avoid inline function
 const HomeStackScreen = () => {
@@ -52,7 +76,7 @@ const TabNavigator = () => {
       screenOptions={{
         headerShown: false,
         tabBarShowLabel: false,
-        tabBarStyle: {backgroundColor: '#AD40AF'},
+        tabBarStyle: {backgroundColor: '#085924'},
         tabBarInactiveTintColor: '#fff',
         tabBarActiveTintColor: 'yellow',
       }}>
@@ -63,7 +87,7 @@ const TabNavigator = () => {
           // Ẩn bottom tab khi đang ở GuestHomeScreen
           let tabBarStyle = {
             display: getTabBarVisibility(route),
-            backgroundColor: '#AD40AF',
+            backgroundColor: '#085924',
           };
           
           if (!isAuthenticated) {
@@ -82,7 +106,7 @@ const TabNavigator = () => {
         <>
           <Tab.Screen
             name="Review"
-            component={ReviewHistoryScreen}
+            component={ReviewStackScreen}
             options={{
               tabBarBadge: 3,
               tabBarBadgeStyle: {backgroundColor: 'yellow'},
@@ -93,7 +117,7 @@ const TabNavigator = () => {
           />
           <Tab.Screen
             name="Messages"
-            component={FeedbackHistoryScreen}
+            component={FeedbackStackScreen}
             options={{
               tabBarBadge: 3,
               tabBarBadgeStyle: {backgroundColor: 'yellow'},

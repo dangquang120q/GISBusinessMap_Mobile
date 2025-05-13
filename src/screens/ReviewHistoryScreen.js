@@ -113,7 +113,7 @@ const ReviewHistoryScreen = () => {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#AD40AF" />
+          <ActivityIndicator size="large" color="#085924" />
         </View>
       ) : reviews.length > 0 ? (
         <FlatList

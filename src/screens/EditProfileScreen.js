@@ -50,7 +50,7 @@ const EditProfileScreen = () => {
     return (
       <View style={styles.fieldContainer}>
         <View style={styles.fieldLabelContainer}>
-          <Ionicons name={icon} size={20} color="#AD40AF" />
+          <Ionicons name={icon} size={20} color="#085924" />
           <Text style={styles.fieldLabel}>{label}</Text>
         </View>
         
@@ -76,7 +76,7 @@ const EditProfileScreen = () => {
               {userData[field]}
             </Text>
             <TouchableOpacity onPress={() => setIsEditing({...isEditing, [field]: true})}>
-              <Ionicons name="create-outline" size={20} color="#AD40AF" />
+              <Ionicons name="create-outline" size={20} color="#085924" />
             </TouchableOpacity>
           </View>
         )}
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -170,20 +170,20 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     borderWidth: 3,
-    borderColor: '#AD40AF',
+    borderColor: '#085924',
   },
   photoEditButton: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     padding: 8,
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#fff',
   },
   changePhotoText: {
-    color: '#AD40AF',
+    color: '#085924',
     fontSize: 16,
     marginTop: 8,
     fontWeight: '500',
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   saveButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
   },
   saveAllButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     margin: 16,
     padding: 15,
     borderRadius: 30,

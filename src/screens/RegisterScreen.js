@@ -6,11 +6,16 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
+  Image,
+  Dimensions,
 } from 'react-native';
 
 import DatePicker from 'react-native-date-picker';
 
 import InputField from '../components/InputField';
+import ImageViewer from '../components/ImageViewer';
+import Colors from '../constants/Colors';
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -27,73 +32,38 @@ const RegisterScreen = ({navigation}) => {
   const [dobLabel, setDobLabel] = useState('Ngày sinh');
 
   return (
-    <SafeAreaView style={{flex: 1, justifyContent: 'center'}}>
+    <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        style={{paddingHorizontal: 25}}>
-        <View style={{alignItems: 'center'}}>
-          <RegistrationSVG
-            height={300}
-            width={300}
-            style={{transform: [{rotate: '-5deg'}]}}
+        style={styles.scrollView}>
+        <View style={styles.imageContainer}>
+          <Image
+            source={require('../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
           />
         </View>
 
-        <Text
-          style={{
-            fontFamily: 'Roboto-Medium',
-            fontSize: 28,
-            fontWeight: '500',
-            color: '#333',
-            marginBottom: 30,
-          }}>
+        <Text style={styles.title}>
           Đăng ký
         </Text>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            marginBottom: 30,
-          }}>
+        {/* <View style={styles.socialButtonsContainer}>
           <TouchableOpacity
             onPress={() => {}}
-            style={{
-              borderColor: '#ddd',
-              borderWidth: 2,
-              borderRadius: 10,
-              paddingHorizontal: 30,
-              paddingVertical: 10,
-            }}>
+            style={styles.socialButton}>
             <GoogleSVG height={24} width={24} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {}}
-            style={{
-              borderColor: '#ddd',
-              borderWidth: 2,
-              borderRadius: 10,
-              paddingHorizontal: 30,
-              paddingVertical: 10,
-            }}>
+            style={styles.socialButton}>
             <FacebookSVG height={24} width={24} />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {}}
-            style={{
-              borderColor: '#ddd',
-              borderWidth: 2,
-              borderRadius: 10,
-              paddingHorizontal: 30,
-              paddingVertical: 10,
-            }}>
-            <TwitterSVG height={24} width={24} />
-          </TouchableOpacity>
-        </View>
+        </View> */}
 
-        <Text style={{textAlign: 'center', color: '#666', marginBottom: 30}}>
+        {/* <Text style={styles.orText}>
           Hoặc, đăng ký bằng email ...
-        </Text>
+        </Text> */}
 
         <InputField
           label={'Họ và tên'}
@@ -186,20 +156,88 @@ const RegisterScreen = ({navigation}) => {
 
         <CustomButton label={'Đăng ký'} onPress={() => {}} />
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            marginBottom: 30,
-          }}>
+        <View style={styles.loginTextContainer}>
           <Text>Bạn đã có tài khoản?</Text>
           <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={{color: '#AD40AF', fontWeight: '700'}}> Đăng nhập</Text>
+            <Text style={styles.loginText}> Đăng nhập</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1, 
+    justifyContent: 'center',
+    backgroundColor: Colors.background,
+  },
+  scrollView: {
+    paddingHorizontal: 25,
+  },
+  imageContainer: {
+    alignItems: 'center', 
+    marginVertical: 20,
+  },
+  logo: {
+    height: Dimensions.get('window').width * 0.4,
+    width: Dimensions.get('window').width * 0.4,
+    marginTop: 30,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  image: {
+    transform: [{rotate: '-5deg'}]
+  },
+  title: {
+    fontFamily: 'Roboto-Medium',
+    fontSize: 28,
+    fontWeight: '500',
+    color: Colors.text.primary,
+    marginBottom: 30,
+    textAlign:'center'
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  socialButton: {
+    borderColor: Colors.border,
+    borderWidth: 2,
+    borderRadius: 10,
+    paddingHorizontal: 30,
+    paddingVertical: 10,
+    shadowColor: Colors.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.18,
+    shadowRadius: 1.00,
+    elevation: 1,
+    backgroundColor: Colors.background,
+  },
+  orText: {
+    textAlign: 'center', 
+    color: Colors.text.secondary, 
+    marginBottom: 30,
+  },
+  loginTextContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  loginText: {
+    color: Colors.primary, 
+    fontWeight: '700',
+  },
+});
 
 export default RegisterScreen;

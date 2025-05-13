@@ -21,7 +21,7 @@ const AppNav = () => {
     if (isLoading) {
         return (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-                <ActivityIndicator size="large" color="#AD40AF" />
+                <ActivityIndicator size="large" color="#085924" />
             </View>
         );
     }

@@ -140,7 +140,7 @@ const FeedbackDetailScreen = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#AD40AF" />
+        <ActivityIndicator size="large" color="#085924" />
       </SafeAreaView>
     );
   }
@@ -198,7 +198,7 @@ const FeedbackDetailScreen = () => {
               name={feedback.facilityType === 'Nhà hàng' ? 'restaurant' : 
                    feedback.facilityType === 'Khách sạn' ? 'bed' : 'cart'} 
               size={16} 
-              color="#AD40AF" 
+              color="#085924" 
             />
             <Text style={styles.facilityType}>{feedback.facilityType}</Text>
           </View>
@@ -366,7 +366,7 @@ const styles = StyleSheet.create({
   },
   facilityType: {
     fontSize: 16,
-    color: '#AD40AF',
+    color: '#085924',
     marginLeft: 6,
     fontWeight: '500',
   },
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   replyButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

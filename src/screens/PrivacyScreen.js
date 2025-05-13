@@ -89,7 +89,7 @@ const PrivacyScreen = () => {
 
   const renderSectionHeader = (title, icon) => (
     <View style={styles.sectionHeader}>
-      <Ionicons name={icon} size={24} color="#AD40AF" />
+      <Ionicons name={icon} size={24} color="#085924" />
       <Text style={styles.sectionTitle}>{title}</Text>
     </View>
   );
@@ -99,7 +99,7 @@ const PrivacyScreen = () => {
       <Text style={styles.toggleLabel}>{label}</Text>
       <Switch
         trackColor={{ false: "#d1d1d1", true: "#eba6ef" }}
-        thumbColor={value ? "#AD40AF" : "#f4f3f4"}
+        thumbColor={value ? "#085924" : "#f4f3f4"}
         ios_backgroundColor="#d1d1d1"
         onValueChange={onToggle}
         value={value}
@@ -137,7 +137,7 @@ const PrivacyScreen = () => {
                 <Text style={styles.optionLabel}>Công khai</Text>
               </View>
               {isSelected('public') && (
-                <Ionicons name="checkmark-circle" size={22} color="#AD40AF" />
+                <Ionicons name="checkmark-circle" size={22} color="#085924" />
               )}
             </TouchableOpacity>
             
@@ -150,7 +150,7 @@ const PrivacyScreen = () => {
                 <Text style={styles.optionLabel}>Chỉ bạn bè</Text>
               </View>
               {isSelected('friends') && (
-                <Ionicons name="checkmark-circle" size={22} color="#AD40AF" />
+                <Ionicons name="checkmark-circle" size={22} color="#085924" />
               )}
             </TouchableOpacity>
             
@@ -163,7 +163,7 @@ const PrivacyScreen = () => {
                 <Text style={styles.optionLabel}>Riêng tư</Text>
               </View>
               {isSelected('private') && (
-                <Ionicons name="checkmark-circle" size={22} color="#AD40AF" />
+                <Ionicons name="checkmark-circle" size={22} color="#085924" />
               )}
             </TouchableOpacity>
             
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
     marginVertical: 8,
   },
   saveButton: {
-    backgroundColor: '#AD40AF',
+    backgroundColor: '#085924',
     margin: 16,
     padding: 15,
     borderRadius: 30,
