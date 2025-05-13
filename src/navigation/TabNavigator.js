@@ -5,6 +5,7 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import GuestHomeScreen from '../screens/GuestHomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
@@ -15,11 +16,13 @@ import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
 
 import { AuthContext } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import PrivacyScreen from '../screens/PrivacyScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const ReviewStack = createNativeStackNavigator();
 const FeedbackStack = createNativeStackNavigator();
+const ProfileStack = createNativeStackNavigator();
 
 // Wrapper components to avoid inline functions
 const AuthenticatedHomeScreen = () => <HomeScreen />;
@@ -45,6 +48,17 @@ const FeedbackStackScreen = () => {
   );
 };
 
+// Profile Stack Navigator
+const SettingsStackScreen = () => {
+  return (
+    <ProfileStack.Navigator screenOptions={{headerShown: false}}>
+      <ProfileStack.Screen name="Settings" component={SettingsScreen} />
+      <ProfileStack.Screen name="EditProfileScreen" component={EditProfileScreen} />
+      <ProfileStack.Screen name="PrivacyScreen" component={PrivacyScreen} />
+    </ProfileStack.Navigator>
+  );
+};
+
 // Wrapper component to avoid inline function
 const HomeStackScreen = () => {
   const { isAuthenticated } = useContext(AuthContext);
@@ -52,11 +66,13 @@ const HomeStackScreen = () => {
   return (
     <Stack.Navigator>
       {isAuthenticated ? (
-        <Stack.Screen
-          name="Home"
-          component={AuthenticatedHomeScreen}
-          options={{headerShown: false}}
-        />
+        <>
+          <Stack.Screen
+            name="Home"
+            component={AuthenticatedHomeScreen}
+            options={{headerShown: false}}
+          />
+        </>
       ) : (
         <Stack.Screen
           name="GuestHome"
@@ -135,9 +151,18 @@ const TabNavigator = () => {
               ),
             }}
           />
+          {/* <Tab.Screen
+            name="ProfileTab"
+            component={ProfileStackScreen}
+            options={{
+              tabBarIcon: ({color, size}) => (
+                <Ionicons name="person-outline" color={color} size={size} />
+              ),
+            }}
+          /> */}
           <Tab.Screen
-            name="Settings"
-            component={SettingsScreen}
+            name="SettingsTab"
+            component={SettingsStackScreen}
             options={{
               tabBarIcon: ({color, size}) => (
                 <Ionicons name="settings-outline" color={color} size={size} />

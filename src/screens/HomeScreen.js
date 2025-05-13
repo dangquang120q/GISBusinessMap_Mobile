@@ -3,7 +3,6 @@ import {
   View,
   Text,
   SafeAreaView,
-  StyleSheet,
   TextInput,
   TouchableOpacity,
   FlatList,
@@ -12,10 +11,14 @@ import {
   Switch,
   Platform,
   Dimensions,
+  Alert,
+  PanResponder,
+  Animated,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
+import styles from './HomeScreenStyles';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -63,6 +66,72 @@ export default function HomeScreen() {
     rating: 5,
     content: '',
   });
+
+  // Thêm state cho bottom sheet với 2 nấc
+  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
+  const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const bottomSheetRef = useRef(null);
+  const minHeight = 200;
+  const maxHeight = Dimensions.get('window').height * 0.8;
+  const bottomSheetAnim = useRef(new Animated.Value(minHeight)).current;
+  const isMountedRef = useRef(true);
+  
+  // Cleanup khi component unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+  
+  // Simplify the panResponder to just detect drag direction
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 10; // Only respond to significant vertical movement
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dy) > 20) {
+          if (gestureState.dy < 0) {
+            // Dragged UP - expand
+            expandBottomSheet();
+          } else {
+            // Dragged DOWN - collapse
+            collapseBottomSheet();
+          }
+        }
+      }
+    })
+  ).current;
+  
+  // Functions to expand/collapse the bottom sheet
+  const expandBottomSheet = () => {
+    setIsBottomSheetExpanded(true);
+    Animated.timing(bottomSheetAnim, {
+      toValue: maxHeight,
+      duration: 300,
+      useNativeDriver: false
+    }).start();
+  };
+  
+  const collapseBottomSheet = () => {
+    setIsBottomSheetExpanded(false);
+    Animated.timing(bottomSheetAnim, {
+      toValue: minHeight,
+      duration: 300,
+      useNativeDriver: false
+    }).start();
+  };
+  
+  // Toggle function for the handle bar button
+  const toggleBottomSheet = () => {
+    if (isBottomSheetExpanded) {
+      collapseBottomSheet();
+    } else {
+      expandBottomSheet();
+    }
+  };
 
   // HTML for the leaflet map
   const leafletHtml = `
@@ -273,20 +342,24 @@ export default function HomeScreen() {
               { icon: createIcon(marker.type, currentZoom) }
             ).addTo(window.markersLayer);
             
-            leafletMarker.bindPopup(
-              '<div class="facility-header">' +
-              '<div class="facility-title">' + marker.name + '</div>' +
-              '</div>' +
-              '<div class="facility-info">' +
-              '<strong>Loại hình:</strong> ' + marker.type + '<br>' +
-              '<strong>Địa chỉ:</strong> ' + marker.address +
-              '</div>' +
-              '<div class="facility-actions">' +
-              '<button class="action-button" onclick="reviewFacility(' + marker.id + ')">Đánh giá</button> ' +
-              '<button class="action-button secondary" onclick="viewReviews(' + marker.id + ')">Xem đánh giá</button>' +
-              '</div>',
-              { className: 'custom-popup' }
-            );
+            // Add tooltips for showing business names when zoom level is >= 15
+            if (currentZoom >= 15) {
+              const tooltipOptions = { 
+                permanent: true, 
+                direction: 'right',
+                className: 'custom-tooltip',
+                offset: [10, 0]
+              };
+              leafletMarker.bindTooltip(marker.name, tooltipOptions);
+            }
+            
+            // Add click event directly
+            leafletMarker.on('click', function() {
+              window.ReactNativeWebView.postMessage(JSON.stringify({
+                type: 'viewFacility',
+                facilityId: marker.id
+              }));
+            });
           });
         }
         
@@ -333,6 +406,24 @@ export default function HomeScreen() {
             type: 'mapLoaded'
           }));
         };
+        
+        // Add custom tooltip styles
+        const style = document.createElement('style');
+        style.textContent = 
+          '.custom-tooltip {' +
+          '  background: white;' +
+          '  border: none;' +
+          '  box-shadow: 0 1px 3px rgba(0,0,0,0.2);' +
+          '  border-radius: 4px;' +
+          '  padding: 3px 8px;' +
+          '  font-weight: 500;' +
+          '  font-size: 12px;' +
+          '  white-space: nowrap;' +
+          '}' +
+          '.custom-tooltip:before {' +
+          '  display: none;' +
+          '}';
+        document.head.appendChild(style);
       </script>
     </body>
     </html>
@@ -382,6 +473,12 @@ export default function HomeScreen() {
           address: '123 Đường ABC, Thái Bình',
           latitude: 20.44879,
           longitude: 106.34259,
+          phone: '0987654321',
+          email: 'nhahangabc@example.com',
+          facebook: 'https://facebook.com/nhahangabc',
+          website: 'https://nhahangabc.com',
+          openHours: '8:00 - 22:00',
+          description: 'Nhà hàng ABC là một trong những nhà hàng nổi tiếng tại Thái Bình với các món ăn đặc sản địa phương. Được thành lập từ năm 2010, nhà hàng đã phục vụ hàng nghìn thực khách trong và ngoài tỉnh. Không gian nhà hàng được thiết kế hiện đại, thoáng mát phù hợp cho cả gia đình.',
         },
         {
           id: 2,
@@ -390,6 +487,12 @@ export default function HomeScreen() {
           address: '456 Đường XYZ, Thái Bình',
           latitude: 20.45000,
           longitude: 106.34400,
+          phone: '0123456789',
+          email: 'hotel@xyz.com',
+          facebook: 'https://facebook.com/hotel.xyz',
+          website: 'https://hotelxyz.com',
+          openHours: '24/7',
+          description: 'Khách sạn XYZ là khách sạn 4 sao với 100 phòng nghỉ tiện nghi. Khách sạn có vị trí trung tâm, thuận tiện cho việc di chuyển và tham quan các điểm du lịch. Khách sạn cung cấp dịch vụ đưa đón sân bay, nhà hàng, phòng hội nghị và các tiện nghi cao cấp khác.',
         },
         {
           id: 3,
@@ -398,6 +501,12 @@ export default function HomeScreen() {
           address: '789 Đường 123, Thái Bình',
           latitude: 20.44700,
           longitude: 106.34100,
+          phone: '0345678912',
+          email: 'shop@123.com',
+          facebook: 'https://facebook.com/shop.123',
+          website: 'https://shop123.com',
+          openHours: '7:30 - 21:30',
+          description: 'Cửa hàng 123 chuyên kinh doanh các sản phẩm địa phương chất lượng cao. Với 15 năm kinh nghiệm trong ngành bán lẻ, cửa hàng luôn đảm bảo mang đến cho khách hàng những sản phẩm chất lượng với giá cả hợp lý. Cửa hàng thường xuyên có các chương trình khuyến mãi hấp dẫn.',
         },
       ];
       
@@ -421,6 +530,8 @@ export default function HomeScreen() {
   };
 
   const handleWebViewMessage = (event) => {
+    if (!isMountedRef.current) return;
+    
     try {
       const data = JSON.parse(event.nativeEvent.data);
       
@@ -438,7 +549,7 @@ export default function HomeScreen() {
           
         case 'reviewFacility':
           const facilityToReview = facilities.find(f => f.id === data.facilityId);
-          if (facilityToReview) {
+          if (facilityToReview && isMountedRef.current) {
             setSelectedFacility(facilityToReview);
             setIsReviewModalVisible(true);
           }
@@ -446,13 +557,23 @@ export default function HomeScreen() {
           
         case 'viewReviews':
           const facilityToView = facilities.find(f => f.id === data.facilityId);
-          if (facilityToView) {
-            handleViewReviews(facilityToView);
+          if (facilityToView && isMountedRef.current) {
+            handleViewFacilityDetails(facilityToView);
+            setActiveTab('reviews');
+          }
+          break;
+          
+        case 'viewFacility':
+          const facilityToShow = facilities.find(f => f.id === data.facilityId);
+          if (facilityToShow && isMountedRef.current) {
+            handleViewFacilityDetails(facilityToShow);
           }
           break;
       }
     } catch (error) {
-      console.error('Error parsing WebView message:', error);
+      if (isMountedRef.current) {
+        console.error('Error parsing WebView message:', error);
+      }
     }
   };
 
@@ -482,51 +603,51 @@ export default function HomeScreen() {
     });
   };
 
-  const handleViewReviews = (facility) => {
+  const handleViewFacilityDetails = (facility) => {
+    if (!isMountedRef.current) return;
+    
     setSelectedFacility(facility);
+    setBottomSheetVisible(true);
+    setIsBottomSheetExpanded(false);
+    bottomSheetAnim.setValue(minHeight);
+    setActiveTab('overview');
     
-    // In a real app, fetch reviews for this facility
-    // For now, using mock data
-    const mockReviews = [
-      {
-        id: 1,
-        reviewerName: 'Nguyễn Văn A',
-        rating: 5,
-        content: 'Dịch vụ rất tuyệt vời! Nhân viên phục vụ chuyên nghiệp, không gian sạch sẽ và thoáng mát. Tôi sẽ quay lại vào lần sau.',
-        date: '15/08/2023'
-      },
-      {
-        id: 2,
-        reviewerName: 'Trần Thị B',
-        rating: 4,
-        content: 'Dịch vụ tốt, giá cả phải chăng. Tuy nhiên, thời gian chờ đợi hơi lâu vào giờ cao điểm.',
-        date: '20/07/2023'
-      },
-      {
-        id: 3,
-        reviewerName: 'Lê Văn C',
-        rating: 3,
-        content: 'Chất lượng dịch vụ ở mức trung bình. Cần cải thiện thêm về thái độ phục vụ của một số nhân viên.',
-        date: '05/06/2023'
-      },
-      {
-        id: 4,
-        reviewerName: 'Phạm Thị D',
-        rating: 5,
-        content: 'Rất hài lòng với trải nghiệm tại đây. Không gian thoáng, sạch sẽ và nhân viên rất thân thiện.',
-        date: '12/05/2023'
-      },
-      {
-        id: 5,
-        reviewerName: 'Hoàng Văn E',
-        rating: 2,
-        content: 'Không hài lòng lắm. Giá cả hơi cao so với chất lượng dịch vụ. Cần cải thiện nhiều.',
-        date: '03/04/2023'
-      }
-    ];
-    
-    setReviews(mockReviews);
-    setIsReviewListVisible(true);
+    // Mặc định sẽ load đánh giá khi xem chi tiết
+    if (isMountedRef.current) {
+      const mockReviews = [
+        {
+          id: 1,
+          reviewerName: 'Nguyễn Văn A',
+          rating: 5,
+          title: 'Dịch vụ xuất sắc!',
+          content: 'Dịch vụ rất tuyệt vời! Nhân viên phục vụ chuyên nghiệp, không gian sạch sẽ và thoáng mát. Tôi sẽ quay lại vào lần sau. Đồ ăn ngon, giá cả phải chăng. Đặc biệt là món đặc sản địa phương rất đáng để thử.',
+          date: '15/08/2023',
+          likes: 12,
+          replies: 3
+        },
+        {
+          id: 2,
+          reviewerName: 'Trần Thị B',
+          rating: 4,
+          title: 'Tốt nhưng vẫn có thể cải thiện',
+          content: 'Dịch vụ tốt, giá cả phải chăng. Tuy nhiên, thời gian chờ đợi hơi lâu vào giờ cao điểm. Nhân viên thân thiện nhưng đôi khi phục vụ chậm. Không gian thoáng đãng, sạch sẽ. Sẽ quay lại nếu có cơ hội.',
+          date: '20/07/2023',
+          likes: 5,
+          replies: 1
+        },
+        {
+          id: 3,
+          reviewerName: 'Lê Văn C',
+          rating: 3,
+          title: 'Trải nghiệm trung bình',
+          content: 'Chất lượng dịch vụ ở mức trung bình. Cần cải thiện thêm về thái độ phục vụ của một số nhân viên. Đồ ăn ngon nhưng phần hơi nhỏ so với giá tiền. Vị trí thuận tiện, dễ tìm.',
+          date: '05/06/2023',
+          likes: 2,
+          replies: 0
+        }
+      ];
+      setReviews(mockReviews);
+    }
   };
 
   const focusFacility = (facility) => {
@@ -578,6 +699,281 @@ export default function HomeScreen() {
     return <View style={{flexDirection: 'row'}}>{stars}</View>;
   };
 
+  // Thêm component cho tab content
+  const renderOverviewTab = () => {
+    if (!selectedFacility) {
+      return <View style={styles.emptyContent}><Text>Không có dữ liệu</Text></View>;
+    }
+    
+    return (
+      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 30}}>
+        <Text style={styles.infoTitle}>Địa chỉ</Text>
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={20} color="#085924" style={styles.infoIcon} />
+          <Text style={styles.infoText}>{selectedFacility.address || 'Chưa có thông tin'}</Text>
+        </View>
+        
+        <Text style={styles.infoTitle}>Loại hình</Text>
+        <View style={styles.infoRow}>
+          <Ionicons 
+            name={
+              selectedFacility.type === 'Nhà hàng' ? 'restaurant-outline' : 
+              selectedFacility.type === 'Khách sạn' ? 'bed-outline' : 'cart-outline'
+            } 
+            size={20} 
+            color="#085924" 
+            style={styles.infoIcon} 
+          />
+          <Text style={styles.infoText}>{selectedFacility.type || 'Chưa phân loại'}</Text>
+        </View>
+        
+        {selectedFacility.phone && (
+          <>
+            <Text style={styles.infoTitle}>Liên hệ</Text>
+            <View style={styles.infoRow}>
+              <Ionicons name="call-outline" size={20} color="#085924" style={styles.infoIcon} />
+              <Text style={styles.infoText}>{selectedFacility.phone}</Text>
+            </View>
+          </>
+        )}
+        
+        {selectedFacility.email && (
+          <View style={styles.infoRow}>
+            <Ionicons name="mail-outline" size={20} color="#085924" style={styles.infoIcon} />
+            <Text style={styles.infoText}>{selectedFacility.email}</Text>
+          </View>
+        )}
+        
+        {selectedFacility.openHours && (
+          <>
+            <Text style={styles.infoTitle}>Giờ mở cửa</Text>
+            <View style={styles.infoRow}>
+              <Ionicons name="time-outline" size={20} color="#085924" style={styles.infoIcon} />
+              <Text style={styles.infoText}>{selectedFacility.openHours}</Text>
+            </View>
+          </>
+        )}
+        
+        <Text style={styles.infoTitle}>Liên kết</Text>
+        <View style={styles.socialLinks}>
+          {selectedFacility.facebook && (
+            <TouchableOpacity 
+              style={styles.socialButton}
+              onPress={() => {
+                Alert.alert(
+                  "Mở liên kết ngoài",
+                  "Bạn muốn mở trang Facebook của cơ sở này?",
+                  [
+                    { text: "Hủy", style: "cancel" },
+                    { text: "Mở", onPress: () => console.log("Mở Facebook:", selectedFacility.facebook) }
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="logo-facebook" size={20} color="#fff" />
+              <Text style={styles.socialButtonText}>Facebook</Text>
+            </TouchableOpacity>
+          )}
+          
+          {selectedFacility.website && (
+            <TouchableOpacity 
+              style={[styles.socialButton, {backgroundColor: '#4285F4'}]}
+              onPress={() => {
+                Alert.alert(
+                  "Mở liên kết ngoài",
+                  "Bạn muốn mở trang web của cơ sở này?",
+                  [
+                    { text: "Hủy", style: "cancel" },
+                    { text: "Mở", onPress: () => console.log("Mở website:", selectedFacility.website) }
+                  ]
+                );
+              }}
+            >
+              <Ionicons name="globe-outline" size={20} color="#fff" />
+              <Text style={styles.socialButtonText}>Website</Text>
+            </TouchableOpacity>
+          )}
+          
+          {!selectedFacility.facebook && !selectedFacility.website && (
+            <Text style={styles.noDataText}>Chưa có liên kết</Text>
+          )}
+        </View>
+        
+        {/* <View style={styles.actionButtonsContainer}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={() => setIsReviewModalVisible(true)}
+          >
+            <Ionicons name="star-outline" size={20} color="#fff" />
+            <Text style={styles.actionButtonText}>Đánh giá</Text>
+          </TouchableOpacity>
+        </View> */}
+      </ScrollView>
+    );
+  };
+
+  const renderReviewsTab = () => {
+    return (
+      <ScrollView 
+        style={styles.tabContent} 
+        contentContainerStyle={{paddingBottom: 30}}
+        nestedScrollEnabled={true}
+      >
+        <View style={styles.ratingOverview}>
+          <View style={styles.ratingScoreContainer}>
+            <Text style={styles.ratingScoreText}>4.2</Text>
+            <View style={styles.ratingStarsSmall}>
+              {renderStars(4.2)}
+            </View>
+            <Text style={styles.ratingCountText}>dựa trên 28 đánh giá</Text>
+          </View>
+          
+          <View style={styles.ratingBarsContainer}>
+            <View style={styles.ratingBarRow}>
+              <Text style={styles.ratingBarLabel}>5</Text>
+              <View style={styles.ratingBarBackground}>
+                <View style={[styles.ratingBarFill, {width: '65%'}]} />
+              </View>
+            </View>
+            <View style={styles.ratingBarRow}>
+              <Text style={styles.ratingBarLabel}>4</Text>
+              <View style={styles.ratingBarBackground}>
+                <View style={[styles.ratingBarFill, {width: '20%'}]} />
+              </View>
+            </View>
+            <View style={styles.ratingBarRow}>
+              <Text style={styles.ratingBarLabel}>3</Text>
+              <View style={styles.ratingBarBackground}>
+                <View style={[styles.ratingBarFill, {width: '10%'}]} />
+              </View>
+            </View>
+            <View style={styles.ratingBarRow}>
+              <Text style={styles.ratingBarLabel}>2</Text>
+              <View style={styles.ratingBarBackground}>
+                <View style={[styles.ratingBarFill, {width: '3%'}]} />
+              </View>
+            </View>
+            <View style={styles.ratingBarRow}>
+              <Text style={styles.ratingBarLabel}>1</Text>
+              <View style={styles.ratingBarBackground}>
+                <View style={[styles.ratingBarFill, {width: '2%'}]} />
+              </View>
+            </View>
+          </View>
+        </View>
+        
+        <View style={styles.reviewsHeaderContainer}>
+          <Text style={styles.reviewsHeaderText}>Đánh giá gần đây</Text>
+          <TouchableOpacity
+            onPress={() => setIsReviewModalVisible(true)}
+          >
+            <Text style={styles.writeReviewLink}>Viết đánh giá</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {reviews.length > 0 ? (
+          // Use View to render reviews manually to avoid FlatList nesting in ScrollView
+          <View>
+            {reviews.map(item => (
+              <View key={item.id.toString()} style={styles.reviewItem}>
+                <View style={styles.reviewHeader}>
+                  <View style={styles.reviewerInfo}>
+                    <View style={styles.avatarContainer}>
+                      <Text style={styles.avatarText}>
+                        {item.reviewerName.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.reviewerName}>{item.reviewerName}</Text>
+                      <Text style={styles.reviewDate}>{item.date}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.ratingRow}>
+                    {renderStars(item.rating)}
+                  </View>
+                </View>
+                
+                {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
+                <Text style={styles.reviewContent}>{item.content}</Text>
+                
+                <View style={styles.reviewActions}>
+                  <TouchableOpacity style={styles.reviewAction}>
+                    <Ionicons name="thumbs-up-outline" size={18} color="#666" />
+                    <Text style={styles.reviewActionText}>{item.likes || 0}</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.reviewAction}>
+                    <Ionicons name="chatbubble-outline" size={18} color="#666" />
+                    <Text style={styles.reviewActionText}>{item.replies || 0}</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                {/* Add separator after each item except the last one */}
+                {item.id !== reviews[reviews.length - 1].id && (
+                  <View style={styles.reviewSeparator} />
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyReviews}>
+            <Ionicons name="star-outline" size={50} color="#ccc" />
+            <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
+            <TouchableOpacity 
+              style={styles.addReviewButton}
+              onPress={() => setIsReviewModalVisible(true)}>
+              <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    );
+  };
+
+  const renderAboutTab = () => {
+    if (!selectedFacility) return null;
+    
+    return (
+      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 30}}>
+        <Text style={styles.aboutTitle}>Thông tin chi tiết</Text>
+        <Text style={styles.aboutDescription}>
+          {selectedFacility.description || "Chưa có thông tin chi tiết về cơ sở này."}
+        </Text>
+        
+        <Text style={styles.aboutTitle}>Tiện ích</Text>
+        <View style={styles.facilitiesContainer}>
+          <View style={styles.facilityItem}>
+            <Ionicons name="wifi" size={24} color="#085924" />
+            <Text style={styles.facilityText}>Wifi miễn phí</Text>
+          </View>
+          
+          <View style={styles.facilityItem}>
+            <Ionicons name="car" size={24} color="#085924" />
+            <Text style={styles.facilityText}>Bãi đỗ xe</Text>
+          </View>
+          
+          <View style={styles.facilityItem}>
+            <Ionicons name="card" size={24} color="#085924" />
+            <Text style={styles.facilityText}>Thanh toán thẻ</Text>
+          </View>
+          
+          <View style={styles.facilityItem}>
+            <Ionicons name="walk" size={24} color="#085924" />
+            <Text style={styles.facilityText}>Lối đi cho người khuyết tật</Text>
+          </View>
+        </View>
+        
+        <Text style={styles.aboutTitle}>Vị trí</Text>
+        <View style={styles.mapPreviewContainer}>
+          <View style={styles.mapPlaceholder}>
+            <Ionicons name="map" size={50} color="#ccc" />
+            <Text style={styles.mapPlaceholderText}>Bản đồ chi tiết</Text>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}
@@ -617,16 +1013,16 @@ export default function HomeScreen() {
           style={styles.filterScrollView}
           contentContainerStyle={styles.filterScrollContent}
         >
-                  <TouchableOpacity
-                    style={[
+          <TouchableOpacity
+            style={[
               styles.filterButton,
               filters.restaurant && styles.filterButtonActive
-                    ]}
+            ]}
             onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
           >
-                    <Ionicons 
+            <Ionicons 
               name="restaurant" 
-                      size={18} 
+              size={18} 
               color={filters.restaurant ? "#fff" : "#666"} 
               style={styles.filterButtonIcon}
             />
@@ -634,18 +1030,18 @@ export default function HomeScreen() {
               styles.filterButtonText,
               filters.restaurant && styles.filterButtonTextActive
             ]}>Nhà hàng</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
               styles.filterButton,
               filters.hotel && styles.filterButtonActive
-                    ]}
+            ]}
             onPress={() => handleFilterChange('hotel', !filters.hotel)}
           >
-                    <Ionicons 
+            <Ionicons 
               name="bed" 
-                      size={18} 
+              size={18} 
               color={filters.hotel ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -653,18 +1049,18 @@ export default function HomeScreen() {
               styles.filterButtonText,
               filters.hotel && styles.filterButtonTextActive
             ]}>Khách sạn</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
               styles.filterButton,
               filters.shop && styles.filterButtonActive
-                    ]}
+            ]}
             onPress={() => handleFilterChange('shop', !filters.shop)}
           >
-                    <Ionicons 
-                      name="cart" 
-                      size={18} 
+            <Ionicons 
+              name="cart" 
+              size={18} 
               color={filters.shop ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -672,7 +1068,7 @@ export default function HomeScreen() {
               styles.filterButtonText,
               filters.shop && styles.filterButtonTextActive
             ]}>Cửa hàng</Text>
-                  </TouchableOpacity>
+          </TouchableOpacity>
         </ScrollView>
         
         {/* Search Results */}
@@ -693,20 +1089,94 @@ export default function HomeScreen() {
                       } 
                       size={16} 
                       color="#fff" 
-                />
-              </View>
+                    />
+                  </View>
                   <View style={styles.searchResultTextContainer}>
                     <Text style={styles.searchResultName}>{item.name}</Text>
                     <Text style={styles.searchResultAddress}>{item.address}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#085924" />
-              </TouchableOpacity>
+                </TouchableOpacity>
               )}
             />
           </View>
         )}
-        </View>
+      </View>
       
+      {/* Bottom Sheet */}
+      {bottomSheetVisible && selectedFacility && (
+        <Animated.View 
+          ref={bottomSheetRef}
+          style={[
+            styles.bottomSheet,
+            { height: bottomSheetAnim }
+          ]}
+        >
+          {/* Handle area */}
+          <View style={styles.handleArea}>
+            <TouchableOpacity 
+              style={styles.handleContainer}
+              onPress={toggleBottomSheet}
+              activeOpacity={0.7}
+            >
+              <View style={styles.handleBar} />
+            </TouchableOpacity>
+            
+            {/* Drag overlay */}
+            <View
+              style={styles.dragOverlay}
+              {...panResponder.panHandlers}
+            />
+          </View>
+          
+          <View style={styles.bottomSheetHeader}>
+            <Text style={styles.facilityName} numberOfLines={1} ellipsizeMode="tail">
+              {selectedFacility.name}
+            </Text>
+            <TouchableOpacity 
+              style={styles.closeButton} 
+              onPress={() => setBottomSheetVisible(false)}
+            >
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.tabsContainer}>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'overview' && styles.activeTab]} 
+              onPress={() => setActiveTab('overview')}
+            >
+              <Text style={[styles.tabText, activeTab === 'overview' && styles.activeTabText]}>
+                Tổng quan
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'reviews' && styles.activeTab]} 
+              onPress={() => setActiveTab('reviews')}
+            >
+              <Text style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}>
+                Bài đánh giá
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'about' && styles.activeTab]} 
+              onPress={() => setActiveTab('about')}
+            >
+              <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>
+                Giới thiệu
+              </Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.tabContentContainer}>
+            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'reviews' && renderReviewsTab()}
+            {activeTab === 'about' && renderAboutTab()}
+          </View>
+        </Animated.View>
+      )}
       
       {/* Add Review Modal */}
       <Modal
@@ -851,353 +1321,3 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  searchContainer: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    left: 10,
-    right: 10,
-    zIndex: 10,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    fontSize: 16,
-  },
-  searchResults: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#eee',
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    maxHeight: 200,
-    zIndex: 100,
-    position: 'absolute',
-    top: 105,
-    left: 0,
-    right: 0,
-  },
-  searchResultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  searchResultIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#085924',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchResultTextContainer: {
-    flex: 1,
-    marginHorizontal: 10,
-  },
-  searchResultName: {
-    fontSize: 14,
-    color: '#333',
-  },
-  searchResultAddress: {
-    fontSize: 12,
-    color: '#666',
-  },
-  filterScrollView: {
-    marginTop: 10,
-    marginBottom: 5,
-    height: 45,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 5,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginHorizontal: 5,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  filterButtonActive: {
-    backgroundColor: '#085924',
-  },
-  filterButtonText: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 5,
-  },
-  filterButtonTextActive: {
-    color: '#fff',
-  },
-  filterButtonIcon: {
-    marginRight: 5,
-  },
-  map: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    width: '90%',
-    maxHeight: '80%',
-    elevation: 5,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalBody: {
-    padding: 15,
-  },
-  formGroup: {
-    marginBottom: 15,
-  },
-  label: {
-    fontSize: 16,
-    color: '#333',
-    marginBottom: 5,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  pickerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  pickerItem: {
-    flex: 1,
-    padding: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    marginHorizontal: 2,
-  },
-  pickerItemActive: {
-    backgroundColor: '#085924',
-    borderColor: '#085924',
-  },
-  pickerText: {
-    color: '#333',
-  },
-  pickerTextActive: {
-    color: '#fff',
-  },
-  coordinateContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  coordinate: {
-    flex: 1,
-    marginHorizontal: 5,
-  },
-  coordinateLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  coordinateValue: {
-    fontSize: 16,
-    color: '#333',
-    fontWeight: 'bold',
-  },
-  submitButton: {
-    backgroundColor: '#085924',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 15,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  starIcon: {
-    marginRight: 10,
-  },
-  selectedFacilityInfo: {
-    marginBottom: 15,
-  },
-  selectedFacilityName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  selectedFacilityAddress: {
-    fontSize: 14,
-    color: '#666',
-  },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#085924',
-    borderRadius: 24,
-    width: 48,
-    height: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    zIndex: 10,
-  },
-  reviewsList: {
-    maxHeight: '80%',
-  },
-  reviewItem: {
-    padding: 15,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 10,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  reviewerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#085924',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  reviewerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: '#666',
-  },
-  ratingRow: {
-    flexDirection: 'row',
-  },
-  reviewContent: {
-    fontSize: 14,
-    color: '#555',
-    lineHeight: 20,
-  },
-  reviewSeparator: {
-    height: 1,
-    backgroundColor: '#eee',
-    marginVertical: 10,
-  },
-  emptyReviews: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-  },
-  emptyReviewsText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  addReviewButton: {
-    backgroundColor: '#085924',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  addReviewButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-});
