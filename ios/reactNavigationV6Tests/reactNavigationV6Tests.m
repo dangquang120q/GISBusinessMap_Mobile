@@ -7,11 +7,11 @@
 #define TIMEOUT_SECONDS 600
 #define TEXT_TO_LOOK_FOR @"Welcome to React"
 
-@interface reactNavigationV6Tests : XCTestCase
+@interface GIS_BUSINESSTests : XCTestCase
 
 @end
 
-@implementation reactNavigationV6Tests
+@implementation GIS_BUSINESSTests
 
 - (BOOL)findSubviewInView:(UIView *)view matching:(BOOL(^)(UIView *view))test
 {

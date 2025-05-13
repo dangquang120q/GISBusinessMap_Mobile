@@ -1,4 +1,4 @@
-package com.reactnavigationv6;
+package com.GIS_BUSINESS;
 
 import com.facebook.react.ReactActivity;
 
@@ -10,6 +10,6 @@ public class MainActivity extends ReactActivity {
    */
   @Override
   protected String getMainComponentName() {
-    return "reactNavigationV6";
+    return "GIS_BUSINESS";
   }
 }

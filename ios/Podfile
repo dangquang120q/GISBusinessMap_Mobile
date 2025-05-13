@@ -3,7 +3,7 @@ require_relative '../node_modules/@react-native-community/cli-platform-ios/nativ
 
 platform :ios, '11.0'
 
-target 'reactNavigationV6' do
+target 'GIS_BUSINESS' do
   config = use_native_modules!
 
   use_react_native!(
@@ -12,7 +12,7 @@ target 'reactNavigationV6' do
     :hermes_enabled => false
   )
 
-  target 'reactNavigationV6Tests' do
+  target 'GIS_BUSINESSTests' do
     inherit! :complete
     # Pods for testing
   end
