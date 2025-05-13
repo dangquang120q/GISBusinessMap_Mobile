@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -6,448 +6,609 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Platform,
-  Dimensions,
+  FlatList,
   Modal,
   ScrollView,
-  FlatList,
+  Switch,
+  Platform,
+  Dimensions,
+  Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 
-// Dữ liệu mẫu cho cơ sở
-const MOCK_FACILITIES = [
-  {
-    id: '1',
-    name: 'Siêu thị Vinmart Hải Phòng',
-    address: '384 Đường Lạch Tray, Đằng Giang, Ngô Quyền, Hải Phòng',
-    phone: '0225 3831 685',
-    latitude: 20.849717,
-    longitude: 106.688983,
-    averageRating: 4.5,
-    reviewCount: 28,
-    type: 'Cửa hàng'
-  },
-  {
-    id: '2',
-    name: 'Nhà hàng Hải Sản Biển Đông',
-    address: '25 Lê Hồng Phong, Đông Khê, Ngô Quyền, Hải Phòng',
-    phone: '0225 3551 234',
-    latitude: 20.856982,
-    longitude: 106.692443,
-    averageRating: 4.2,
-    reviewCount: 45,
-    type: 'Nhà hàng'
-  },
-  {
-    id: '3',
-    name: 'Cà phê Highland Coffee Trần Phú',
-    address: '20 Trần Phú, Hoàng Văn Thụ, Hồng Bàng, Hải Phòng',
-    phone: '0225 3842 345',
-    latitude: 20.857883,
-    longitude: 106.683621,
-    averageRating: 4.0,
-    reviewCount: 31,
-    type: 'Nhà hàng'
-  },
-  {
-    id: '4',
-    name: 'Cửa hàng điện thoại FPT Shop',
-    address: '116 Lạch Tray, Lạch Tray, Ngô Quyền, Hải Phòng',
-    phone: '0225 3626 789',
-    latitude: 20.853197,
-    longitude: 106.687158,
-    averageRating: 3.8,
-    reviewCount: 16,
-    type: 'Cửa hàng'
-  },
-  {
-    id: '5',
-    name: 'Khách sạn Vin Pearl Hải Phòng',
-    address: '229 Lê Lợi, Máy Tơ, Ngô Quyền, Hải Phòng',
-    phone: '0225 3823 456',
-    latitude: 20.851329,
-    longitude: 106.695369,
-    averageRating: 4.3,
-    reviewCount: 22,
-    type: 'Khách sạn'
-  }
-];
+// Demo API URL - replace with your actual API URL
+// import {API_URL} from '../config/api';
 
-// Dữ liệu mẫu cho đánh giá
-const MOCK_REVIEWS = {
-  '1': [
-    {
-      id: '101',
-      reviewerName: 'Nguyễn Văn A',
-      rating: 5,
-      content: 'Siêu thị rộng rãi, sạch sẽ, hàng hóa đa dạng và giá cả hợp lý. Nhân viên phục vụ tận tình.',
-      date: '15/07/2023'
-    },
-    {
-      id: '102',
-      reviewerName: 'Trần Thị B',
-      rating: 4,
-      content: 'Siêu thị đầy đủ các mặt hàng, giá cả phải chăng. Chỉ tiếc là hơi đông vào cuối tuần.',
-      date: '20/08/2023'
-    },
-  ],
-  '2': [
-    {
-      id: '201',
-      reviewerName: 'Phạm Thị D',
-      rating: 5,
-      content: 'Hải sản tươi ngon, giá hợp lý. Đặc biệt món cua sốt ớt rất ngon.',
-      date: '10/06/2023'
-    },
-    {
-      id: '202',
-      reviewerName: 'Đỗ Văn E',
-      rating: 3,
-      content: 'Đồ ăn ngon nhưng phục vụ hơi chậm vào giờ cao điểm. Cần cải thiện thêm.',
-      date: '25/07/2023'
-    }
-  ],
-  '3': [
-    {
-      id: '301',
-      reviewerName: 'Hoàng Thị F',
-      rating: 4,
-      content: 'Không gian đẹp, đồ uống ngon. Wifi mạnh, phù hợp để làm việc.',
-      date: '05/08/2023'
-    }
-  ],
-  '4': [
-    {
-      id: '401',
-      reviewerName: 'Lý Văn G',
-      rating: 3,
-      content: 'Nhân viên tư vấn nhiệt tình, giá hơi cao so với mặt bằng chung.',
-      date: '10/09/2023'
-    }
-  ],
-  '5': [
-    {
-      id: '501',
-      reviewerName: 'Trương Thị H',
-      rating: 4,
-      content: 'Khách sạn sạch sẽ, nhân viên chuyên nghiệp. Vị trí thuận tiện để đi tham quan.',
-      date: '30/08/2023'
-    }
-  ]
-};
+// Mock facility types and their icons
+// const FACILITY_TYPES = {
+//   'Nhà hàng': require('../assets/images/restaurant_icon.png'),
+//   'Khách sạn': require('../assets/images/hotel_icon.png'),
+//   'Cửa hàng': require('../assets/images/shop_icon.png'),
+// };
 
 export default function GuestHomeScreen() {
   const navigation = useNavigation();
   const webViewRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const [facilities, setFacilities] = useState(MOCK_FACILITIES);
+  
+  // Initial map center point
+  const initialCenter = {
+    latitude: 20.44879,
+    longitude: 106.34259,
+    zoom: 15
+  };
+  
+  // States for facilities
+  const [facilities, setFacilities] = useState([]);
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [filteredFacilities, setFilteredFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
-  const [isReviewListVisible, setIsReviewListVisible] = useState(false);
-  const [reviews, setReviews] = useState([]);
   
-  // State for filters
+  // States for modals
+  const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
+  const [isReviewListVisible, setIsReviewListVisible] = useState(false);
+  
+  // States for filters
   const [filters, setFilters] = useState({
     restaurant: true,
     hotel: true,
     shop: true,
   });
   
-  // Initial map center point
-  const initialCenter = {
-    latitude: 20.852,
-    longitude: 106.688,
-    zoom: 14
-  };
+  // State for reviews
+  const [reviews, setReviews] = useState([]);
+  const [newReview, setNewReview] = useState({
+    reviewerName: '',
+    rating: 5,
+    content: '',
+  });
 
-  useEffect(() => {
-    // Effect to update filtered facilities based on search text
-    if (searchText.trim() === '') {
-      setFilteredFacilities([]);
-      return;
-    }
-
-    const normalizedKeyword = searchText.toLowerCase().trim();
-    const filtered = facilities.filter(facility => 
-      facility.name.toLowerCase().includes(normalizedKeyword) ||
-      facility.address.toLowerCase().includes(normalizedKeyword)
-    );
-    
-    setFilteredFacilities(filtered);
-  }, [searchText]);
-
-  useEffect(() => {
-    // Update map markers when filters change or map loads
-    if (mapLoaded) {
-      updateMapMarkers();
-    }
-  }, [filters, mapLoaded]);
+  // Add a mounted ref to track component mount state
+  const isMountedRef = useRef(true);
 
   // HTML for the leaflet map
   const leafletHtml = `
     <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-        <style>
-          body, html, #map {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+      <title>Leaflet Map</title>
+      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      <style>
+        body, html, #map {
+          margin: 0;
+          padding: 0;
+          width: 100%;
+          height: 100%;
+        }
+        
+        .custom-popup .leaflet-popup-content-wrapper {
+          background: rgba(255, 255, 255, 0.95);
+          border-radius: 12px;
+          box-shadow: 0 3px 14px rgba(0,0,0,0.2);
+        }
+        
+        .custom-popup .leaflet-popup-content {
+          margin: 12px 12px;
+          font-family: 'Arial', sans-serif;
+          min-width: 200px;
+        }
+        
+        .custom-popup .leaflet-popup-tip {
+          background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .facility-header {
+          border-bottom: 1px solid #eee;
+          padding-bottom: 8px;
+          margin-bottom: 8px;
+        }
+        
+        .facility-title {
+          font-weight: bold;
+          font-size: 16px;
+          color: #333;
+          margin-bottom: 3px;
+        }
+        
+        .facility-info {
+          margin-bottom: 12px;
+          font-size: 14px;
+          color: #555;
+        }
+        
+        .facility-actions {
+          display: flex;
+          justify-content: space-between;
+        }
+        
+        .action-button {
+          background-color: #085924;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          padding: 8px 12px;
+          font-size: 14px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        
+        .action-button:hover {
+          background-color: #085924;
+        }
+        
+        .action-button.secondary {
+          background-color: #6c757d;
+        }
+        
+        .action-button.secondary:hover {
+          background-color: #5a6268;
+        }
+        
+        .zoom-controls {
+          position: absolute;
+          right: 15px;
+          bottom: 80px;
+          display: flex;
+          flex-direction: column;
+          z-index: 1000;
+        }
+        
+        .zoom-button {
+          background-color: white;
+          border: 2px solid rgba(0,0,0,0.2);
+          border-radius: 4px;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          font-weight: bold;
+          color: #333;
+          margin-bottom: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        
+        .zoom-button:active {
+          background-color: #f4f4f4;
+          transform: scale(0.95);
+        }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <div class="zoom-controls">
+        <div class="zoom-button" id="zoom-in">+</div>
+        <div class="zoom-button" id="zoom-out">-</div>
+      </div>
+      <script>
+        // Initialize map
+        const map = L.map('map', {
+          zoomControl: false // Disable default zoom controls
+        }).setView([${initialCenter.latitude}, ${initialCenter.longitude}], ${initialCenter.zoom});
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: ''
+        }).addTo(map);
+        
+        // Create custom icons based on zoom level
+        const createIcon = (type, zoom) => {
+          let iconName;
+          let iconColor;
+          let iconSize;
+          
+          // Determine icon and color based on facility type
+          switch(type) {
+            case 'Nhà hàng':
+              iconName = 'fa-utensils';
+              iconColor = '#FF5252';
+              break;
+            case 'Khách sạn':
+              iconName = 'fa-bed';
+              iconColor = '#2979FF';
+              break;
+            case 'Cửa hàng':
+              iconName = 'fa-store';
+              iconColor = '#00C853';
+              break;
+            default:
+              iconName = 'fa-building';
+              iconColor = '#9C27B0';
           }
           
-          .custom-popup .leaflet-popup-content-wrapper {
-            background: rgba(255, 255, 255, 0.98);
-            border-radius: 12px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
-            overflow: hidden;
+          // Determine size based on zoom level
+          if (zoom >= 18) {
+            iconSize = 32;
+          } else if (zoom >= 16) {
+            iconSize = 24;
+          } else if (zoom >= 14) {
+            iconSize = 18;
+          } else if (zoom >= 12) {
+            iconSize = 14;
+          } else {
+            iconSize = 10;
           }
           
-          .custom-popup .leaflet-popup-content {
-            margin: 14px 14px;
-            font-family: 'Arial', sans-serif;
-            min-width: 240px;
+          return L.divIcon({
+            className: 'custom-marker',
+            html: \`<div style="display:flex;justify-content:center;align-items:center;width:\${iconSize + 8}px;height:\${iconSize + 8}px;background-color:white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
+              <i class="fas \${iconName}" style="color:\${iconColor};font-size:\${iconSize}px;"></i>
+            </div>\`,
+            iconSize: [iconSize + 8, iconSize + 8],
+            iconAnchor: [(iconSize + 8)/2, (iconSize + 8)/2],
+            popupAnchor: [0, -((iconSize + 8)/2)]
+          });
+        };
+        
+        // Update markers when zoom changes
+        map.on('zoomend', function() {
+          if (window.markersData && window.markersData.length > 0) {
+            updateMarkers(window.markersData);
+          }
+        });
+        
+        // Function to update markers based on current zoom level
+        function updateMarkers(markers) {
+          const currentZoom = map.getZoom();
+          
+          // Clear existing markers first
+          if (window.markersLayer) {
+            map.removeLayer(window.markersLayer);
           }
           
-          .custom-popup .leaflet-popup-tip {
-            background: rgba(255, 255, 255, 0.98);
-          }
+          window.markersLayer = L.layerGroup().addTo(map);
           
-          .facility-image {
-            width: 100%;
-            height: 120px;
-            background-color: #f0f0f0;
-            background-size: cover;
-            background-position: center;
-            margin-bottom: 10px;
-            border-radius: 6px;
-            overflow: hidden;
-          }
+          // Don't show markers below zoom level 10
+          if (currentZoom < 10) return;
           
-          .facility-header {
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
-          }
-          
-          .facility-title {
-            font-weight: bold;
-            font-size: 16px;
-            color: #333;
-            margin-bottom: 5px;
-          }
-          
-          .facility-info {
-            margin-bottom: 12px;
-            font-size: 14px;
-            color: #555;
-          }
-          
-          .facility-actions {
-            display: flex;
-            justify-content: space-between;
-          }
-          
-          .action-button {
-            background-color: #085924;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-          }
-          
-          .action-button:hover {
-            background-color: #085924;
-          }
-          
-          .action-button.secondary {
-            background-color: #6c757d;
-          }
-          
-          .action-button.secondary:hover {
-            background-color: #5a6268;
-          }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <script>
-          // Initialize map
-          var map = L.map('map').setView([${initialCenter.latitude}, ${initialCenter.longitude}], ${initialCenter.zoom});
-          
-          // Add OpenStreetMap tiles
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-          }).addTo(map);
-          
-          // Layer for markers
-          var markersLayer = L.layerGroup().addTo(map);
-          
-          // Function for custom icons based on type
-          function getCustomIcon(type) {
-            let iconName, iconColor;
+          markers.forEach(marker => {
+            const leafletMarker = L.marker(
+              [marker.latitude, marker.longitude],
+              { icon: createIcon(marker.type, currentZoom) }
+            ).addTo(window.markersLayer);
             
-            switch(type) {
-              case 'Nhà hàng':
-                iconName = 'fa-utensils';
-                iconColor = '#FF5252';
-                break;
-              case 'Khách sạn':
-                iconName = 'fa-bed';
-                iconColor = '#2979FF';
-                break;
-              case 'Cửa hàng':
-                iconName = 'fa-store';
-                iconColor = '#00C853';
-                break;
-              default:
-                iconName = 'fa-building';
-                iconColor = '#085924';
-            }
-            
-            return L.divIcon({
-              className: 'custom-marker',
-              html: \`<div style="display:flex;justify-content:center;align-items:center;width:40px;height:40px;background-color:white;border-radius:50%;box-shadow:0 3px 6px rgba(0,0,0,0.3);">
-                <i class="fas \${iconName}" style="color:\${iconColor};font-size:20px;"></i>
-              </div>\`,
-              iconSize: [40, 40],
-              iconAnchor: [20, 20],
-              popupAnchor: [0, -20]
-            });
-          }
-          
-          // Add markers to the map
-          function addMarkers(facilities) {
-            markersLayer.clearLayers();
-            
-            facilities.forEach(facility => {
-              const marker = L.marker(
-                [facility.latitude, facility.longitude],
-                { icon: getCustomIcon(facility.type) }
-              ).addTo(markersLayer);
-              
-              marker.bindPopup(
-                '<div class="facility-header">' +
-                '<div class="facility-title">' + facility.name + '</div>' +
-                '</div>' +
-                '<div class="facility-image" style="background-image: url(\'https://via.placeholder.com/300x150?text=' + encodeURIComponent(facility.name) + '\')"></div>' +
-                '<div class="facility-info">' +
-                '<strong>Loại hình:</strong> ' + facility.type + '<br>' +
-                '<strong>Địa chỉ:</strong> ' + facility.address +
-                '</div>' +
-                '<div class="facility-actions">' +
-                '<button class="action-button" onclick="login()">Đánh giá</button> ' +
-                '<button class="action-button secondary" onclick="viewReviews(\'' + facility.id + '\')">Xem đánh giá</button>' +
-                '</div>',
-                { className: 'custom-popup' }
-              );
-            });
-          }
-          
-          // Send facility ID to React Native for reviews
-          function viewReviews(facilityId) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'viewReviews',
-              facilityId: facilityId
-            }));
-          }
-          
-          // Send login request to React Native
-          function login() {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'login'
-            }));
-          }
-          
-          // Focus on a specific facility
-          function focusOnFacility(lat, lng) {
-            map.setView([lat, lng], 18);
-          }
-          
-          // Inform React Native that map is loaded
-          window.onload = function() {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'mapLoaded'
-            }));
-          };
-        </script>
-      </body>
+            leafletMarker.bindPopup(
+              '<div class="facility-header">' +
+              '<div class="facility-title">' + marker.name + '</div>' +
+              '</div>' +
+              '<div class="facility-info">' +
+              '<strong>Loại hình:</strong> ' + marker.type + '<br>' +
+              '<strong>Địa chỉ:</strong> ' + marker.address +
+              '</div>' +
+              '<div class="facility-actions">' +
+              '<button class="action-button" onclick="reviewFacility(' + marker.id + ')">Đánh giá</button> ' +
+              '<button class="action-button secondary" onclick="viewReviews(' + marker.id + ')">Xem đánh giá</button>' +
+              '</div>',
+              { className: 'custom-popup' }
+            );
+          });
+        }
+        
+        // Function to add markers (called from React Native)
+        window.addMarkers = function(markersData) {
+          const markers = JSON.parse(markersData);
+          window.markersData = markers; // Save for zoom updates
+          updateMarkers(markers);
+        };
+        
+        // Function to review facility
+        window.reviewFacility = function(facilityId) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'reviewFacility',
+            facilityId: facilityId
+          }));
+        };
+        
+        // Function to view reviews
+        window.viewReviews = function(facilityId) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'viewReviews',
+            facilityId: facilityId
+          }));
+        };
+        
+        // Function to focus on a specific facility
+        window.focusOnFacility = function(lat, lng, zoom) {
+          map.setView([lat, lng], zoom || 18);
+        };
+        
+        // Custom zoom controls
+        document.getElementById('zoom-in').addEventListener('click', () => {
+          map.zoomIn();
+        });
+        
+        document.getElementById('zoom-out').addEventListener('click', () => {
+          map.zoomOut();
+        });
+        
+        // Send message when map is ready
+        window.onload = function() {
+          window.ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'mapLoaded'
+          }));
+        };
+      </script>
+    </body>
     </html>
   `;
 
-  const handleWebViewMessage = (event) => {
-    try {
-      const data = JSON.parse(event.nativeEvent.data);
-      
-      if (data.type === 'mapLoaded') {
-        console.log('Map loaded successfully');
-        setMapLoaded(true);
-        updateMapMarkers();
-      } else if (data.type === 'viewReviews' && data.facilityId) {
-        const facility = facilities.find(f => f.id === data.facilityId);
-        if (facility) {
-          setSelectedFacility(facility);
-          setReviews(MOCK_REVIEWS[data.facilityId] || []);
-          setIsReviewListVisible(true);
+  // Add cleanup to useEffect hooks
+  useEffect(() => {
+    // Load facilities from API
+    let isCancelled = false;
+    
+    const loadData = async () => {
+      try {
+        const mockFacilities = [
+          {
+            id: 1,
+            name: 'Nhà hàng ABC',
+            type: 'Nhà hàng',
+            address: '123 Đường ABC, Thái Bình',
+            latitude: 20.44879,
+            longitude: 106.34259,
+          },
+          {
+            id: 2,
+            name: 'Khách sạn XYZ',
+            type: 'Khách sạn',
+            address: '456 Đường XYZ, Thái Bình',
+            latitude: 20.45000,
+            longitude: 106.34400,
+          },
+          {
+            id: 3,
+            name: 'Cửa hàng 123',
+            type: 'Cửa hàng',
+            address: '789 Đường 123, Thái Bình',
+            latitude: 20.44700,
+            longitude: 106.34100,
+          },
+        ];
+        
+        if (!isCancelled && isMountedRef.current) {
+          setFacilities(mockFacilities);
         }
-      } else if (data.type === 'login') {
-        handleLogin();
+      } catch (error) {
+        console.error('Error loading facilities:', error);
       }
+    };
+    
+    loadData();
+    
+    // Cleanup function
+    return () => {
+      isCancelled = true;
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    // Update markers when filters change
+    if (!isMountedRef.current) return;
+    
+    if (mapLoaded && facilities.length > 0) {
+      // Use a small timeout to ensure WebView is ready
+      const timeoutId = setTimeout(() => {
+        if (isMountedRef.current) {
+          updateMapMarkers();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [filters, facilities, mapLoaded]);
+
+  useEffect(() => {
+    // Filter facilities based on search keyword
+    if (!isMountedRef.current) return;
+    
+    if (searchKeyword.trim() === '') {
+      setFilteredFacilities([]);
+      return;
+    }
+
+    // Use a timeout to debounce the search
+    const debounceTimeout = setTimeout(() => {
+      if (!isMountedRef.current) return;
+      
+      const normalizedKeyword = removeVietnameseTones(searchKeyword.toLowerCase().trim());
+      const filtered = facilities.filter(facility => {
+        const normalizedName = removeVietnameseTones(facility.name.toLowerCase());
+        return normalizedName.includes(normalizedKeyword);
+      });
+      
+      if (isMountedRef.current) {
+        setFilteredFacilities(filtered);
+      }
+    }, 300); // 300ms debounce
+    
+    // Clear timeout on cleanup
+    return () => clearTimeout(debounceTimeout);
+  }, [searchKeyword, facilities]);
+
+  const loadFacilities = async () => {
+    // This function will be called only inside a useEffect that already has cleanup
+    try {
+      // Mock data already loaded in the useEffect, so this is now just a placeholder
+      // In a real app, you'd make the API call here
     } catch (error) {
-      console.error('Error parsing WebView message:', error);
+      if (isMountedRef.current) {
+        console.error('Error loading facilities:', error);
+      }
     }
   };
 
   const updateMapMarkers = () => {
-    if (webViewRef.current) {
-      // Filter facilities based on current filters
-      const filteredMarkers = facilities.filter(facility => {
-        if (!facility.type) return true;
-        
-        switch(facility.type.toLowerCase()) {
-          case 'nhà hàng':
-            return filters.restaurant;
-          case 'khách sạn':
-            return filters.hotel;
-          case 'cửa hàng':
-            return filters.shop;
-          default:
-            return true;
-        }
-      });
+    if (!isMountedRef.current || !webViewRef.current) return;
+    
+    // Filter facilities based on current filters
+    const filteredMarkers = facilities.filter(facility => shouldShowFacility(facility));
+    
+    // Pass filtered markers to WebView
+    webViewRef.current.injectJavaScript(`
+      window.addMarkers('${JSON.stringify(filteredMarkers)}');
+      true;
+    `);
+  };
+
+  const handleWebViewMessage = (event) => {
+    if (!isMountedRef.current) return;
+    
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
       
-      webViewRef.current.injectJavaScript(`
-        try {
-          addMarkers(${JSON.stringify(filteredMarkers)});
-        } catch (e) {
-          console.error('Error updating markers:', e);
-        }
-        true;
-      `);
+      switch (data.type) {
+        case 'mapLoaded':
+          setMapLoaded(true);
+          break;
+          
+        case 'mapClick':
+          setSelectedFacility({
+            latitude: data.latitude,
+            longitude: data.longitude,
+          });
+          break;
+          
+        case 'reviewFacility':
+          // Hiển thị thông báo yêu cầu đăng nhập
+          Alert.alert(
+            "Cần đăng nhập",
+            "Bạn cần đăng nhập để đánh giá cơ sở này.",
+            [
+              { 
+                text: "Đăng nhập", 
+                onPress: () => {
+                  if (isMountedRef.current) {
+                    navigation.navigate('LoginScreen', { screen: 'Login' });
+                  }
+                }
+              },
+              {
+                text: "Hủy",
+                style: "cancel"
+              }
+            ]
+          );
+          break;
+          
+        case 'viewReviews':
+          const facilityToView = facilities.find(f => f.id === data.facilityId);
+          if (facilityToView && isMountedRef.current) {
+            handleViewReviews(facilityToView);
+          }
+          break;
+      }
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error('Error parsing WebView message:', error);
+      }
+    }
+  };
+
+  const removeVietnameseTones = (str) => {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D');
+  };
+
+  const handleAddReview = () => {
+    if (!isMountedRef.current || !selectedFacility) return;
+    
+    setIsReviewModalVisible(false);
+    
+    // In a real app, make an API call to add the review
+    console.log('Review added:', {
+      facilityId: selectedFacility.id,
+      ...newReview,
+    });
+    
+    if (isMountedRef.current) {
+      setNewReview({
+        reviewerName: '',
+        rating: 5,
+        content: '',
+      });
+    }
+  };
+
+  const handleViewReviews = (facility) => {
+    if (!isMountedRef.current) return;
+    
+    setSelectedFacility(facility);
+    
+    // In a real app, fetch reviews for this facility
+    // For now, using mock data
+    const mockReviews = [
+      {
+        id: 1,
+        reviewerName: 'Nguyễn Văn A',
+        rating: 5,
+        content: 'Dịch vụ rất tuyệt vời! Nhân viên phục vụ chuyên nghiệp, không gian sạch sẽ và thoáng mát. Tôi sẽ quay lại vào lần sau.',
+        date: '15/08/2023'
+      },
+      {
+        id: 2,
+        reviewerName: 'Trần Thị B',
+        rating: 4,
+        content: 'Dịch vụ tốt, giá cả phải chăng. Tuy nhiên, thời gian chờ đợi hơi lâu vào giờ cao điểm.',
+        date: '20/07/2023'
+      },
+      {
+        id: 3,
+        reviewerName: 'Lê Văn C',
+        rating: 3,
+        content: 'Chất lượng dịch vụ ở mức trung bình. Cần cải thiện thêm về thái độ phục vụ của một số nhân viên.',
+        date: '05/06/2023'
+      },
+      {
+        id: 4,
+        reviewerName: 'Phạm Thị D',
+        rating: 5,
+        content: 'Rất hài lòng với trải nghiệm tại đây. Không gian thoáng, sạch sẽ và nhân viên rất thân thiện.',
+        date: '12/05/2023'
+      },
+      {
+        id: 5,
+        reviewerName: 'Hoàng Văn E',
+        rating: 2,
+        content: 'Không hài lòng lắm. Giá cả hơi cao so với chất lượng dịch vụ. Cần cải thiện nhiều.',
+        date: '03/04/2023'
+      }
+    ];
+    
+    if (isMountedRef.current) {
+      setReviews(mockReviews);
+      setIsReviewListVisible(true);
     }
   };
 
   const focusFacility = (facility) => {
+    if (!isMountedRef.current) return;
+    
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
-        focusOnFacility(${facility.latitude}, ${facility.longitude});
+        window.focusOnFacility(${facility.latitude}, ${facility.longitude}, 18);
         true;
       `);
     }
     
-    setSearchText('');
-    setFilteredFacilities([]);
+    if (isMountedRef.current) {
+      setSearchKeyword('');
+      setFilteredFacilities([]);
+    }
   };
 
   const handleFilterChange = (filterType, value) => {
@@ -457,8 +618,17 @@ export default function GuestHomeScreen() {
     });
   };
 
-  const handleLogin = () => {
-    navigation.navigate('LoginScreen', { screen: 'Login' });
+  const shouldShowFacility = (facility) => {
+    switch (facility.type.toLowerCase()) {
+      case 'nhà hàng':
+        return filters.restaurant;
+      case 'khách sạn':
+        return filters.hotel;
+      case 'cửa hàng':
+        return filters.shop;
+      default:
+        return false;
+    }
   };
 
   // Render the star rating
@@ -478,6 +648,11 @@ export default function GuestHomeScreen() {
     return <View style={{flexDirection: 'row'}}>{stars}</View>;
   };
 
+  const handleLogin = () => {
+    if (!isMountedRef.current) return;
+    navigation.navigate('LoginScreen', { screen: 'Login' });
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}
@@ -490,7 +665,6 @@ export default function GuestHomeScreen() {
         javaScriptEnabled={true}
         domStorageEnabled={true}
         geolocationEnabled={true}
-        onError={(e) => console.error('WebView error:', e.nativeEvent)}
       />
       
       {/* Search Bar */}
@@ -500,34 +674,34 @@ export default function GuestHomeScreen() {
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm cơ sở..."
-            value={searchText}
-            onChangeText={setSearchText}
+            value={searchKeyword}
+            onChangeText={setSearchKeyword}
             placeholderTextColor="#888"
           />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText('')}>
+          {searchKeyword.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchKeyword('')}>
               <Ionicons name="close-circle" size={20} color="#085924" />
             </TouchableOpacity>
           )}
         </View>
         
-        {/* Filter Controls */}
+        {/* Filter Controls - Google Maps Style */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
           style={styles.filterScrollView}
           contentContainerStyle={styles.filterScrollContent}
         >
-          <TouchableOpacity 
-            style={[
+                  <TouchableOpacity
+                    style={[
               styles.filterButton,
               filters.restaurant && styles.filterButtonActive
-            ]}
+                    ]}
             onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
           >
-            <Ionicons 
+                    <Ionicons 
               name="restaurant" 
-              size={18} 
+                      size={18} 
               color={filters.restaurant ? "#fff" : "#666"} 
               style={styles.filterButtonIcon}
             />
@@ -535,18 +709,18 @@ export default function GuestHomeScreen() {
               styles.filterButtonText,
               filters.restaurant && styles.filterButtonTextActive
             ]}>Nhà hàng</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
               styles.filterButton,
               filters.hotel && styles.filterButtonActive
-            ]}
+                    ]}
             onPress={() => handleFilterChange('hotel', !filters.hotel)}
           >
-            <Ionicons 
+                    <Ionicons 
               name="bed" 
-              size={18} 
+                      size={18} 
               color={filters.hotel ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -554,18 +728,18 @@ export default function GuestHomeScreen() {
               styles.filterButtonText,
               filters.hotel && styles.filterButtonTextActive
             ]}>Khách sạn</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={[
               styles.filterButton,
               filters.shop && styles.filterButtonActive
-            ]}
+                    ]}
             onPress={() => handleFilterChange('shop', !filters.shop)}
           >
-            <Ionicons 
-              name="cart" 
-              size={18} 
+                    <Ionicons 
+                      name="cart" 
+                      size={18} 
               color={filters.shop ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -573,7 +747,7 @@ export default function GuestHomeScreen() {
               styles.filterButtonText,
               filters.shop && styles.filterButtonTextActive
             ]}>Cửa hàng</Text>
-          </TouchableOpacity>
+                  </TouchableOpacity>
         </ScrollView>
         
         {/* Search Results */}
@@ -594,20 +768,20 @@ export default function GuestHomeScreen() {
                       } 
                       size={16} 
                       color="#fff" 
-                    />
-                  </View>
+                />
+              </View>
                   <View style={styles.searchResultTextContainer}>
                     <Text style={styles.searchResultName}>{item.name}</Text>
                     <Text style={styles.searchResultAddress}>{item.address}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#085924" />
-                </TouchableOpacity>
+              </TouchableOpacity>
               )}
             />
           </View>
         )}
-      </View>
-      
+        </View>
+        
       {/* Login Notice Banner */}
       <View style={styles.loginBanner}>
         <Text style={styles.loginText}>Đăng nhập để trải nghiệm đầy đủ tính năng</Text>
@@ -616,13 +790,83 @@ export default function GuestHomeScreen() {
         </TouchableOpacity>
       </View>
       
+      {/* Add Review Modal */}
+      <Modal
+        visible={isReviewModalVisible}
+        transparent={true}
+        animationType="slide">
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Đánh giá cơ sở</Text>
+              <TouchableOpacity onPress={() => setIsReviewModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody}>
+              {selectedFacility && (
+                <View style={styles.selectedFacilityInfo}>
+                  <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
+                  <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
+                </View>
+              )}
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Tên của bạn:</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newReview.reviewerName}
+                  onChangeText={(text) => setNewReview({...newReview, reviewerName: text})}
+                  placeholder="Nhập tên của bạn"
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Đánh giá (1-5 sao):</Text>
+                <View style={styles.ratingContainer}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => setNewReview({...newReview, rating: star})}>
+                      <Ionicons
+                        name={star <= newReview.rating ? "star" : "star-outline"}
+                        size={30}
+                        color="#FFD700"
+                        style={styles.starIcon}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Nội dung đánh giá:</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={newReview.content}
+                  onChangeText={(text) => setNewReview({...newReview, content: text})}
+                  placeholder="Nhập nội dung đánh giá..."
+                  multiline={true}
+                  numberOfLines={5}
+                />
+              </View>
+              
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={handleAddReview}>
+                <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      
       {/* Reviews List Modal */}
       <Modal
         visible={isReviewListVisible}
         transparent={true}
-        animationType="slide"
-        onRequestClose={() => setIsReviewListVisible(false)}
-      >
+        animationType="slide">
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -676,9 +920,9 @@ export default function GuestHomeScreen() {
                     style={styles.addReviewButton}
                     onPress={() => {
                       setIsReviewListVisible(false);
-                      handleLogin();
+                      setIsReviewModalVisible(true);
                     }}>
-                    <Text style={styles.addReviewButtonText}>Đăng nhập để đánh giá</Text>
+                    <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -724,47 +968,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 10,
     fontSize: 16,
-    color: '#333',
-  },
-  filterScrollView: {
-    marginTop: 10,
-    marginBottom: 5,
-    height: 45,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 5,
-  },
-  filterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f8f8',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginHorizontal: 5,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
-    elevation: 2,
-  },
-  filterButtonActive: {
-    backgroundColor: '#085924',
-  },
-  filterButtonText: {
-    color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 5,
-  },
-  filterButtonTextActive: {
-    color: '#fff',
-  },
-  filterButtonIcon: {
-    marginRight: 5,
   },
   searchResults: {
     backgroundColor: '#fff',
@@ -813,6 +1016,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  filterScrollView: {
+    marginTop: 10,
+    marginBottom: 5,
+    height: 45,
+  },
+  filterScrollContent: {
+    paddingHorizontal: 5,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f8f8',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginHorizontal: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  },
+  filterButtonActive: {
+    backgroundColor: '#085924',
+  },
+  filterButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 5,
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+  },
+  filterButtonIcon: {
+    marginRight: 5,
+  },
   map: {
     position: 'absolute',
     top: 0,
@@ -822,44 +1065,6 @@ const styles = StyleSheet.create({
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
   },
-  loginBanner: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  loginText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    marginRight: 10,
-  },
-  loginButton: {
-    backgroundColor: '#085924',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  loginButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  // Modal Styles
   modalContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -889,6 +1094,86 @@ const styles = StyleSheet.create({
   modalBody: {
     padding: 15,
   },
+  formGroup: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  pickerItem: {
+    flex: 1,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 5,
+    marginHorizontal: 2,
+  },
+  pickerItemActive: {
+    backgroundColor: '#085924',
+    borderColor: '#085924',
+  },
+  pickerText: {
+    color: '#333',
+  },
+  pickerTextActive: {
+    color: '#fff',
+  },
+  coordinateContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  coordinate: {
+    flex: 1,
+    marginHorizontal: 5,
+  },
+  coordinateLabel: {
+    fontSize: 14,
+    color: '#666',
+  },
+  coordinateValue: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: 'bold',
+  },
+  submitButton: {
+    backgroundColor: '#085924',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 10,
+  },
+  starIcon: {
+    marginRight: 10,
+  },
   selectedFacilityInfo: {
     marginBottom: 15,
   },
@@ -900,6 +1185,26 @@ const styles = StyleSheet.create({
   selectedFacilityAddress: {
     fontSize: 14,
     color: '#666',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#085924',
+    borderRadius: 24,
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    zIndex: 10,
   },
   reviewsList: {
     maxHeight: '80%',
@@ -977,4 +1282,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-}); 
+  loginBanner: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  loginButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  loginButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+});

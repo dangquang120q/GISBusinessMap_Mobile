@@ -1,5 +1,6 @@
-import React from 'react';
-import { Image, View, StyleSheet, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { Image, View, StyleSheet, Dimensions, ActivityIndicator, Text } from 'react-native';
+import Colors from '../constants/Colors';
 
 /**
  * A component for displaying images with proper styling and aspect ratio
@@ -12,6 +13,7 @@ import { Image, View, StyleSheet, Dimensions } from 'react-native';
  * @param {number} props.borderRadius - Border radius for the image (default: 8)
  * @param {boolean} props.showShadow - Whether to show shadow effect (default: true)
  * @param {number} props.width - Custom width for the image (default: screen width - 40)
+ * @param {string} props.placeholderText - Text to show when image fails to load
  */
 const ImageViewer = ({
   source,
@@ -21,7 +23,11 @@ const ImageViewer = ({
   borderRadius = 8,
   showShadow = true,
   width,
+  placeholderText = 'Image',
 }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  
   const screenWidth = Dimensions.get('window').width;
   const imageWidth = width || screenWidth - 40;
   const imageHeight = imageWidth / aspectRatio;
@@ -45,13 +51,38 @@ const ImageViewer = ({
     style,
   ];
   
+  const handleLoad = () => {
+    setLoading(false);
+  };
+  
+  const handleError = () => {
+    setLoading(false);
+    setError(true);
+  };
+  
   return (
     <View style={containerStyle}>
-      <Image
-        source={isUriSource ? source : source}
-        style={styles.image}
-        resizeMode={resizeMode}
-      />
+      {!error && (
+        <Image
+          source={source}
+          style={styles.image}
+          resizeMode={resizeMode}
+          onLoad={handleLoad}
+          onError={handleError}
+        />
+      )}
+      
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      )}
+      
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{placeholderText}</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -60,6 +91,8 @@ const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
     backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   image: {
     width: '100%',
@@ -74,6 +107,27 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.23,
     shadowRadius: 2.62,
     elevation: 4,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(240, 240, 240, 0.7)',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+  },
+  errorText: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 
