@@ -1325,7 +1325,7 @@ export default function HomeScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Phản ánh lên cơ quan chức năng</Text>
               <TouchableOpacity onPress={() => setIsReportModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <Ionicons name="close" size={24} color="#085924" />
               </TouchableOpacity>
             </View>
             
