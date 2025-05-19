@@ -15,6 +15,7 @@ import {
   PanResponder,
   Animated,
   Image,
+  StyleSheet,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -65,18 +66,19 @@ export default function HomeScreen() {
   // State for reviews
   const [reviews, setReviews] = useState([]);
   const [newReview, setNewReview] = useState({
-    reviewerName: '',
+    title: '',
     rating: 5,
     content: '',
+    media: [],
   });
 
   // State for reports
   const [reportData, setReportData] = useState({
     reporterName: '',
     phone: '',
-    email: '',
-    reportType: 'violation',
+    reportTypes: [], // Array để lưu nhiều loại phản ánh
     content: '',
+    media: [],
   });
 
   // Thêm state cho bottom sheet với 2 nấc
@@ -772,9 +774,10 @@ export default function HomeScreen() {
     });
     
     setNewReview({
-      reviewerName: '',
+      title: '',
       rating: 5,
       content: '',
+      media: [],
     });
   };
 
@@ -899,14 +902,8 @@ export default function HomeScreen() {
   const handleReportSubmit = () => {
     if (!selectedFacility) return;
     
-    // Validate form
-    if (!reportData.reporterName.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập tên người báo cáo');
-      return;
-    }
-    
-    if (!reportData.phone.trim() && !reportData.email.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại hoặc email');
+    if (!reportData.phone.trim()) {
+      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại');
       return;
     }
     
@@ -937,8 +934,9 @@ export default function HomeScreen() {
       reporterName: '',
       phone: '',
       email: '',
-      reportType: 'violation',
+      reportTypes: [], // Array để lưu nhiều loại phản ánh
       content: '',
+      media: [],
     });
   };
 
@@ -949,22 +947,23 @@ export default function HomeScreen() {
     }
     
     return (
-      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 30}}>
-        <Text style={styles.infoTitle}>Địa chỉ</Text>
+      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 10}}>
+        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Địa chỉ</Text>
         <View style={styles.infoRow}>
           <Ionicons name="location-outline" size={20} color="#085924" style={styles.infoIcon} />
           <Text style={styles.infoText}>{selectedFacility.address || 'Chưa có thông tin'}</Text>
         </View>
         {selectedFacility.latitude && (
           <>
-            <Text style={styles.infoTitle}>Vị trí</Text>
+            <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Vị trí</Text>
             <View style={styles.infoRow}>
               <Ionicons name="locate-outline" size={20} color="#085924" style={styles.infoIcon} />
               <Text style={styles.infoText}>[{selectedFacility.latitude},{selectedFacility.longitude}]</Text>
             </View>
           </>
         )}
-        <Text style={styles.infoTitle}>Loại hình</Text>
+
+        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Loại hình</Text>
         <View style={styles.infoRow}>
           <Ionicons 
             name={
@@ -980,7 +979,7 @@ export default function HomeScreen() {
         
         {selectedFacility.phone && (
           <>
-            <Text style={styles.infoTitle}>Liên hệ</Text>
+            <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Liên hệ</Text>
             <View style={styles.infoRow}>
               <Ionicons name="call-outline" size={20} color="#085924" style={styles.infoIcon} />
               <Text style={styles.infoText}>{selectedFacility.phone}</Text>
@@ -988,14 +987,7 @@ export default function HomeScreen() {
           </>
         )}
         
-        {selectedFacility.email && (
-          <View style={styles.infoRow}>
-            <Ionicons name="mail-outline" size={20} color="#085924" style={styles.infoIcon} />
-            <Text style={styles.infoText}>{selectedFacility.email}</Text>
-          </View>
-        )}
-        
-        <Text style={styles.infoTitle}>Liên kết</Text>
+        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Liên kết</Text>
         <View style={styles.socialLinks}>
           {selectedFacility.facebook && (
             <TouchableOpacity 
@@ -1041,14 +1033,6 @@ export default function HomeScreen() {
         </View>
         
         <View style={styles.actionButtonsContainer}>
-          {/* <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => setIsReviewModalVisible(true)}
-          >
-            <Ionicons name="star-outline" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>Đánh giá</Text>
-          </TouchableOpacity>
-           */}
           <TouchableOpacity 
             style={[styles.actionButton, {backgroundColor: '#e74c3c'}]}
             onPress={() => setIsReportModalVisible(true)}
@@ -1057,6 +1041,16 @@ export default function HomeScreen() {
             <Text style={styles.actionButtonText}>Phản ánh lên cơ quan chức năng</Text>
           </TouchableOpacity>
         </View>
+        <View style={styles.sectionDivider} />
+
+        {/* Thêm phần Bài đánh giá */}
+        <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Bài đánh giá</Text>
+        {renderReviewsTab()}
+
+        {/* Thêm phần Giới thiệu */}
+        <View style={styles.sectionDivider} />
+        <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Giới thiệu</Text>
+        {renderAboutTab()}
       </ScrollView>
     );
   };
@@ -1081,10 +1075,10 @@ export default function HomeScreen() {
   const handleEditReview = (review) => {
     setMenuVisible(false);
     setNewReview({
-      reviewerName: review.reviewerName,
+      title: review.title,
       rating: review.rating,
       content: review.content,
-      title: review.title
+      media: review.media,
     });
     setIsEditReviewModalVisible(true);
   };
@@ -1375,7 +1369,7 @@ export default function HomeScreen() {
     if (!selectedFacility) return null;
     
     return (
-      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 30}}>
+      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 10}}>
         <Text style={styles.aboutTitle}>Thông tin chi tiết</Text>
         <Text style={styles.aboutDescription}>
           {selectedFacility.description || "Chưa có thông tin chi tiết về cơ sở này."}
@@ -1398,6 +1392,281 @@ export default function HomeScreen() {
 
   const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
   const menuButtonRef = useRef(null);
+
+  // Thêm hàm xử lý chọn loại phản ánh
+  const handleReportTypeSelect = (type) => {
+    const currentTypes = [...reportData.reportTypes];
+    const index = currentTypes.indexOf(type);
+    
+    if (index === -1) {
+      currentTypes.push(type);
+    } else {
+      currentTypes.splice(index, 1);
+    }
+    
+    setReportData({
+      ...reportData,
+      reportTypes: currentTypes
+    });
+  };
+
+  // Thêm hàm xử lý thêm media
+  const handleAddMedia = (type, media) => {
+    if (type === 'review') {
+      setNewReview({
+        ...newReview,
+        media: [...newReview.media, media]
+      });
+    } else {
+      setReportData({
+        ...reportData,
+        media: [...reportData.media, media]
+      });
+    }
+  };
+
+  // Thêm hàm xử lý xóa media
+  const handleRemoveMedia = (type, index) => {
+    if (type === 'review') {
+      const newMedia = [...newReview.media];
+      newMedia.splice(index, 1);
+      setNewReview({
+        ...newReview,
+        media: newMedia
+      });
+    } else {
+      const newMedia = [...reportData.media];
+      newMedia.splice(index, 1);
+      setReportData({
+        ...reportData,
+        media: newMedia
+      });
+    }
+  };
+
+  // Cập nhật modal đánh giá
+  const renderReviewModal = () => (
+    <Modal
+      visible={isReviewModalVisible}
+      transparent={true}
+      animationType="slide">
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Đánh giá cơ sở</Text>
+            <TouchableOpacity onPress={() => setIsReviewModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#333" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalBody}>
+            {selectedFacility && (
+              <View style={styles.selectedFacilityInfo}>
+                <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
+                <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
+              </View>
+            )}
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Tiêu đề: <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                value={newReview.title}
+                onChangeText={(text) => setNewReview({...newReview, title: text})}
+                placeholder="Nhập tiêu đề đánh giá"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Đánh giá (1-5 sao):</Text>
+              <View style={styles.ratingContainer}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setNewReview({...newReview, rating: star})}>
+                    <Ionicons
+                      name={star <= newReview.rating ? "star" : "star-outline"}
+                      size={30}
+                      color="#FFD700"
+                      style={styles.starIcon}
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nội dung đánh giá: <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={newReview.content}
+                onChangeText={(text) => setNewReview({...newReview, content: text})}
+                placeholder="Nhập nội dung đánh giá..."
+                multiline={true}
+                numberOfLines={5}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Hình ảnh/Video:</Text>
+              <View style={styles.mediaUploadContainer}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.mediaScrollView}
+                >
+                  {newReview.media.map((media, index) => (
+                    <View key={index} style={styles.mediaPreviewContainer}>
+                      <Image 
+                        source={{uri: media.type === 'video' ? media.thumbnail : media.url}} 
+                        style={styles.mediaPreview}
+                      />
+                      <TouchableOpacity 
+                        style={styles.removeMediaButton}
+                        onPress={() => handleRemoveMedia('review', index)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#e74c3c" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity 
+                    style={styles.addMediaButton}
+                    onPress={() => {
+                      // Handle media picker
+                      console.log('Open media picker');
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={40} color="#085924" />
+                    <Text style={styles.addMediaText}>Thêm</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.submitButton}
+              onPress={handleAddReview}>
+              <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  // Cập nhật modal phản ánh
+  const renderReportModal = () => (
+    <Modal
+      visible={isReportModalVisible}
+      transparent={true}
+      animationType="slide">
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Phản ánh lên cơ quan chức năng</Text>
+            <TouchableOpacity onPress={() => setIsReportModalVisible(false)}>
+              <Ionicons name="close" size={24} color="#085924" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalBody}>
+            {selectedFacility && (
+              <View style={styles.selectedFacilityInfo}>
+                <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
+                <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
+              </View>
+            )}
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Số điện thoại: <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                value={reportData.phone}
+                onChangeText={(text) => setReportData({...reportData, phone: text})}
+                placeholder="Nhập số điện thoại"
+                keyboardType="phone-pad"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Loại phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
+              <View style={styles.reportTypeContainer}>
+                {['Vi phạm pháp luật', 'Phản ánh dịch vụ', 'Vệ sinh an toàn thực phẩm', 'Khác'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[
+                      styles.reportTypeOption,
+                      reportData.reportTypes.includes(type) && styles.reportTypeOptionActive
+                    ]}
+                    onPress={() => handleReportTypeSelect(type)}
+                  >
+                    <Text style={[
+                      styles.reportTypeText,
+                      reportData.reportTypes.includes(type) && styles.reportTypeTextActive
+                    ]}>{type}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Nội dung phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={reportData.content}
+                onChangeText={(text) => setReportData({...reportData, content: text})}
+                placeholder="Nhập nội dung phản ánh chi tiết..."
+                multiline={true}
+                numberOfLines={5}
+              />
+            </View>
+
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Hình ảnh/Video:</Text>
+              <View style={styles.mediaUploadContainer}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.mediaScrollView}
+                >
+                  {reportData.media.map((media, index) => (
+                    <View key={index} style={styles.mediaPreviewContainer}>
+                      <Image 
+                        source={{uri: media.type === 'video' ? media.thumbnail : media.url}} 
+                        style={styles.mediaPreview}
+                      />
+                      <TouchableOpacity 
+                        style={styles.removeMediaButton}
+                        onPress={() => handleRemoveMedia('report', index)}
+                      >
+                        <Ionicons name="close-circle" size={24} color="#e74c3c" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  <TouchableOpacity 
+                    style={styles.addMediaButton}
+                    onPress={() => {
+                      // Handle media picker
+                      console.log('Open media picker');
+                    }}
+                  >
+                    <Ionicons name="add-circle-outline" size={40} color="#085924" />
+                    <Text style={styles.addMediaText}>Thêm</Text>
+                  </TouchableOpacity>
+                </ScrollView>
+              </View>
+            </View>
+            
+            <TouchableOpacity
+              style={[styles.submitButton, {backgroundColor: '#e74c3c'}]}
+              onPress={handleReportSubmit}>
+              <Text style={styles.submitButtonText}>Gửi phản ánh</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1743,197 +2012,9 @@ export default function HomeScreen() {
         </Animated.View>
       )}
       
-      {/* Add Review Modal */}
-      <Modal
-        visible={isReviewModalVisible}
-        transparent={true}
-        animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Đánh giá cơ sở</Text>
-              <TouchableOpacity onPress={() => setIsReviewModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              {selectedFacility && (
-                <View style={styles.selectedFacilityInfo}>
-                  <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
-                  <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
-                </View>
-              )}
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Tên của bạn:</Text>
-                <TextInput
-                  style={styles.input}
-                  value={newReview.reviewerName}
-                  onChangeText={(text) => setNewReview({...newReview, reviewerName: text})}
-                  placeholder="Nhập tên của bạn"
-                />
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Đánh giá (1-5 sao):</Text>
-                <View style={styles.ratingContainer}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity
-                      key={star}
-                      onPress={() => setNewReview({...newReview, rating: star})}>
-                      <Ionicons
-                        name={star <= newReview.rating ? "star" : "star-outline"}
-                        size={30}
-                        color="#FFD700"
-                        style={styles.starIcon}
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Nội dung đánh giá:</Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={newReview.content}
-                  onChangeText={(text) => setNewReview({...newReview, content: text})}
-                  placeholder="Nhập nội dung đánh giá..."
-                  multiline={true}
-                  numberOfLines={5}
-                />
-              </View>
-              
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleAddReview}>
-                <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {renderReviewModal()}
+      {renderReportModal()}
       
-      {/* Add Report Modal */}
-      <Modal
-        visible={isReportModalVisible}
-        transparent={true}
-        animationType="slide">
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Phản ánh lên cơ quan chức năng</Text>
-              <TouchableOpacity onPress={() => setIsReportModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#085924" />
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.modalBody}>
-              {selectedFacility && (
-                <View style={styles.selectedFacilityInfo}>
-                  <Text style={styles.selectedFacilityName}>{selectedFacility.name}</Text>
-                  <Text style={styles.selectedFacilityAddress}>{selectedFacility.address}</Text>
-                </View>
-              )}
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Họ tên người phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={styles.input}
-                  value={reportData.reporterName}
-                  onChangeText={(text) => setReportData({...reportData, reporterName: text})}
-                  placeholder="Nhập họ tên"
-                />
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Số điện thoại:</Text>
-                <TextInput
-                  style={styles.input}
-                  value={reportData.phone}
-                  onChangeText={(text) => setReportData({...reportData, phone: text})}
-                  placeholder="Nhập số điện thoại"
-                  keyboardType="phone-pad"
-                />
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Email:</Text>
-                <TextInput
-                  style={styles.input}
-                  value={reportData.email}
-                  onChangeText={(text) => setReportData({...reportData, email: text})}
-                  placeholder="Nhập email"
-                  keyboardType="email-address"
-                />
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Loại phản ánh:</Text>
-                <View style={styles.reportTypeContainer}>
-                  <TouchableOpacity
-                    style={[
-                      styles.reportTypeOption,
-                      reportData.reportType === 'violation' && styles.reportTypeOptionActive
-                    ]}
-                    onPress={() => setReportData({...reportData, reportType: 'violation'})}
-                  >
-                    <Text style={[
-                      styles.reportTypeText,
-                      reportData.reportType === 'violation' && styles.reportTypeTextActive
-                    ]}>Vi phạm pháp luật</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.reportTypeOption,
-                      reportData.reportType === 'service' && styles.reportTypeOptionActive
-                    ]}
-                    onPress={() => setReportData({...reportData, reportType: 'service'})}
-                  >
-                    <Text style={[
-                      styles.reportTypeText,
-                      reportData.reportType === 'service' && styles.reportTypeTextActive
-                    ]}>Phản ánh dịch vụ</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
-                      styles.reportTypeOption,
-                      reportData.reportType === 'other' && styles.reportTypeOptionActive
-                    ]}
-                    onPress={() => setReportData({...reportData, reportType: 'other'})}
-                  >
-                    <Text style={[
-                      styles.reportTypeText,
-                      reportData.reportType === 'other' && styles.reportTypeTextActive
-                    ]}>Khác</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-              
-              <View style={styles.formGroup}>
-                <Text style={styles.label}>Nội dung phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
-                <TextInput
-                  style={[styles.input, styles.textArea]}
-                  value={reportData.content}
-                  onChangeText={(text) => setReportData({...reportData, content: text})}
-                  placeholder="Nhập nội dung phản ánh chi tiết..."
-                  multiline={true}
-                  numberOfLines={5}
-                />
-              </View>
-              
-              <TouchableOpacity
-                style={[styles.submitButton, {backgroundColor: '#e74c3c'}]}
-                onPress={handleReportSubmit}>
-                <Text style={styles.submitButtonText}>Gửi phản ánh</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
       
       {/* Reviews List Modal */}
       <Modal

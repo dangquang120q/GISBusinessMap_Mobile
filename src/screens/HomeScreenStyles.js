@@ -1005,6 +1005,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 12,
+    width: '100%',
+  },
 });
 
 export default styles; 
