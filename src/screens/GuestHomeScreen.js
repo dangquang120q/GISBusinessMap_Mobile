@@ -1073,7 +1073,18 @@ export default function GuestHomeScreen() {
           {!selectedFacility.facebook && !selectedFacility.website && (
             <Text style={styles.noDataText}>Chưa có liên kết</Text>
           )}
+
         </View>
+        <View style={styles.sectionDivider} />
+
+        {/* Thêm phần Bài đánh giá */}
+        <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Bài đánh giá</Text>
+        {renderReviewsTab()}
+
+        {/* Thêm phần Giới thiệu */}
+        <View style={styles.sectionDivider} />
+        <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Giới thiệu</Text>
+        {renderAboutTab()}
         
         {/* <View style={styles.actionButtonsContainer}>
           <TouchableOpacity 
