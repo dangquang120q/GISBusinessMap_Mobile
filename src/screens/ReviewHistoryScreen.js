@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -15,6 +16,7 @@ const ReviewHistoryScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
+  const [filter, setFilter] = useState('all'); // 'all', 'approved', 'pending'
 
   // Sample data - replace with your actual API call
   const sampleReviews = [
@@ -25,6 +27,7 @@ const ReviewHistoryScreen = () => {
       rating: 4,
       content: 'Đồ ăn ngon, phục vụ tốt.',
       date: '2023-12-05',
+      status: 'approved',
     },
     {
       id: '2',
@@ -33,6 +36,7 @@ const ReviewHistoryScreen = () => {
       rating: 5,
       content: 'Phòng sạch sẽ, nhân viên thân thiện.',
       date: '2023-11-28',
+      status: 'pending',
     },
     {
       id: '3',
@@ -41,6 +45,7 @@ const ReviewHistoryScreen = () => {
       rating: 3,
       content: 'Sản phẩm đa dạng, giá khá cao.',
       date: '2023-11-15',
+      status: 'approved',
     },
   ];
 
@@ -67,6 +72,11 @@ const ReviewHistoryScreen = () => {
     fetchReviews();
   }, []);
 
+  const filteredReviews = reviews.filter(review => {
+    if (filter === 'all') return true;
+    return review.status === filter;
+  });
+
   const renderStars = (rating) => {
     return (
       <View style={styles.starContainer}>
@@ -82,6 +92,41 @@ const ReviewHistoryScreen = () => {
     );
   };
 
+  const renderFilterButtons = () => (
+    <View style={styles.filterContainer}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterContent}
+      >
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'all' && styles.filterButtonTextActive]}>
+            Tất cả
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'approved' && styles.filterButtonActive]}
+          onPress={() => setFilter('approved')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'approved' && styles.filterButtonTextActive]}>
+            Đã duyệt
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'pending' && styles.filterButtonActive]}
+          onPress={() => setFilter('pending')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'pending' && styles.filterButtonTextActive]}>
+            Chờ duyệt
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.reviewItem}
@@ -91,10 +136,20 @@ const ReviewHistoryScreen = () => {
     >
       <View style={styles.reviewHeader}>
         <Text style={styles.facilityName}>{item.facilityName}</Text>
-        <Text style={styles.date}>{item.date}</Text>
+        <View style={styles.headerRight}>
+          <View style={[
+            styles.statusBadge,
+            item.status === 'approved' ? styles.statusApproved : styles.statusPending
+          ]}>
+            <Text style={styles.statusText}>
+              {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+            </Text>
+          </View>
+        </View>
       </View>
       <Text style={styles.facilityType}>{item.facilityType}</Text>
-      {renderStars(item.rating)}
+      <Text style={styles.date}>{item.date}</Text>
+      <Text>{renderStars(item.rating)}</Text>
       <Text style={styles.content}>{item.content}</Text>
     </TouchableOpacity>
   );
@@ -111,13 +166,15 @@ const ReviewHistoryScreen = () => {
         <Text style={styles.headerTitle}>Lịch sử đánh giá</Text>
       </View>
 
+      {renderFilterButtons()}
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#085924" />
         </View>
-      ) : reviews.length > 0 ? (
+      ) : filteredReviews.length > 0 ? (
         <FlatList
-          data={reviews}
+          data={filteredReviews}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
@@ -125,7 +182,7 @@ const ReviewHistoryScreen = () => {
       ) : (
         <View style={styles.emptyContainer}>
           <Ionicons name="document-text-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>Bạn chưa có đánh giá nào</Text>
+          <Text style={styles.emptyText}>Không có đánh giá nào</Text>
         </View>
       )}
     </SafeAreaView>
@@ -156,6 +213,37 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  filterContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    height: 48,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    height: 32,
+    justifyContent: 'center',
+  },
+  filterButtonActive: {
+    backgroundColor: '#085924',
+  },
+  filterButtonText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+    fontWeight: '500',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -178,13 +266,18 @@ const styles = StyleSheet.create({
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 4,
+  },
+  headerRight: {
+    alignItems: 'flex-end',
   },
   facilityName: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
+    flex: 1,
+    marginRight: 8,
   },
   date: {
     fontSize: 12,
@@ -193,7 +286,7 @@ const styles = StyleSheet.create({
   facilityType: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   starContainer: {
     flexDirection: 'row',
@@ -214,6 +307,23 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 16,
     textAlign: 'center',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  statusApproved: {
+    backgroundColor: '#e8f5e9',
+  },
+  statusPending: {
+    backgroundColor: '#fff3e0',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#333',
   },
 });
 

@@ -127,7 +127,7 @@ const TabNavigator = () => {
               tabBarBadge: 3,
               tabBarBadgeStyle: {backgroundColor: 'yellow'},
               tabBarIcon: ({color, size}) => (
-                <Ionicons name="pencil-outline" color={color} size={size} />
+                <Ionicons name="time-outline" color={color} size={size} />
               ),
             }}
           />

@@ -51,6 +51,7 @@ export default function GuestHomeScreen() {
   // States for modals
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [isReviewListVisible, setIsReviewListVisible] = useState(false);
+  const [isMapTypeModalVisible, setIsMapTypeModalVisible] = useState(false);
   
   // States for filters
   const [filters, setFilters] = useState({
@@ -76,7 +77,7 @@ export default function GuestHomeScreen() {
   const [activeTab, setActiveTab] = useState('overview');
   const bottomSheetRef = useRef(null);
   const minHeight = 200;
-  const maxHeight = Dimensions.get('window').height * 0.8;
+  const maxHeight = Dimensions.get('window').height * 0.9;
   const bottomSheetAnim = useRef(new Animated.Value(minHeight)).current;
   
   // Simplify the panResponder to just detect drag direction
@@ -133,6 +134,9 @@ export default function GuestHomeScreen() {
     // Đặt lại animated value khi bottomSheetHeight thay đổi
     bottomSheetAnim.setValue(minHeight);
   }, []);
+
+  // States for map type
+  const [mapType, setMapType] = useState('default');
 
   // HTML for the leaflet map
   const leafletHtml = `
@@ -248,6 +252,66 @@ export default function GuestHomeScreen() {
           background-color: #f4f4f4;
           transform: scale(0.95);
         }
+        
+        .map-type-control {
+          position: absolute;
+          right: 15px;
+          top: 80px;
+          background-color: white;
+          border-radius: 4px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          z-index: 1000;
+          overflow: hidden;
+          display: none; /* Hide by default */
+        }
+        
+        .map-type-button {
+          padding: 8px 12px;
+          font-family: Arial, sans-serif;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .map-type-button:last-child {
+          border-bottom: none;
+        }
+        
+        .map-type-button:hover {
+          background-color: #f4f4f4;
+        }
+        
+        .map-type-button.active {
+          background-color: #e9f5eb;
+          color: #085924;
+          font-weight: bold;
+        }
+        
+        .map-type-icon {
+          margin-right: 8px;
+          width: 16px;
+          height: 16px;
+          background-size: contain;
+          background-repeat: no-repeat;
+        }
+        
+        .map-type-toggle {
+          position: absolute;
+          right: 15px;
+          bottom: 180px;
+          background-color: white;
+          width: 40px;
+          height: 40px;
+          border-radius: 4px;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+          z-index: 1000;
+        }
       </style>
     </head>
     <body>
@@ -256,16 +320,48 @@ export default function GuestHomeScreen() {
         <div class="zoom-button" id="zoom-in">+</div>
         <div class="zoom-button" id="zoom-out">-</div>
       </div>
+      
+      <div class="map-type-toggle" id="map-type-toggle">
+        <i class="fas fa-layer-group"></i>
+      </div>
+      
+      <div class="map-type-control" id="map-type-control">
+        <div class="map-type-button active" id="map-type-default">
+          <i class="fas fa-map"></i> Mặc định
+        </div>
+        <div class="map-type-button" id="map-type-satellite">
+          <i class="fas fa-satellite"></i> Vệ tinh
+        </div>
+        <div class="map-type-button" id="map-type-terrain">
+          <i class="fas fa-mountain"></i> Địa hình
+        </div>
+      </div>
+      
       <script>
         // Initialize map
         const map = L.map('map', {
           zoomControl: false // Disable default zoom controls
         }).setView([${initialCenter.latitude}, ${initialCenter.longitude}], ${initialCenter.zoom});
         
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Define tile layers
+        const defaultLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: ''
-        }).addTo(map);
+        });
+        
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: ''
+        });
+        
+        const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          attribution: ''
+        });
+        
+        // Add default layer to map
+        defaultLayer.addTo(map);
+        
+        // Variables to track current layer
+        let currentLayer = defaultLayer;
+        let currentLayerId = 'map-type-default';
         
         // Create custom icons based on zoom level
         const createIcon = (type, zoom) => {
@@ -315,6 +411,68 @@ export default function GuestHomeScreen() {
             popupAnchor: [0, -((iconSize + 8)/2)]
           });
         };
+        
+        // Function to switch map type
+        function switchMapType(layerId) {
+          // Remove active class from all buttons
+          document.querySelectorAll('.map-type-button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          
+          // Add active class to selected button
+          document.getElementById(layerId).classList.add('active');
+          
+          // Remove current layer
+          map.removeLayer(currentLayer);
+          
+          // Add selected layer
+          switch(layerId) {
+            case 'map-type-satellite':
+              currentLayer = satelliteLayer;
+              break;
+            case 'map-type-terrain':
+              currentLayer = terrainLayer;
+              break;
+            default:
+              currentLayer = defaultLayer;
+          }
+          
+          currentLayer.addTo(map);
+          currentLayerId = layerId;
+          
+          // Re-add markers if available
+          if (window.markersData && window.markersData.length > 0) {
+            updateMarkers(window.markersData);
+          }
+        }
+        
+        // Add event listeners to map type buttons
+        document.getElementById('map-type-default').addEventListener('click', () => {
+          switchMapType('map-type-default');
+        });
+        
+        document.getElementById('map-type-satellite').addEventListener('click', () => {
+          switchMapType('map-type-satellite');
+        });
+        
+        document.getElementById('map-type-terrain').addEventListener('click', () => {
+          switchMapType('map-type-terrain');
+        });
+        
+        // Toggle map type control visibility
+        document.getElementById('map-type-toggle').addEventListener('click', () => {
+          const mapTypeControl = document.getElementById('map-type-control');
+          if (mapTypeControl.style.display === 'block') {
+            mapTypeControl.style.display = 'none';
+          } else {
+            mapTypeControl.style.display = 'block';
+          }
+        });
+        
+        // Hide map type control when clicking elsewhere on the map
+        map.addEventListener('click', () => {
+          document.getElementById('map-type-control').style.display = 'none';
+        });
         
         // Function to create marker with label
         const createMarkerWithLabel = (marker, zoom) => {
@@ -390,25 +548,18 @@ export default function GuestHomeScreen() {
         
         // Function to add markers (called from React Native)
         window.addMarkers = function(markersData) {
-          const markers = JSON.parse(markersData);
-          window.markersData = markers; // Save for zoom updates
-          updateMarkers(markers);
+          try {
+            const markers = JSON.parse(markersData);
+            window.markersData = markers; // Save for zoom updates
+            updateMarkers(markers);
+          } catch (error) {
+            console.error('Error adding markers:', error);
+          }
         };
         
-        // Function to review facility
-        window.reviewFacility = function(facilityId) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'reviewFacility',
-            facilityId: facilityId
-          }));
-        };
-        
-        // Function to view reviews
-        window.viewReviews = function(facilityId) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'viewReviews',
-            facilityId: facilityId
-          }));
+        // Function to change map type (called from React Native)
+        window.changeMapType = function(mapType) {
+          switchMapType('map-type-' + mapType);
         };
         
         // Function to focus on a specific facility
@@ -518,14 +669,8 @@ export default function GuestHomeScreen() {
     if (!isMountedRef.current) return;
     
     if (mapLoaded && facilities.length > 0) {
-      // Use a small timeout to ensure WebView is ready
-      const timeoutId = setTimeout(() => {
-        if (isMountedRef.current) {
-          updateMapMarkers();
-        }
-      }, 100);
-      
-      return () => clearTimeout(timeoutId);
+      // Call updateMapMarkers immediately
+      updateMapMarkers();
     }
   }, [filters, facilities, mapLoaded]);
 
@@ -658,14 +803,12 @@ export default function GuestHomeScreen() {
       switch (data.type) {
         case 'mapLoaded':
           setMapLoaded(true);
-          // Gọi updateMapMarkers ngay khi bản đồ đã tải xong và có facilities
-          if (facilities.length > 0) {
-            setTimeout(() => {
-              if (isMountedRef.current) {
-                updateMapMarkers();
-              }
-            }, 500);
-          }
+          // Update markers immediately when map is loaded
+          setTimeout(() => {
+            if (isMountedRef.current && facilities.length > 0) {
+              updateMapMarkers();
+            }
+          }, 300);
           break;
           
         case 'mapClick':
@@ -847,7 +990,15 @@ export default function GuestHomeScreen() {
           <Ionicons name="location-outline" size={20} color="#085924" style={styles.infoIcon} />
           <Text style={styles.infoText}>{selectedFacility.address || 'Chưa có thông tin'}</Text>
         </View>
-        
+        {selectedFacility.latitude && (
+          <>
+            <Text style={styles.infoTitle}>Vị trí</Text>
+            <View style={styles.infoRow}>
+              <Ionicons name="locate-outline" size={20} color="#085924" style={styles.infoIcon} />
+              <Text style={styles.infoText}>[{selectedFacility.latitude},{selectedFacility.longitude}]</Text>
+            </View>
+          </>
+        )}
         <Text style={styles.infoTitle}>Loại hình</Text>
         <View style={styles.infoRow}>
           <Ionicons 
@@ -877,16 +1028,6 @@ export default function GuestHomeScreen() {
             <Ionicons name="mail-outline" size={20} color="#085924" style={styles.infoIcon} />
             <Text style={styles.infoText}>{selectedFacility.email}</Text>
           </View>
-        )}
-        
-        {selectedFacility.openHours && (
-          <>
-            <Text style={styles.infoTitle}>Giờ mở cửa</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={20} color="#085924" style={styles.infoIcon} />
-              <Text style={styles.infoText}>{selectedFacility.openHours}</Text>
-            </View>
-          </>
         )}
         
         <Text style={styles.infoTitle}>Liên kết</Text>
@@ -979,7 +1120,7 @@ export default function GuestHomeScreen() {
             <View style={styles.ratingStarsSmall}>
               {renderStars(4.2)}
             </View>
-            <Text style={styles.ratingCountText}>dựa trên 28 đánh giá</Text>
+            <Text style={styles.ratingCountText}>(28)</Text>
           </View>
           
           <View style={styles.ratingBarsContainer}>
@@ -1017,7 +1158,7 @@ export default function GuestHomeScreen() {
         </View>
         
         <View style={styles.reviewsHeaderContainer}>
-          <Text style={styles.reviewsHeaderText}>Đánh giá gần đây</Text>
+          <Text style={styles.reviewsHeaderText}>Đánh giá</Text>
           <TouchableOpacity
             onPress={() => {
               Alert.alert(
@@ -1040,7 +1181,10 @@ export default function GuestHomeScreen() {
               );
             }}
           >
-            <Text style={styles.writeReviewLink}>Viết đánh giá</Text>
+            <Text style={styles.writeReviewLink}>
+              <Ionicons name="create-outline" size={18} color="#085924"/>
+              {'  '}Viết đánh giá
+            </Text>
           </TouchableOpacity>
         </View>
         
@@ -1057,13 +1201,25 @@ export default function GuestHomeScreen() {
                       </Text>
                     </View>
                     <View>
-                      <Text style={styles.reviewerName}>{item.reviewerName}</Text>
-                      <Text style={styles.reviewDate}>{item.date}</Text>
+                        <Text style={styles.reviewerName}>{item.reviewerName}</Text>
+                        <View style={styles.reviewMetaContainer}>
+                          <View style={styles.ratingRow}>
+                            {renderStars(item.rating)}
+                          </View>
+                          <Text style={styles.reviewDate}>{item.date}</Text>
+                        </View>
+                      </View>
+                  </View>
+                  <View style={styles.reviewHeaderRight}>
+                      <View style={[
+                        styles.statusBadge,
+                        item.status === 'approved' ? styles.statusApproved : styles.statusPending
+                      ]}>
+                        <Text style={styles.statusText}>
+                          {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={styles.ratingRow}>
-                    {renderStars(item.rating)}
-                  </View>
                 </View>
                 
                 <Text style={styles.reviewTitle}>{item.title}</Text>
@@ -1115,49 +1271,20 @@ export default function GuestHomeScreen() {
         <Text style={styles.aboutDescription}>
           {selectedFacility.description}
         </Text>
-        
-        <Text style={styles.aboutTitle}>Tiện ích</Text>
-        <View style={styles.facilitiesContainer}>
-          <View style={styles.facilityItem}>
-            <Ionicons name="wifi" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Wifi miễn phí</Text>
-          </View>
-          
-          <View style={styles.facilityItem}>
-            <Ionicons name="car" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Bãi đỗ xe</Text>
-          </View>
-          
-          <View style={styles.facilityItem}>
-            <Ionicons name="card" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Thanh toán thẻ</Text>
-          </View>
-          
-          <View style={styles.facilityItem}>
-            <Ionicons name="walk" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Lối đi cho người khuyết tật</Text>
-          </View>
-        </View>
-        
-        <Text style={styles.aboutTitle}>Vị trí</Text>
-        <View style={styles.mapPreviewContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map" size={50} color="#ccc" />
-            <Text style={styles.mapPlaceholderText}>Bản đồ chi tiết</Text>
-          </View>
-        </View>
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, {alignSelf: 'center', marginTop: 20}]}
-          onPress={() => handleLogin()}
-        >
-          <Ionicons name="log-in-outline" size={20} color="#fff" />
-          <Text style={styles.actionButtonText}>Đăng nhập để xem thêm thông tin</Text>
-        </TouchableOpacity>
       </ScrollView>
     );
   };
   
+  const changeMapType = (type) => {
+    if (!webViewRef.current) return;
+    
+    setMapType(type);
+    webViewRef.current.injectJavaScript(`
+      window.changeMapType('${type}');
+      true;
+    `);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}
@@ -1172,13 +1299,103 @@ export default function GuestHomeScreen() {
         geolocationEnabled={true}
       />
       
+      {/* Map Type Floating Button */}
+      <TouchableOpacity
+        style={styles.mapTypeButton}
+        onPress={() => setIsMapTypeModalVisible(true)}
+      >
+        <Ionicons name="layers-outline" size={24} color="#333" />
+      </TouchableOpacity>
+      
+      {/* Map Type Modal */}
+      <Modal
+        visible={isMapTypeModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsMapTypeModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.mapTypeModalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsMapTypeModalVisible(false)}
+        >
+          <View style={styles.mapTypeModalContainer}>
+            <TouchableOpacity
+              style={[
+                styles.mapTypeOption,
+                mapType === 'default' && styles.mapTypeOptionActive
+              ]}
+              onPress={() => {
+                changeMapType('default');
+                setIsMapTypeModalVisible(false);
+              }}
+            >
+              <Ionicons 
+                name="map-outline" 
+                size={24} 
+                color={mapType === 'default' ? "#085924" : "#333"} 
+                style={styles.mapTypeOptionIcon}
+              />
+              <Text style={[
+                styles.mapTypeOptionText,
+                mapType === 'default' && styles.mapTypeOptionTextActive
+              ]}>Mặc định</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.mapTypeOption,
+                mapType === 'satellite' && styles.mapTypeOptionActive
+              ]}
+              onPress={() => {
+                changeMapType('satellite');
+                setIsMapTypeModalVisible(false);
+              }}
+            >
+              <Ionicons 
+                name="globe-outline" 
+                size={24} 
+                color={mapType === 'satellite' ? "#085924" : "#333"} 
+                style={styles.mapTypeOptionIcon}
+              />
+              <Text style={[
+                styles.mapTypeOptionText,
+                mapType === 'satellite' && styles.mapTypeOptionTextActive
+              ]}>Vệ tinh</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.mapTypeOption,
+                mapType === 'terrain' && styles.mapTypeOptionActive
+              ]}
+              onPress={() => {
+                changeMapType('terrain');
+                setIsMapTypeModalVisible(false);
+              }}
+            >
+              <Ionicons 
+                name="trail-sign-outline" 
+                size={24} 
+                color={mapType === 'terrain' ? "#085924" : "#333"} 
+                style={styles.mapTypeOptionIcon}
+              />
+              <Text style={[
+                styles.mapTypeOptionText,
+                mapType === 'terrain' && styles.mapTypeOptionTextActive
+              ]}>Địa hình</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Ionicons name="search" size={20} color="#085924" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm kiếm cơ sở..."
+            placeholder="Tìm kiếm"
             value={searchKeyword}
             onChangeText={setSearchKeyword}
             placeholderTextColor="#888"
@@ -1197,16 +1414,16 @@ export default function GuestHomeScreen() {
           style={styles.filterScrollView}
           contentContainerStyle={styles.filterScrollContent}
         >
-                  <TouchableOpacity
-                    style={[
+          <TouchableOpacity
+            style={[
               styles.filterButton,
               filters.restaurant && styles.filterButtonActive
-                    ]}
+            ]}
             onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
           >
-                    <Ionicons 
+            <Ionicons 
               name="restaurant" 
-                      size={18} 
+              size={18} 
               color={filters.restaurant ? "#fff" : "#666"} 
               style={styles.filterButtonIcon}
             />
@@ -1214,18 +1431,18 @@ export default function GuestHomeScreen() {
               styles.filterButtonText,
               filters.restaurant && styles.filterButtonTextActive
             ]}>Nhà hàng</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
               styles.filterButton,
               filters.hotel && styles.filterButtonActive
-                    ]}
+            ]}
             onPress={() => handleFilterChange('hotel', !filters.hotel)}
           >
-                    <Ionicons 
+            <Ionicons 
               name="bed" 
-                      size={18} 
+              size={18} 
               color={filters.hotel ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -1233,18 +1450,18 @@ export default function GuestHomeScreen() {
               styles.filterButtonText,
               filters.hotel && styles.filterButtonTextActive
             ]}>Khách sạn</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={[
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={[
               styles.filterButton,
               filters.shop && styles.filterButtonActive
-                    ]}
+            ]}
             onPress={() => handleFilterChange('shop', !filters.shop)}
           >
-                    <Ionicons 
-                      name="cart" 
-                      size={18} 
+            <Ionicons 
+              name="cart" 
+              size={18} 
               color={filters.shop ? "#fff" : "#666"}
               style={styles.filterButtonIcon}
             />
@@ -1252,7 +1469,7 @@ export default function GuestHomeScreen() {
               styles.filterButtonText,
               filters.shop && styles.filterButtonTextActive
             ]}>Cửa hàng</Text>
-                  </TouchableOpacity>
+          </TouchableOpacity>
         </ScrollView>
         
         {/* Search Results */}
@@ -1273,20 +1490,20 @@ export default function GuestHomeScreen() {
                       } 
                       size={16} 
                       color="#fff" 
-                />
-              </View>
+                    />
+                  </View>
                   <View style={styles.searchResultTextContainer}>
                     <Text style={styles.searchResultName}>{item.name}</Text>
                     <Text style={styles.searchResultAddress}>{item.address}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color="#085924" />
-              </TouchableOpacity>
+                </TouchableOpacity>
               )}
             />
           </View>
         )}
-        </View>
-        
+      </View>
+      
       {/* Login Notice Banner */}
       <View style={styles.loginBanner}>
         <Text style={styles.loginText}>Đăng nhập để trải nghiệm đầy đủ tính năng</Text>

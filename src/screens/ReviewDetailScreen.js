@@ -35,6 +35,7 @@ const ReviewDetailScreen = () => {
         'https://via.placeholder.com/500x300',
       ],
       reviewerName: 'Nguyễn Văn A',
+      status: 'approved',
     },
     {
       id: '2',
@@ -49,6 +50,7 @@ const ReviewDetailScreen = () => {
         'https://via.placeholder.com/500x300',
       ],
       reviewerName: 'Trần Thị B',
+      status: 'pending',
     },
     {
       id: '3',
@@ -62,6 +64,7 @@ const ReviewDetailScreen = () => {
         'https://via.placeholder.com/500x300',
       ],
       reviewerName: 'Phạm Văn C',
+      status: 'rejected',
     },
   ];
 
@@ -174,8 +177,27 @@ const ReviewDetailScreen = () => {
           </View>
           
           <View style={styles.dateContainer}>
-            <Ionicons name="calendar-outline" size={16} color="#666" />
+            <Text style={styles.reviewerLabel}>Ngày đánh giá:</Text>
             <Text style={styles.date}>{review.date}</Text>
+          </View>
+
+          <View style={styles.statusContainer}>
+            <View style={[
+              styles.statusBadge,
+              review.status === 'approved' && styles.approvedBadge,
+              review.status === 'pending' && styles.pendingBadge,
+              review.status === 'rejected' && styles.rejectedBadge,
+            ]}>
+              <Text style={[
+                styles.statusText,
+                review.status === 'approved' && styles.approvedText,
+                review.status === 'pending' && styles.pendingText,
+                review.status === 'rejected' && styles.rejectedText,
+              ]}>
+                {review.status === 'approved' ? 'Đã duyệt' :
+                 review.status === 'pending' ? 'Chờ duyệt' : 'Từ chối'}
+              </Text>
+            </View>
           </View>
           
           {renderStars(review.rating)}
@@ -205,12 +227,17 @@ const ReviewDetailScreen = () => {
         )}
         
         <View style={styles.actionsSection}>
-          <TouchableOpacity style={styles.editButton}>
-            <Ionicons name="create-outline" size={20} color="#fff" />
-            <Text style={styles.editButtonText}>Chỉnh sửa</Text>
-          </TouchableOpacity>
+          {review.status !== 'approved' && (
+            <TouchableOpacity style={styles.editButton}>
+              <Ionicons name="create-outline" size={20} color="#fff" />
+              <Text style={styles.editButtonText}>Chỉnh sửa</Text>
+            </TouchableOpacity>
+          )}
           
-          <TouchableOpacity style={styles.deleteButton}>
+          <TouchableOpacity style={[
+            styles.deleteButton,
+            review.status === 'approved' && styles.fullWidthButton
+          ]}>
             <Ionicons name="trash-outline" size={20} color="#fff" />
             <Text style={styles.deleteButtonText}>Xóa</Text>
           </TouchableOpacity>
@@ -412,6 +439,41 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  statusContainer: {
+    marginBottom: 16,
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  approvedBadge: {
+    backgroundColor: '#e8f5e9',
+  },
+  pendingBadge: {
+    backgroundColor: '#fff3e0',
+  },
+  rejectedBadge: {
+    backgroundColor: '#ffebee',
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  approvedText: {
+    color: '#2e7d32',
+  },
+  pendingText: {
+    color: '#f57c00',
+  },
+  rejectedText: {
+    color: '#c62828',
+  },
+  fullWidthButton: {
+    flex: 1,
+    marginLeft: 0,
   },
 });
 

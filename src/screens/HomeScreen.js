@@ -14,6 +14,7 @@ import {
   Alert,
   PanResponder,
   Animated,
+  Image,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -52,6 +53,7 @@ export default function HomeScreen() {
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [isReviewListVisible, setIsReviewListVisible] = useState(false);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+  const [isMapTypeModalVisible, setIsMapTypeModalVisible] = useState(false);
   
   // States for filters
   const [filters, setFilters] = useState({
@@ -83,9 +85,18 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState('overview');
   const bottomSheetRef = useRef(null);
   const minHeight = 200;
-  const maxHeight = Dimensions.get('window').height * 0.8;
+  const maxHeight = Dimensions.get('window').height * 0.9;
   const bottomSheetAnim = useRef(new Animated.Value(minHeight)).current;
   const isMountedRef = useRef(true);
+  
+  // Add new states for menu and edit modal
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedReview, setSelectedReview] = useState(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isEditReviewModalVisible, setIsEditReviewModalVisible] = useState(false);
+  
+  // Add new state for review tab
+  const [reviewTab, setReviewTab] = useState('all'); // 'all' or 'my'
   
   // Cleanup khi component unmount
   useEffect(() => {
@@ -257,6 +268,66 @@ export default function HomeScreen() {
           background-color: #f4f4f4;
           transform: scale(0.95);
         }
+
+        .map-type-control {
+          position: absolute;
+          right: 15px;
+          top: 80px;
+          background-color: white;
+          border-radius: 4px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          z-index: 1000;
+          overflow: hidden;
+          display: none; /* Hide by default */
+        }
+        
+        .map-type-button {
+          padding: 8px 12px;
+          font-family: Arial, sans-serif;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          border-bottom: 1px solid #eee;
+        }
+        
+        .map-type-button:last-child {
+          border-bottom: none;
+        }
+        
+        .map-type-button:hover {
+          background-color: #f4f4f4;
+        }
+        
+        .map-type-button.active {
+          background-color: #e9f5eb;
+          color: #085924;
+          font-weight: bold;
+        }
+        
+        .map-type-icon {
+          margin-right: 8px;
+          width: 16px;
+          height: 16px;
+          background-size: contain;
+          background-repeat: no-repeat;
+        }
+        
+        .map-type-toggle {
+          position: absolute;
+          right: 15px;
+          bottom: 140px;
+          background-color: white;
+          width: 40px;
+          height: 40px;
+          border-radius: 4px;
+          display: none;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          cursor: pointer;
+          z-index: 1000;
+        }
       </style>
     </head>
     <body>
@@ -265,16 +336,105 @@ export default function HomeScreen() {
         <div class="zoom-button" id="zoom-in">+</div>
         <div class="zoom-button" id="zoom-out">-</div>
       </div>
+      
+      <div class="map-type-toggle" id="map-type-toggle">
+        <i class="fas fa-layer-group"></i>
+      </div>
+      
+      <div class="map-type-control" id="map-type-control">
+        <div class="map-type-button active" id="map-type-default">
+          <i class="fas fa-map"></i> Mặc định
+        </div>
+        <div class="map-type-button" id="map-type-satellite">
+          <i class="fas fa-satellite"></i> Vệ tinh
+        </div>
+        <div class="map-type-button" id="map-type-terrain">
+          <i class="fas fa-mountain"></i> Địa hình
+        </div>
+      </div>
+      
       <script>
         // Initialize map
         const map = L.map('map', {
           zoomControl: false // Disable default zoom controls
         }).setView([${initialCenter.latitude}, ${initialCenter.longitude}], ${initialCenter.zoom});
         
-        // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Define tile layers
+        const defaultLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
           attribution: ''
-        }).addTo(map);
+        });
+        
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: ''
+        });
+        
+        const terrainLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          attribution: ''
+        });
+        
+        // Add default layer to map
+        defaultLayer.addTo(map);
+        
+        // Variables to track current layer
+        let currentLayer = defaultLayer;
+        let currentLayerId = 'map-type-default';
+        
+        // Function to switch map type
+        function switchMapType(layerId) {
+          // Remove active class from all buttons
+          document.querySelectorAll('.map-type-button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          
+          // Add active class to selected button
+          document.getElementById(layerId).classList.add('active');
+          
+          // Remove current layer
+          map.removeLayer(currentLayer);
+          
+          // Add selected layer
+          switch(layerId) {
+            case 'map-type-satellite':
+              currentLayer = satelliteLayer;
+              break;
+            case 'map-type-terrain':
+              currentLayer = terrainLayer;
+              break;
+            default:
+              currentLayer = defaultLayer;
+          }
+          
+          currentLayer.addTo(map);
+          currentLayerId = layerId;
+        }
+        
+        // Add event listeners to map type buttons
+        document.getElementById('map-type-default').addEventListener('click', () => {
+          switchMapType('map-type-default');
+        });
+        
+        document.getElementById('map-type-satellite').addEventListener('click', () => {
+          switchMapType('map-type-satellite');
+        });
+        
+        document.getElementById('map-type-terrain').addEventListener('click', () => {
+          switchMapType('map-type-terrain');
+        });
+        
+        // Toggle map type control visibility
+        document.getElementById('map-type-toggle').addEventListener('click', () => {
+          const mapTypeControl = document.getElementById('map-type-control');
+          if (mapTypeControl.style.display === 'block') {
+            mapTypeControl.style.display = 'none';
+          } else {
+            mapTypeControl.style.display = 'block';
+          }
+        });
+        
+        // Hide map type control when clicking elsewhere on the map
+        map.addEventListener('click', () => {
+          document.getElementById('map-type-control').style.display = 'none';
+        });
         
         // Create custom icons based on zoom level
         const createIcon = (type, zoom) => {
@@ -378,6 +538,11 @@ export default function HomeScreen() {
           const markers = JSON.parse(markersData);
           window.markersData = markers; // Save for zoom updates
           updateMarkers(markers);
+        };
+        
+        // Function to change map type (called from React Native)
+        window.changeMapType = function(mapType) {
+          switchMapType('map-type-' + mapType);
         };
         
         // Function to review facility
@@ -633,7 +798,19 @@ export default function HomeScreen() {
           content: 'Dịch vụ rất tuyệt vời! Nhân viên phục vụ chuyên nghiệp, không gian sạch sẽ và thoáng mát. Tôi sẽ quay lại vào lần sau. Đồ ăn ngon, giá cả phải chăng. Đặc biệt là món đặc sản địa phương rất đáng để thử.',
           date: '15/08/2023',
           likes: 12,
-          replies: 3
+          replies: 3,
+          status: 'pending', // 'approved' or 'pending'
+          media: [
+            {
+              type: 'image',
+              url: 'https://example.com/image1.jpg'
+            },
+            {
+              type: 'video',
+              url: 'https://example.com/video1.mp4',
+              thumbnail: 'https://example.com/thumbnail1.jpg'
+            }
+          ]
         },
         {
           id: 2,
@@ -643,7 +820,14 @@ export default function HomeScreen() {
           content: 'Dịch vụ tốt, giá cả phải chăng. Tuy nhiên, thời gian chờ đợi hơi lâu vào giờ cao điểm. Nhân viên thân thiện nhưng đôi khi phục vụ chậm. Không gian thoáng đãng, sạch sẽ. Sẽ quay lại nếu có cơ hội.',
           date: '20/07/2023',
           likes: 5,
-          replies: 1
+          replies: 1,
+          status: 'pending',
+          media: [
+            {
+              type: 'image',
+              url: 'https://example.com/image2.jpg'
+            }
+          ]
         },
         {
           id: 3,
@@ -653,7 +837,9 @@ export default function HomeScreen() {
           content: 'Chất lượng dịch vụ ở mức trung bình. Cần cải thiện thêm về thái độ phục vụ của một số nhân viên. Đồ ăn ngon nhưng phần hơi nhỏ so với giá tiền. Vị trí thuận tiện, dễ tìm.',
           date: '05/06/2023',
           likes: 2,
-          replies: 0
+          replies: 0,
+          status: 'approved',
+          media: []
         }
       ];
       setReviews(mockReviews);
@@ -769,7 +955,15 @@ export default function HomeScreen() {
           <Ionicons name="location-outline" size={20} color="#085924" style={styles.infoIcon} />
           <Text style={styles.infoText}>{selectedFacility.address || 'Chưa có thông tin'}</Text>
         </View>
-        
+        {selectedFacility.latitude && (
+          <>
+            <Text style={styles.infoTitle}>Vị trí</Text>
+            <View style={styles.infoRow}>
+              <Ionicons name="locate-outline" size={20} color="#085924" style={styles.infoIcon} />
+              <Text style={styles.infoText}>[{selectedFacility.latitude},{selectedFacility.longitude}]</Text>
+            </View>
+          </>
+        )}
         <Text style={styles.infoTitle}>Loại hình</Text>
         <View style={styles.infoRow}>
           <Ionicons 
@@ -799,16 +993,6 @@ export default function HomeScreen() {
             <Ionicons name="mail-outline" size={20} color="#085924" style={styles.infoIcon} />
             <Text style={styles.infoText}>{selectedFacility.email}</Text>
           </View>
-        )}
-        
-        {selectedFacility.openHours && (
-          <>
-            <Text style={styles.infoTitle}>Giờ mở cửa</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="time-outline" size={20} color="#085924" style={styles.infoIcon} />
-              <Text style={styles.infoText}>{selectedFacility.openHours}</Text>
-            </View>
-          </>
         )}
         
         <Text style={styles.infoTitle}>Liên kết</Text>
@@ -877,20 +1061,85 @@ export default function HomeScreen() {
     );
   };
 
+  // Add function to handle menu press
+  const handleMenuPress = (event, review) => {
+    event.stopPropagation();
+    setSelectedReview(review);
+    
+    if (menuButtonRef.current) {
+      menuButtonRef.current.measure((x, y, width, height, pageX, pageY) => {
+        setMenuPosition({
+          x: pageX - 115,
+          y: pageY + height - 30
+        });
+        setMenuVisible(true);
+      });
+    }
+  };
+
+  // Add function to handle edit review
+  const handleEditReview = (review) => {
+    setMenuVisible(false);
+    setNewReview({
+      reviewerName: review.reviewerName,
+      rating: review.rating,
+      content: review.content,
+      title: review.title
+    });
+    setIsEditReviewModalVisible(true);
+  };
+
+  // Add function to handle delete review
+  const handleDeleteReview = (review) => {
+    setMenuVisible(false);
+    Alert.alert(
+      'Xác nhận xóa',
+      'Bạn có chắc chắn muốn xóa bài đánh giá này?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel'
+        },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () => {
+            // Handle delete
+            console.log('Delete review:', review.id);
+          }
+        }
+      ]
+    );
+  };
+
+  // Add function to check if user has reviews
+  const hasUserReviews = () => {
+    return reviews.some(review => review.reviewerName === 'Nguyễn Văn A');
+  };
+
   const renderReviewsTab = () => {
+    const isUserReview = (reviewerName) => {
+      return reviewerName === 'Nguyễn Văn A';
+    };
+
+    // Separate user reviews and other reviews
+    const userReviews = reviews.filter(review => isUserReview(review.reviewerName));
+    const otherReviews = reviews.filter(review => !isUserReview(review.reviewerName));
+
     return (
       <ScrollView 
         style={styles.tabContent} 
         contentContainerStyle={{paddingBottom: 30}}
         nestedScrollEnabled={true}
       >
+        {/* Rating Overview */}
         <View style={styles.ratingOverview}>
           <View style={styles.ratingScoreContainer}>
             <Text style={styles.ratingScoreText}>4.2</Text>
             <View style={styles.ratingStarsSmall}>
               {renderStars(4.2)}
             </View>
-            <Text style={styles.ratingCountText}>dựa trên 28 đánh giá</Text>
+            <Text style={styles.ratingCountText}>(28)</Text>
           </View>
           
           <View style={styles.ratingBarsContainer}>
@@ -926,20 +1175,15 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-        
-        <View style={styles.reviewsHeaderContainer}>
-          <Text style={styles.reviewsHeaderText}>Đánh giá gần đây</Text>
-          <TouchableOpacity
-            onPress={() => setIsReviewModalVisible(true)}
-          >
-            <Text style={styles.writeReviewLink}>Viết đánh giá</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {reviews.length > 0 ? (
-          // Use View to render reviews manually to avoid FlatList nesting in ScrollView
-          <View>
-            {reviews.map(item => (
+
+        {/* User's Reviews Section */}
+        {userReviews.length > 0 && (
+          <View style={styles.reviewsSection}>
+            <View style={styles.reviewsHeaderContainer}>
+              <Text style={styles.reviewsHeaderText}>Đánh giá của tôi</Text>
+            </View>
+            
+            {userReviews.map(item => (
               <View key={item.id.toString()} style={styles.reviewItem}>
                 <View style={styles.reviewHeader}>
                   <View style={styles.reviewerInfo}>
@@ -950,47 +1194,179 @@ export default function HomeScreen() {
                     </View>
                     <View>
                       <Text style={styles.reviewerName}>{item.reviewerName}</Text>
-                      <Text style={styles.reviewDate}>{item.date}</Text>
+                      <View style={styles.reviewMetaContainer}>
+                        <View style={styles.ratingRow}>
+                          {renderStars(item.rating)}
+                        </View>
+                        <Text style={styles.reviewDate}>{item.date}</Text>
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.ratingRow}>
-                    {renderStars(item.rating)}
+                  
+                  <View style={styles.reviewHeaderRight}>
+                    <View style={[
+                      styles.statusBadge,
+                      item.status === 'approved' ? styles.statusApproved : styles.statusPending
+                    ]}>
+                      <Text style={styles.statusText}>
+                        {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                      </Text>
+                    </View>
+                    
+                    <TouchableOpacity 
+                      ref={menuButtonRef}
+                      style={styles.menuButton}
+                      onPress={(event) => handleMenuPress(event, item)}
+                    >
+                      <Ionicons name="ellipsis-vertical" size={20} color="#666" />
+                    </TouchableOpacity>
                   </View>
                 </View>
                 
                 {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
                 <Text style={styles.reviewContent}>{item.content}</Text>
                 
-                <View style={styles.reviewActions}>
-                  <TouchableOpacity style={styles.reviewAction}>
-                    <Ionicons name="thumbs-up-outline" size={18} color="#666" />
-                    <Text style={styles.reviewActionText}>{item.likes || 0}</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity style={styles.reviewAction}>
-                    <Ionicons name="chatbubble-outline" size={18} color="#666" />
-                    <Text style={styles.reviewActionText}>{item.replies || 0}</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                {/* Add separator after each item except the last one */}
-                {item.id !== reviews[reviews.length - 1].id && (
-                  <View style={styles.reviewSeparator} />
+                {/* Media Gallery */}
+                {item.media && item.media.length > 0 && (
+                  <View style={styles.mediaGallery}>
+                    {item.media.map((media, index) => (
+                      <TouchableOpacity 
+                        key={index}
+                        style={styles.mediaItem}
+                        onPress={() => {
+                          if (media.type === 'video') {
+                            console.log('Open video:', media.url);
+                          } else {
+                            console.log('Open image:', media.url);
+                          }
+                        }}
+                      >
+                        {media.type === 'video' ? (
+                          <View style={styles.videoThumbnail}>
+                            <Image 
+                              source={{ uri: media.thumbnail }} 
+                              style={styles.mediaThumbnail}
+                            />
+                            <View style={styles.playButton}>
+                              <Ionicons name="play" size={24} color="#fff" />
+                            </View>
+                          </View>
+                        ) : (
+                          <Image 
+                            source={{ uri: media.url }} 
+                            style={styles.mediaThumbnail}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 )}
               </View>
             ))}
           </View>
-        ) : (
-          <View style={styles.emptyReviews}>
-            <Ionicons name="star-outline" size={50} color="#ccc" />
-            <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
-            <TouchableOpacity 
-              style={styles.addReviewButton}
-              onPress={() => setIsReviewModalVisible(true)}>
-              <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
+        )}
+
+        {/* All Reviews Section */}
+        <View style={styles.reviewsSection}>
+          <View style={styles.reviewsHeaderContainer}>
+            <Text style={styles.reviewsHeaderText}>Tất cả đánh giá</Text>
+            <TouchableOpacity
+              onPress={() => setIsReviewModalVisible(true)}
+            >
+              <Text style={styles.writeReviewLink}>
+                <Ionicons name="create-outline" size={18} color="#085924"/>
+                {'  '}Viết đánh giá
+              </Text>
             </TouchableOpacity>
           </View>
-        )}
+          
+          {otherReviews.length > 0 ? (
+            <View>
+              {otherReviews.map(item => (
+                <View key={item.id.toString()} style={styles.reviewItem}>
+                  <View style={styles.reviewHeader}>
+                    <View style={styles.reviewerInfo}>
+                      <View style={styles.avatarContainer}>
+                        <Text style={styles.avatarText}>
+                          {item.reviewerName.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View>
+                        <Text style={styles.reviewerName}>{item.reviewerName}</Text>
+                        <View style={styles.reviewMetaContainer}>
+                          <View style={styles.ratingRow}>
+                            {renderStars(item.rating)}
+                          </View>
+                          <Text style={styles.reviewDate}>{item.date}</Text>
+                        </View>
+                      </View>
+                    </View>
+                    
+                    <View style={styles.reviewHeaderRight}>
+                      <View style={[
+                        styles.statusBadge,
+                        item.status === 'approved' ? styles.statusApproved : styles.statusPending
+                      ]}>
+                        <Text style={styles.statusText}>
+                          {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  
+                  {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
+                  <Text style={styles.reviewContent}>{item.content}</Text>
+                  
+                  {/* Media Gallery */}
+                  {item.media && item.media.length > 0 && (
+                    <View style={styles.mediaGallery}>
+                      {item.media.map((media, index) => (
+                        <TouchableOpacity 
+                          key={index}
+                          style={styles.mediaItem}
+                          onPress={() => {
+                            if (media.type === 'video') {
+                              console.log('Open video:', media.url);
+                            } else {
+                              console.log('Open image:', media.url);
+                            }
+                          }}
+                        >
+                          {media.type === 'video' ? (
+                            <View style={styles.videoThumbnail}>
+                              <Image 
+                                source={{ uri: media.thumbnail }} 
+                                style={styles.mediaThumbnail}
+                              />
+                              <View style={styles.playButton}>
+                                <Ionicons name="play" size={24} color="#fff" />
+                              </View>
+                            </View>
+                          ) : (
+                            <Image 
+                              source={{ uri: media.url }} 
+                              style={styles.mediaThumbnail}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyReviews}>
+              <Ionicons name="star-outline" size={50} color="#ccc" />
+              <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
+              <TouchableOpacity 
+                style={styles.addReviewButton}
+                onPress={() => setIsReviewModalVisible(true)}>
+                <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </ScrollView>
     );
   };
@@ -1004,40 +1380,24 @@ export default function HomeScreen() {
         <Text style={styles.aboutDescription}>
           {selectedFacility.description || "Chưa có thông tin chi tiết về cơ sở này."}
         </Text>
-        
-        <Text style={styles.aboutTitle}>Tiện ích</Text>
-        <View style={styles.facilitiesContainer}>
-          <View style={styles.facilityItem}>
-            <Ionicons name="wifi" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Wifi miễn phí</Text>
-          </View>
-          
-          <View style={styles.facilityItem}>
-            <Ionicons name="car" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Bãi đỗ xe</Text>
-          </View>
-          
-          <View style={styles.facilityItem}>
-            <Ionicons name="card" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Thanh toán thẻ</Text>
-          </View>
-          
-          <View style={styles.facilityItem}>
-            <Ionicons name="walk" size={24} color="#085924" />
-            <Text style={styles.facilityText}>Lối đi cho người khuyết tật</Text>
-          </View>
-        </View>
-        
-        <Text style={styles.aboutTitle}>Vị trí</Text>
-        <View style={styles.mapPreviewContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map" size={50} color="#ccc" />
-            <Text style={styles.mapPlaceholderText}>Bản đồ chi tiết</Text>
-          </View>
-        </View>
       </ScrollView>
     );
   };
+
+  const [mapType, setMapType] = useState('default'); // Add state for map type
+
+  const changeMapType = (type) => {
+    if (!webViewRef.current) return;
+    
+    setMapType(type);
+    webViewRef.current.injectJavaScript(`
+      window.changeMapType('${type}');
+      true;
+    `);
+  };
+
+  const [isMenuModalVisible, setIsMenuModalVisible] = useState(false);
+  const menuButtonRef = useRef(null);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -1053,13 +1413,153 @@ export default function HomeScreen() {
         geolocationEnabled={true}
       />
       
+      {/* Menu Tooltip */}
+      <Modal
+        visible={menuVisible}
+        transparent={true}
+        animationType="none"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity 
+          style={{flex: 1}}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View style={[
+            styles.menuTooltip,
+            {
+              position: 'absolute',
+              left: menuPosition.x,
+              top: menuPosition.y,
+              backgroundColor: '#fff',
+              borderRadius: 8,
+              shadowColor: "#000",
+              shadowOffset: {
+                width: 0,
+                height: 2,
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 3.84,
+              elevation: 5,
+            }
+          ]}>
+            {selectedReview && selectedReview.status === 'pending' && (
+              <TouchableOpacity 
+                style={styles.menuItem}
+                onPress={() => handleEditReview(selectedReview)}
+              >
+                <Ionicons name="create-outline" size={20} color="#333" />
+                <Text style={styles.menuItemText}>Sửa</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleDeleteReview(selectedReview)}
+            >
+              <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+              <Text style={[styles.menuItemText, { color: '#e74c3c' }]}>Xóa</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      
+      {/* Map Type Floating Button */}
+      <TouchableOpacity
+        style={styles.mapTypeButton}
+        onPress={() => setIsMapTypeModalVisible(true)}
+      >
+        <Ionicons name="layers-outline" size={24} color="#333" />
+      </TouchableOpacity>
+      
+      {/* Map Type Modal */}
+      <Modal
+        visible={isMapTypeModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsMapTypeModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.mapTypeModalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsMapTypeModalVisible(false)}
+        >
+          <View style={styles.mapTypeModalContainer}>
+            <TouchableOpacity
+              style={[
+                styles.mapTypeOption,
+                mapType === 'default' && styles.mapTypeOptionActive
+              ]}
+              onPress={() => {
+                changeMapType('default');
+                setIsMapTypeModalVisible(false);
+              }}
+            >
+              <Ionicons 
+                name="map-outline" 
+                size={24} 
+                color={mapType === 'default' ? "#085924" : "#333"} 
+                style={styles.mapTypeOptionIcon}
+              />
+              <Text style={[
+                styles.mapTypeOptionText,
+                mapType === 'default' && styles.mapTypeOptionTextActive
+              ]}>Mặc định</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.mapTypeOption,
+                mapType === 'satellite' && styles.mapTypeOptionActive
+              ]}
+              onPress={() => {
+                changeMapType('satellite');
+                setIsMapTypeModalVisible(false);
+              }}
+            >
+              <Ionicons 
+                name="globe-outline" 
+                size={24} 
+                color={mapType === 'satellite' ? "#085924" : "#333"} 
+                style={styles.mapTypeOptionIcon}
+              />
+              <Text style={[
+                styles.mapTypeOptionText,
+                mapType === 'satellite' && styles.mapTypeOptionTextActive
+              ]}>Vệ tinh</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.mapTypeOption,
+                mapType === 'terrain' && styles.mapTypeOptionActive
+              ]}
+              onPress={() => {
+                changeMapType('terrain');
+                setIsMapTypeModalVisible(false);
+              }}
+            >
+              <Ionicons 
+                name="trail-sign-outline" 
+                size={24} 
+                color={mapType === 'terrain' ? "#085924" : "#333"} 
+                style={styles.mapTypeOptionIcon}
+              />
+              <Text style={[
+                styles.mapTypeOptionText,
+                mapType === 'terrain' && styles.mapTypeOptionTextActive
+              ]}>Địa hình</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Ionicons name="search" size={20} color="#085924" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Tìm kiếm cơ sở..."
+            placeholder="Tìm kiếm"
             value={searchKeyword}
             onChangeText={setSearchKeyword}
             placeholderTextColor="#888"
@@ -1471,15 +1971,84 @@ export default function HomeScreen() {
                             </Text>
                           </View>
                           <View>
-                            <Text style={styles.reviewerName}>{item.reviewerName}</Text>
-                            <Text style={styles.reviewDate}>{item.date}</Text>
+                            <View style={styles.reviewerNameContainer}>
+                              <Text style={styles.reviewerName}>{item.reviewerName}</Text>
+                              <View style={[
+                                styles.statusBadge,
+                                item.status === 'approved' ? styles.statusApproved : styles.statusPending
+                              ]}>
+                                <Text style={styles.statusText}>
+                                  {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                                </Text>
+                              </View>
+                            </View>
+                            <View style={styles.reviewMetaContainer}>
+                              <Text style={styles.reviewDate}>{item.date}</Text>
+                              <View style={styles.ratingRow}>
+                                {renderStars(item.rating)}
+                              </View>
+                            </View>
                           </View>
                         </View>
-                        <View style={styles.ratingRow}>
-                          {renderStars(item.rating)}
-                        </View>
                       </View>
+                      
+                      {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
                       <Text style={styles.reviewContent}>{item.content}</Text>
+                      
+                      {/* Media Gallery */}
+                      {item.media && item.media.length > 0 && (
+                        <View style={styles.mediaGallery}>
+                          {item.media.map((media, index) => (
+                            <TouchableOpacity 
+                              key={index}
+                              style={styles.mediaItem}
+                              onPress={() => {
+                                // Handle media preview
+                                if (media.type === 'video') {
+                                  // Open video player
+                                  console.log('Open video:', media.url);
+                                } else {
+                                  // Open image viewer
+                                  console.log('Open image:', media.url);
+                                }
+                              }}
+                            >
+                              {media.type === 'video' ? (
+                                <View style={styles.videoThumbnail}>
+                                  <Image 
+                                    source={{ uri: media.thumbnail }} 
+                                    style={styles.mediaThumbnail}
+                                  />
+                                  <View style={styles.playButton}>
+                                    <Ionicons name="play" size={24} color="#fff" />
+                                  </View>
+                                </View>
+                              ) : (
+                                <Image 
+                                  source={{ uri: media.url }} 
+                                  style={styles.mediaThumbnail}
+                                />
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      )}
+                      
+                      <View style={styles.reviewActions}>
+                        <TouchableOpacity style={styles.reviewAction}>
+                          <Ionicons name="thumbs-up-outline" size={18} color="#666" />
+                          <Text style={styles.reviewActionText}>{item.likes || 0}</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity style={styles.reviewAction}>
+                          <Ionicons name="chatbubble-outline" size={18} color="#666" />
+                          <Text style={styles.reviewActionText}>{item.replies || 0}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      
+                      {item.id !== reviews[reviews.length - 1].id && (
+                        <View style={styles.reviewSeparator} />
+                      )}
                     </View>
                   )}
                   ItemSeparatorComponent={() => <View style={styles.reviewSeparator} />}
@@ -1500,6 +2069,100 @@ export default function HomeScreen() {
                 </View>
               )}
             </View>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Menu Modal */}
+      <Modal
+        visible={isMenuModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsMenuModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuModalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsMenuModalVisible(false)}
+        >
+          <View style={styles.menuModalContent}>
+            {selectedReview && selectedReview.status === 'pending' && (
+              <TouchableOpacity 
+                style={styles.menuModalItem}
+                onPress={() => handleEditReview(selectedReview)}
+              >
+                <Ionicons name="create-outline" size={20} color="#333" />
+                <Text style={styles.menuModalItemText}>Sửa</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity 
+              style={styles.menuModalItem}
+              onPress={() => handleDeleteReview(selectedReview)}
+            >
+              <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+              <Text style={[styles.menuModalItemText, { color: '#e74c3c' }]}>Xóa</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+      
+      {/* Edit Review Modal */}
+      <Modal
+        visible={isEditReviewModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsEditReviewModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Sửa đánh giá</Text>
+              <TouchableOpacity onPress={() => setIsEditReviewModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Đánh giá (1-5 sao):</Text>
+                <View style={styles.ratingContainer}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => setNewReview({...newReview, rating: star})}>
+                      <Ionicons
+                        name={star <= newReview.rating ? "star" : "star-outline"}
+                        size={30}
+                        color="#FFD700"
+                        style={styles.starIcon}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Nội dung đánh giá:</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={newReview.content}
+                  onChangeText={(text) => setNewReview({...newReview, content: text})}
+                  placeholder="Nhập nội dung đánh giá..."
+                  multiline={true}
+                  numberOfLines={5}
+                />
+              </View>
+              
+              <TouchableOpacity
+                style={styles.submitButton}
+                onPress={() => {
+                  // Handle save edited review
+                  console.log('Save edited review:', newReview);
+                  setIsEditReviewModalVisible(false);
+                }}>
+                <Text style={styles.submitButtonText}>Lưu thay đổi</Text>
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>

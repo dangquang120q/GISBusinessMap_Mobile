@@ -15,21 +15,18 @@ export const AuthProvider = ({children}) => {
             setIsLoading(true);
             // Minh họa login cho mục đích demo
             // Trong ứng dụng thực tế, cần sử dụng API thực
-            
             // Mock API call
-            setTimeout(() => {
-                setUserToken("demo_token");
-                AsyncStorage.setItem('userToken', "demo_token");
-                setIsAuthenticated(true);
-                setIsLoading(false);
-            }, 1000);
+            // setTimeout(() => {
+            //     setUserToken("demo_token");
+            //     AsyncStorage.setItem('userToken', "demo_token");
+            //     setIsAuthenticated(true);
+            //     setIsLoading(false);
+            // }, 1000);
             
             // API call thực tế
-            /*
             axios.post(`${API_URL}/api/TokenAuth/Authenticate`, {userNameOrEmailAddress, password, rememberClient})
             .then(response => {
                 setUserToken(response.data.result.accessToken);
-                console.log(response.data.result.accessToken);
                 AsyncStorage.setItem('userToken', response.data.result.accessToken);
                 setIsAuthenticated(true);
                 setIsLoading(false);
@@ -38,7 +35,6 @@ export const AuthProvider = ({children}) => {
                 console.error('Login failed:', error);
                 setIsLoading(false);
             });
-            */
         } catch (error) {
             console.error('Login failed:', error);
             setIsLoading(false);

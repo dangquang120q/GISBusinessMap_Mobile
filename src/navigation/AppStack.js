@@ -87,7 +87,7 @@ const DrawerScreens = () => {
         options={{
           title: "Lịch sử đánh giá",
           drawerIcon: ({color}) => (
-            <Ionicons name="star-outline" size={22} color={color} />
+            <Ionicons name="time-outline" size={22} color={color} />
           ),
         }}
       />

@@ -6,7 +6,8 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -61,14 +62,8 @@ const NotificationsListScreen = () => {
   ];
 
   useEffect(() => {
-    // Giả lập fetch dữ liệu từ API
     const fetchNotifications = async () => {
       try {
-        // Trong ứng dụng thực tế, dữ liệu sẽ được lấy từ API
-        // const response = await fetch('api/notifications');
-        // const data = await response.json();
-        
-        // Giả lập độ trễ khi tải dữ liệu
         setTimeout(() => {
           setNotifications(mockNotifications);
           setLoading(false);
@@ -100,50 +95,89 @@ const NotificationsListScreen = () => {
     setNotifications([]);
   };
 
-  const getNotificationIcon = (type, read) => {
-    const iconColor = read ? '#999' : '#085924';
-    
-    switch (type) {
-      case 'review':
-        return <Ionicons name="star" size={24} color={iconColor} />;
-      case 'feedback':
-        return <Ionicons name="chatbubble" size={24} color={iconColor} />;
-      case 'system':
-        return <Ionicons name="information-circle" size={24} color={iconColor} />;
-      case 'location':
-        return <Ionicons name="location" size={24} color={iconColor} />;
-      case 'confirmation':
-        return <Ionicons name="checkmark-circle" size={24} color={iconColor} />;
-      default:
-        return <Ionicons name="notifications" size={24} color={iconColor} />;
-    }
-  };
+  const NotificationItem = ({ item }) => {
+    const pan = new Animated.ValueXY();
+    const deleteThreshold = -80;
 
-  const renderNotificationItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.notificationItem, item.read ? styles.readItem : styles.unreadItem]}
-      onPress={() => markAsRead(item.id)}
-    >
-      <View style={styles.notificationLeft}>
-        <View style={styles.iconContainer}>
-          {getNotificationIcon(item.type, item.read)}
-        </View>
-        <View style={styles.notificationContent}>
-          <Text style={[styles.notificationTitle, !item.read && styles.boldText]}>
-            {item.title}
-          </Text>
-          <Text style={styles.notificationDescription}>{item.description}</Text>
-          <Text style={styles.notificationTime}>{item.time}</Text>
-        </View>
+    const panResponder = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        return Math.abs(gesture.dx) > 5;
+      },
+      onPanResponderGrant: () => {
+        pan.setOffset({
+          x: pan.x._value,
+          y: pan.y._value
+        });
+      },
+      onPanResponderMove: (_, gesture) => {
+        if (gesture.dx < 0) {
+          pan.x.setValue(gesture.dx);
+        }
+      },
+      onPanResponderRelease: (_, gesture) => {
+        pan.flattenOffset();
+        if (gesture.dx < deleteThreshold) {
+          Animated.timing(pan.x, {
+            toValue: -100,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            deleteNotification(item.id);
+          });
+        } else {
+          Animated.spring(pan.x, {
+            toValue: 0,
+            friction: 5,
+            useNativeDriver: true,
+          }).start();
+        }
+      },
+    });
+
+    const deleteButtonOpacity = pan.x.interpolate({
+      inputRange: [-100, -50, 0],
+      outputRange: [1, 0.5, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <View style={styles.notificationItemContainer}>
+        <Animated.View
+          style={[
+            styles.deleteButton,
+            {
+              opacity: deleteButtonOpacity,
+            },
+          ]}
+        >
+          <Ionicons name="trash-outline" size={24} color="#fff" />
+        </Animated.View>
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[
+            styles.notificationItem,
+            item.read ? styles.readItem : styles.unreadItem,
+            {
+              transform: [{ translateX: pan.x }],
+            },
+          ]}
+        >
+          <TouchableOpacity
+            style={styles.notificationContent}
+            onPress={() => markAsRead(item.id)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.notificationTitle, !item.read && styles.boldText]}>
+              {item.title}
+            </Text>
+            <Text style={styles.notificationDescription}>{item.description}</Text>
+            <Text style={styles.notificationTime}>{item.time}</Text>
+          </TouchableOpacity>
+        </Animated.View>
       </View>
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => deleteNotification(item.id)}
-      >
-        <Ionicons name="close-circle" size={20} color="#999" />
-      </TouchableOpacity>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -169,7 +203,7 @@ const NotificationsListScreen = () => {
         <FlatList
           data={notifications}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderNotificationItem}
+          renderItem={({ item }) => <NotificationItem item={item} />}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
@@ -216,14 +250,14 @@ const styles = StyleSheet.create({
   listContent: {
     paddingVertical: 10,
   },
-  notificationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#fff',
-    padding: 15,
+  notificationItemContainer: {
+    position: 'relative',
     marginHorizontal: 15,
     marginBottom: 10,
+  },
+  notificationItem: {
+    backgroundColor: '#fff',
+    padding: 15,
     borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: {
@@ -241,19 +275,6 @@ const styles = StyleSheet.create({
   readItem: {
     borderLeftWidth: 4,
     borderLeftColor: 'transparent',
-  },
-  notificationLeft: {
-    flexDirection: 'row',
-    flex: 1,
-  },
-  iconContainer: {
-    marginRight: 15,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   notificationContent: {
     flex: 1,
@@ -276,7 +297,16 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   deleteButton: {
-    padding: 5,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 80,
+    backgroundColor: '#ff3b30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderTopRightRadius: 10,
+    borderBottomRightRadius: 10,
   },
   loaderContainer: {
     flex: 1,

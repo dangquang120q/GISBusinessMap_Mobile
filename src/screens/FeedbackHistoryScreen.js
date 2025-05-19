@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -15,35 +16,48 @@ const FeedbackHistoryScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState([]);
+  const [filter, setFilter] = useState('all'); // 'all', 'pending', 'processing', 'resolved'
 
   // Sample data - replace with your actual API call
   const sampleFeedback = [
     {
       id: '1',
       facilityName: 'Nhà hàng ABC',
-      responseFrom: 'Sở Y tế',
-      responseTitle: 'Phản hồi về vệ sinh an toàn thực phẩm',
-      responseContent: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề vệ sinh thực phẩm tại cơ sở. Sau khi kiểm tra, chúng tôi đã yêu cầu cơ sở khắc phục các vấn đề và sẽ theo dõi trong thời gian tới.',
+      handler: 'Nguyễn Văn A - Sở Y tế',
+      title: 'Phản ánh về vệ sinh an toàn thực phẩm',
+      content: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề vệ sinh thực phẩm tại cơ sở. Sau khi kiểm tra, chúng tôi đã yêu cầu cơ sở khắc phục các vấn đề và sẽ theo dõi trong thời gian tới.',
       status: 'resolved',
       date: '2023-12-10',
+      feedbackContent: 'Nhà hàng không đảm bảo vệ sinh, nhân viên không đeo khẩu trang khi chế biến thức ăn.',
     },
     {
       id: '2',
       facilityName: 'Khách sạn XYZ',
-      responseFrom: 'Sở Du lịch',
-      responseTitle: 'Phản hồi về chất lượng dịch vụ',
-      responseContent: 'Cảm ơn bạn đã phản hồi về chất lượng dịch vụ. Chúng tôi đang xem xét vấn đề và sẽ có biện pháp cải thiện trong thời gian tới.',
+      handler: 'Trần Thị B - Sở Du lịch',
+      title: 'Phản ánh về chất lượng dịch vụ',
+      content: 'Cảm ơn bạn đã phản hồi về chất lượng dịch vụ. Chúng tôi đang xem xét vấn đề và sẽ có biện pháp cải thiện trong thời gian tới.',
       status: 'processing',
       date: '2023-11-25',
+      feedbackContent: 'Phòng ốc không sạch sẽ, nhân viên phục vụ thiếu chuyên nghiệp.',
     },
     {
       id: '3',
       facilityName: 'Cửa hàng LMN',
-      responseFrom: 'Sở Công Thương',
-      responseTitle: 'Phản hồi về tính minh bạch giá cả',
-      responseContent: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề niêm yết giá. Sau khi kiểm tra, cơ sở đã được yêu cầu tuân thủ quy định về niêm yết giá và thông tin sản phẩm.',
+      handler: 'Lê Văn C - Sở Công Thương',
+      title: 'Phản ánh về tính minh bạch giá cả',
+      content: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề niêm yết giá. Sau khi kiểm tra, cơ sở đã được yêu cầu tuân thủ quy định về niêm yết giá và thông tin sản phẩm.',
       status: 'resolved',
       date: '2023-11-05',
+      feedbackContent: 'Cửa hàng không niêm yết giá rõ ràng, tính giá cao hơn giá niêm yết.',
+    },
+    {
+      id: '4',
+      facilityName: 'Quán cafe PQR',
+      title: 'Phản ánh về tiếng ồn',
+      content: 'Quán cafe hoạt động quá giờ, gây ồn ào ảnh hưởng đến khu dân cư.',
+      status: 'pending',
+      date: '2023-12-15',
+      feedbackContent: 'Quán cafe hoạt động quá giờ, gây ồn ào ảnh hưởng đến khu dân cư.',
     },
   ];
 
@@ -70,6 +84,11 @@ const FeedbackHistoryScreen = () => {
     fetchFeedback();
   }, []);
 
+  const filteredFeedback = feedback.filter(item => {
+    if (filter === 'all') return true;
+    return item.status === filter;
+  });
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'resolved':
@@ -90,7 +109,7 @@ const FeedbackHistoryScreen = () => {
       case 'processing':
         return 'Đang xử lý';
       case 'pending':
-        return 'Chưa xử lý';
+        return 'Chưa xác minh';
       default:
         return 'Không xác định';
     }
@@ -108,6 +127,49 @@ const FeedbackHistoryScreen = () => {
         return 'help-circle';
     }
   };
+
+  const renderFilterButtons = () => (
+    <View style={styles.filterContainer}>
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.filterContent}
+      >
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
+          onPress={() => setFilter('all')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'all' && styles.filterButtonTextActive]}>
+            Tất cả
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'pending' && styles.filterButtonActive]}
+          onPress={() => setFilter('pending')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'pending' && styles.filterButtonTextActive]}>
+            Chưa xác minh
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'processing' && styles.filterButtonActive]}
+          onPress={() => setFilter('processing')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'processing' && styles.filterButtonTextActive]}>
+            Đang xử lý
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'resolved' && styles.filterButtonActive]}
+          onPress={() => setFilter('resolved')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'resolved' && styles.filterButtonTextActive]}>
+            Đã xử lý
+          </Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
@@ -129,13 +191,17 @@ const FeedbackHistoryScreen = () => {
         </View>
       </View>
       
-      <View style={styles.responseInfo}>
-        <Text style={styles.responseFrom}>{item.responseFrom}</Text>
-        <Text style={styles.date}>{item.date}</Text>
-      </View>
+      {item.status !== 'pending' && (
+        <View style={styles.handlerInfo}>
+          <Text style={styles.handlerName}>{item.handler}</Text>
+          <Text style={styles.date}>{item.date}</Text>
+        </View>
+      )}
       
-      <Text style={styles.responseTitle}>{item.responseTitle}</Text>
-      <Text style={styles.responseContent} numberOfLines={3}>{item.responseContent}</Text>
+      <Text style={styles.feedbackTitle}>{item.title}</Text>
+      <Text style={styles.feedbackContent} numberOfLines={3}>
+        {item.status === 'pending' ? item.feedbackContent : item.content}
+      </Text>
     </TouchableOpacity>
   );
 
@@ -148,16 +214,18 @@ const FeedbackHistoryScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Phản hồi từ cơ quan chức năng</Text>
+        <Text style={styles.headerTitle}>Lịch sử phản ánh</Text>
       </View>
+
+      {renderFilterButtons()}
 
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#085924" />
         </View>
-      ) : feedback.length > 0 ? (
+      ) : filteredFeedback.length > 0 ? (
         <FlatList
-          data={feedback}
+          data={filteredFeedback}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
@@ -165,7 +233,7 @@ const FeedbackHistoryScreen = () => {
       ) : (
         <View style={styles.emptyContainer}>
           <Ionicons name="chatbubble-ellipses-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>Chưa có phản hồi nào từ cơ quan chức năng</Text>
+          <Text style={styles.emptyText}>Chưa có phản ánh nào</Text>
         </View>
       )}
     </SafeAreaView>
@@ -195,6 +263,37 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+  },
+  filterContainer: {
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    height: 48,
+  },
+  filterContent: {
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  filterButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+    marginRight: 8,
+    height: 32,
+    justifyContent: 'center',
+  },
+  filterButtonActive: {
+    backgroundColor: '#085924',
+  },
+  filterButtonText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  filterButtonTextActive: {
+    color: '#fff',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
@@ -243,12 +342,12 @@ const styles = StyleSheet.create({
   statusIcon: {
     marginRight: 4,
   },
-  responseInfo: {
+  handlerInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  responseFrom: {
+  handlerName: {
     fontSize: 14,
     fontWeight: '500',
     color: '#666',
@@ -257,13 +356,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#888',
   },
-  responseTitle: {
+  feedbackTitle: {
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 8,
     color: '#444',
   },
-  responseContent: {
+  feedbackContent: {
     fontSize: 15,
     color: '#555',
   },

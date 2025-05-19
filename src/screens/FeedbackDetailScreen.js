@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -26,51 +27,79 @@ const FeedbackDetailScreen = () => {
       facilityName: 'Nhà hàng ABC',
       facilityType: 'Nhà hàng',
       address: '123 Đường Lê Lợi, Quận 1, TP HCM',
-      responseFrom: 'Sở Y tế',
+      responseFrom: 'CQCN',
       responseTitle: 'Phản hồi về vệ sinh an toàn thực phẩm',
       responseContent: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề vệ sinh thực phẩm tại cơ sở. Sau khi kiểm tra, chúng tôi đã phát hiện một số vấn đề cần khắc phục:\n\n1. Khu vực bếp chưa đảm bảo vệ sinh theo quy định.\n2. Một số thực phẩm chưa được bảo quản đúng cách.\n3. Nhân viên chưa thực hiện đầy đủ quy trình vệ sinh cá nhân.\n\nCơ sở đã được yêu cầu khắc phục các vấn đề trên trong vòng 15 ngày. Chúng tôi sẽ tiến hành kiểm tra lại sau thời gian trên và sẽ có thông báo kết quả đến người dân.\n\nCảm ơn bạn đã góp phần giúp cải thiện an toàn thực phẩm cho cộng đồng.',
-      responseDate: '2023-12-10',
-      originalReportDate: '2023-12-01',
+      responseDate: '2024-03-15',
+      originalReportDate: '2024-03-10',
       originalReportContent: 'Tôi phát hiện nhà hàng có dấu hiệu không đảm bảo vệ sinh thực phẩm. Khu vực bếp nhìn qua cửa sổ thấy rất bẩn, thức ăn để lâu không được bảo quản đúng cách.',
       status: 'resolved',
+      reporterName: 'Nguyễn Văn A',
+      reporterPhone: '0123456789',
       contactPerson: 'Ông Nguyễn Văn X',
-      contactDepartment: 'Phòng An toàn Thực phẩm',
-      contactPhone: '028.1234.5678',
-      trackingNumber: 'YT-2023-12-001',
+      mediaUrls: [
+        {
+          type: 'image',
+          url: 'https://via.placeholder.com/500x300',
+        },
+        {
+          type: 'image',
+          url: 'https://via.placeholder.com/500x300',
+        },
+        {
+          type: 'video',
+          url: 'https://example.com/video.mp4',
+          thumbnail: 'https://via.placeholder.com/500x300',
+        }
+      ],
     },
     {
       id: '2',
       facilityName: 'Khách sạn XYZ',
       facilityType: 'Khách sạn',
       address: '456 Đường Nguyễn Huệ, Quận 1, TP HCM',
-      responseFrom: 'Sở Du lịch',
+      responseFrom: 'CQCN',
       responseTitle: 'Phản hồi về chất lượng dịch vụ',
       responseContent: 'Cảm ơn bạn đã phản hồi về chất lượng dịch vụ tại khách sạn XYZ. Chúng tôi đã nhận được phản ánh của bạn và đang tiến hành xác minh thông tin.\n\nHiện tại, chúng tôi đã liên hệ với ban quản lý khách sạn để làm rõ các vấn đề bạn đã nêu. Khách sạn đã cam kết sẽ rà soát lại quy trình phục vụ và cải thiện chất lượng dịch vụ.\n\nChúng tôi sẽ tiếp tục theo dõi và cập nhật thông tin đến bạn trong thời gian tới.',
-      responseDate: '2023-11-25',
-      originalReportDate: '2023-11-20',
+      responseDate: '2024-03-12',
+      originalReportDate: '2024-03-08',
       originalReportContent: 'Dịch vụ phòng không đúng như quảng cáo, phòng không được dọn dẹp sạch sẽ mỗi ngày, nhân viên thái độ không tốt.',
       status: 'processing',
+      reporterName: 'Trần Thị B',
+      reporterPhone: '0987654321',
       contactPerson: 'Bà Trần Thị Y',
-      contactDepartment: 'Phòng Quản lý Dịch vụ Du lịch',
-      contactPhone: '028.8765.4321',
-      trackingNumber: 'DL-2023-11-015',
+      mediaUrls: [
+        {
+          type: 'image',
+          url: 'https://via.placeholder.com/500x300',
+        }
+      ],
     },
     {
       id: '3',
       facilityName: 'Cửa hàng LMN',
       facilityType: 'Cửa hàng',
       address: '789 Đường Lê Duẩn, Quận 3, TP HCM',
-      responseFrom: 'Sở Công Thương',
+      responseFrom: 'CQCN',
       responseTitle: 'Phản hồi về tính minh bạch giá cả',
       responseContent: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề niêm yết giá tại cửa hàng LMN. Sau khi tiến hành kiểm tra, chúng tôi nhận thấy cơ sở có một số vi phạm về quy định niêm yết giá như sau:\n\n1. Không niêm yết giá ở vị trí dễ quan sát\n2. Giá bán không đúng với giá niêm yết\n3. Không cung cấp đầy đủ thông tin về sản phẩm\n\nCửa hàng đã bị xử phạt hành chính và yêu cầu khắc phục ngay các vi phạm. Hiện tại cửa hàng đã điều chỉnh lại cách niêm yết giá theo đúng quy định.\n\nCảm ơn bạn đã phản ánh vấn đề này để giúp thị trường minh bạch hơn.',
-      responseDate: '2023-11-05',
-      originalReportDate: '2023-10-28',
+      responseDate: '2024-03-05',
+      originalReportDate: '2024-03-01',
       originalReportContent: 'Cửa hàng không niêm yết giá rõ ràng, giá tính tiền cao hơn giá ghi trên sản phẩm.',
       status: 'resolved',
+      reporterName: 'Phạm Văn C',
+      reporterPhone: '0369852147',
       contactPerson: 'Ông Lê Văn Z',
-      contactDepartment: 'Phòng Quản lý Thị trường',
-      contactPhone: '028.2468.1357',
-      trackingNumber: 'CT-2023-10-042',
+      mediaUrls: [
+        {
+          type: 'image',
+          url: 'https://via.placeholder.com/500x300',
+        },
+        {
+          type: 'image',
+          url: 'https://via.placeholder.com/500x300',
+        }
+      ],
     },
   ];
 
@@ -188,7 +217,6 @@ const FeedbackDetailScreen = () => {
             />
             <Text style={styles.statusText}>{getStatusText(feedback.status)}</Text>
           </View>
-          <Text style={styles.trackingNumber}>Mã theo dõi: {feedback.trackingNumber}</Text>
         </View>
         
         <View style={styles.facilityInfoSection}>
@@ -213,11 +241,59 @@ const FeedbackDetailScreen = () => {
         
         <View style={styles.originalReportSection}>
           <Text style={styles.sectionTitle}>Nội dung phản ánh ban đầu</Text>
+          
+          <View style={styles.reporterInfo}>
+            <View style={styles.reporterRow}>
+              <Ionicons name="person-outline" size={20} color="#666" />
+              <Text style={styles.reporterLabel}>Người phản ánh:</Text>
+              <Text style={styles.reporterValue}>{feedback.reporterName}</Text>
+            </View>
+            
+            <View style={styles.reporterRow}>
+              <Ionicons name="call-outline" size={20} color="#666" />
+              <Text style={styles.reporterLabel}>Số điện thoại:</Text>
+              <Text style={styles.reporterValue}>{feedback.reporterPhone}</Text>
+            </View>
+          </View>
+
           <View style={styles.reportDateContainer}>
             <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.reportDate}>Ngày báo cáo: {feedback.originalReportDate}</Text>
           </View>
+          
           <Text style={styles.reportContent}>{feedback.originalReportContent}</Text>
+
+          {feedback.mediaUrls && feedback.mediaUrls.length > 0 && (
+            <View style={styles.mediaSection}>
+              <Text style={styles.mediaTitle}>Hình ảnh/Video đính kèm:</Text>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                style={styles.mediaScrollView}
+              >
+                {feedback.mediaUrls.map((media, index) => (
+                  <TouchableOpacity 
+                    key={index} 
+                    style={styles.mediaItem}
+                    onPress={() => {
+                      // Handle media preview
+                    }}
+                  >
+                    <Image 
+                      source={{uri: media.type === 'video' ? media.thumbnail : media.url}} 
+                      style={styles.mediaThumbnail}
+                      resizeMode="cover"
+                    />
+                    {media.type === 'video' && (
+                      <View style={styles.videoOverlay}>
+                        <Ionicons name="play-circle" size={40} color="#fff" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
         
         <View style={styles.divider} />
@@ -225,7 +301,7 @@ const FeedbackDetailScreen = () => {
         <View style={styles.responseSection}>
           <View style={styles.responseHeader}>
             <View style={styles.responseTitleContainer}>
-              <Text style={styles.sectionTitle}>Phản hồi từ {feedback.responseFrom}</Text>
+              <Text style={styles.sectionTitle}>Phản hồi từ CQCN</Text>
               <View style={styles.responseDateContainer}>
                 <Ionicons name="calendar-outline" size={16} color="#666" />
                 <Text style={styles.responseDate}>Ngày phản hồi: {feedback.responseDate}</Text>
@@ -249,28 +325,13 @@ const FeedbackDetailScreen = () => {
               <Text style={styles.contactValue}>{feedback.contactPerson}</Text>
             </View>
           </View>
-          
-          <View style={styles.contactRow}>
-            <Ionicons name="business-outline" size={20} color="#666" />
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactLabel}>Phòng/Ban:</Text>
-              <Text style={styles.contactValue}>{feedback.contactDepartment}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.contactRow}>
-            <Ionicons name="call-outline" size={20} color="#666" />
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactLabel}>Điện thoại:</Text>
-              <Text style={styles.contactValue}>{feedback.contactPhone}</Text>
-            </View>
-          </View>
+        
         </View>
         
         <View style={styles.actionSection}>
-          <TouchableOpacity style={styles.replyButton}>
-            <Ionicons name="chatbubble-outline" size={20} color="#fff" />
-            <Text style={styles.replyButtonText}>Gửi phản hồi bổ sung</Text>
+          <TouchableOpacity style={styles.rateButton}>
+            <Ionicons name="star-outline" size={20} color="#fff" />
+            <Text style={styles.rateButtonText}>Đánh giá phản hồi</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -345,10 +406,6 @@ const styles = StyleSheet.create({
   statusIcon: {
     marginRight: 6,
   },
-  trackingNumber: {
-    fontSize: 14,
-    color: '#666',
-  },
   facilityInfoSection: {
     backgroundColor: '#fff',
     padding: 16,
@@ -393,6 +450,28 @@ const styles = StyleSheet.create({
   originalReportSection: {
     backgroundColor: '#fff',
     padding: 16,
+  },
+  reporterInfo: {
+    marginBottom: 16,
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+  },
+  reporterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  reporterLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 8,
+    marginRight: 4,
+  },
+  reporterValue: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
   },
   reportDateContainer: {
     flexDirection: 'row',
@@ -466,7 +545,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 20,
   },
-  replyButton: {
+  rateButton: {
     backgroundColor: '#085924',
     flexDirection: 'row',
     alignItems: 'center',
@@ -474,11 +553,43 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
   },
-  replyButtonText: {
+  rateButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     marginLeft: 8,
     fontSize: 16,
+  },
+  mediaSection: {
+    marginTop: 16,
+  },
+  mediaTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 12,
+  },
+  mediaScrollView: {
+    flexDirection: 'row',
+  },
+  mediaItem: {
+    marginRight: 12,
+    position: 'relative',
+  },
+  mediaThumbnail: {
+    width: 200,
+    height: 150,
+    borderRadius: 8,
+  },
+  videoOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 8,
   },
 });
 
