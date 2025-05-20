@@ -16,6 +16,8 @@ import {
   Animated,
   Image,
   StyleSheet,
+  PermissionsAndroid,
+  Linking,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -24,6 +26,8 @@ import styles from './HomeScreenStyles';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AuthContext } from '../context/AuthContext';
 import {launchImageLibrary} from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MultiSelectDropdown, REPORT_TYPE_OPTIONS } from '../components/MultiSelectDropdown';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -1716,23 +1720,10 @@ export default function HomeScreen() {
             
             <View style={styles.formGroup}>
               <Text style={styles.label}>Loại phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
-              <View style={styles.reportTypeContainer}>
-                {['Vi phạm pháp luật', 'Phản ánh dịch vụ', 'Vệ sinh an toàn thực phẩm', 'Khác'].map((type) => (
-                  <TouchableOpacity
-                    key={type}
-                    style={[
-                      styles.reportTypeOption,
-                      reportData.reportTypes.includes(type) && styles.reportTypeOptionActive
-                    ]}
-                    onPress={() => handleReportTypeSelect(type)}
-                  >
-                    <Text style={[
-                      styles.reportTypeText,
-                      reportData.reportTypes.includes(type) && styles.reportTypeTextActive
-                    ]}>{type}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <MultiSelectDropdown
+                selectedValues={reportData.reportTypes}
+                onChange={types => setReportData({ ...reportData, reportTypes: types })}
+              />
             </View>
             
             <View style={styles.formGroup}>
@@ -1809,28 +1800,85 @@ export default function HomeScreen() {
     }
   }, [selectedMarkerId]);
 
-  // Thêm hàm xử lý chọn media
-  const handleMediaPicker = (type) => {
-    const options = {
-      mediaType: 'mixed',
-      selectionLimit: 5,
-      quality: 1,
-      includeBase64: false,
-    };
+  // Chỉ xin quyền khi người dùng nhấn Thêm media
+  const requestMediaPermission = async () => {
+    if (Platform.OS === 'android') {
+      let result;
+      if (Platform.Version >= 33) {
+        result = await PermissionsAndroid.requestMultiple([
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+        ]);
+        if (
+          Object.values(result).includes(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)
+        ) {
+          return 'never_ask_again';
+        }
+        return Object.values(result).every(
+          (permission) => permission === PermissionsAndroid.RESULTS.GRANTED
+        )
+          ? 'granted'
+          : 'denied';
+      } else {
+        result = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+        );
+        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          return 'never_ask_again';
+        }
+        return result === PermissionsAndroid.RESULTS.GRANTED
+          ? 'granted'
+          : 'denied';
+      }
+    }
+    return 'granted'; // iOS tự động xin quyền khi cần
+  };
 
-    launchImageLibrary(options, (response) => {
-      if (response.didCancel) {
+  const handleMediaPicker = async (type) => {
+    try {
+      let permission = 'granted';
+      if (Platform.OS === 'android') {
+        permission = await requestMediaPermission();
+        if (permission === 'never_ask_again') {
+          Alert.alert(
+            'Cần quyền truy cập',
+            'Bạn đã từ chối quyền và chọn không hỏi lại. Vui lòng vào Cài đặt để cấp lại quyền.',
+            [
+              { text: 'Hủy', style: 'cancel' },
+              { text: 'Mở cài đặt', onPress: () => Linking.openSettings() },
+            ]
+          );
+          return;
+        } else if (permission === 'denied') {
+          // Không hiện Alert nữa, chỉ để hệ thống xử lý dialog xin quyền
+          return;
+        }
+      }
+
+      const options = {
+        mediaType: 'mixed',
+        selectionLimit: 5,
+        quality: 1,
+        includeBase64: false,
+        saveToPhotos: false,
+        presentationStyle: 'pageSheet',
+      };
+
+      const result = await launchImageLibrary(options);
+      
+      if (result.didCancel) {
         console.log('User cancelled media picker');
         return;
       }
 
-      if (response.errorCode) {
-        console.log('ImagePicker Error: ', response.errorMessage);
+      if (result.errorCode) {
+        console.log('ImagePicker Error: ', result.errorMessage);
+        Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh. Vui lòng thử lại sau.');
         return;
       }
 
-      if (response.assets && response.assets.length > 0) {
-        const newMedia = response.assets.map(asset => ({
+      if (result.assets && result.assets.length > 0) {
+        const newMedia = result.assets.map(asset => ({
           type: asset.type?.startsWith('video/') ? 'video' : 'image',
           url: asset.uri,
           thumbnail: asset.type?.startsWith('video/') ? asset.uri : asset.uri,
@@ -1838,8 +1886,27 @@ export default function HomeScreen() {
 
         handleAddMedia(type, ...newMedia);
       }
-    });
+    } catch (error) {
+      console.error('Error picking media:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi chọn media. Vui lòng thử lại sau.');
+    }
   };
+
+  // Xin quyền media duy nhất 1 lần khi mở app lần đầu sau khi cài đặt
+  useEffect(() => {
+    const checkAndRequestFirstTime = async () => {
+      try {
+        const requested = await AsyncStorage.getItem('media_permission_requested');
+        if (!requested) {
+          await requestMediaPermission();
+          await AsyncStorage.setItem('media_permission_requested', 'true');
+        }
+      } catch (e) {
+        console.warn('Error checking/storing media permission flag:', e);
+      }
+    };
+    checkAndRequestFirstTime();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
