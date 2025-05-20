@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useContext} from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import styles from './HomeScreenStyles';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { AuthContext } from '../context/AuthContext';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -34,6 +36,7 @@ import styles from './HomeScreenStyles';
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const { isAuthenticated } = useContext(AuthContext);
   const webViewRef = useRef(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   
@@ -49,6 +52,8 @@ export default function HomeScreen() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filteredFacilities, setFilteredFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
+  // Track selected marker for map
+  const [selectedMarkerId, setSelectedMarkerId] = useState(null);
   
   // States for modals
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
@@ -166,7 +171,7 @@ export default function HomeScreen() {
       <title>Leaflet Map</title>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
       <style>
         body, html, #map {
           margin: 0;
@@ -330,6 +335,51 @@ export default function HomeScreen() {
           cursor: pointer;
           z-index: 1000;
         }
+
+        .custom-tooltip {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          padding: 3px 8px;
+          font-weight: 500;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        
+        .custom-tooltip:before {
+          display: none;
+        }
+
+        .facility-marker {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: white;
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          transition: all 0.3s ease;
+        }
+
+        .facility-marker.selected {
+          transform: scale(1.2);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .material-icons {
+          font-family: 'Material Icons';
+          font-weight: normal;
+          font-style: normal;
+          font-size: 24px;
+          line-height: 1;
+          letter-spacing: normal;
+          text-transform: none;
+          display: inline-block;
+          white-space: nowrap;
+          word-wrap: normal;
+          direction: ltr;
+          -webkit-font-feature-settings: 'liga';
+          -webkit-font-smoothing: antialiased;
+        }
       </style>
     </head>
     <body>
@@ -439,48 +489,66 @@ export default function HomeScreen() {
         });
         
         // Create custom icons based on zoom level
-        const createIcon = (type, zoom) => {
+        const createIcon = (type, zoom, isSelected = false) => {
           let iconName;
           let iconColor;
-          let iconSize;
           
           // Determine icon and color based on facility type
           switch(type) {
             case 'Nhà hàng':
-              iconName = 'fa-utensils';
+              iconName = 'restaurant';
               iconColor = '#FF5252';
               break;
             case 'Khách sạn':
-              iconName = 'fa-bed';
+              iconName = 'hotel';
               iconColor = '#2979FF';
               break;
             case 'Cửa hàng':
-              iconName = 'fa-store';
+              iconName = 'store';
               iconColor = '#00C853';
               break;
             default:
-              iconName = 'fa-building';
+              iconName = 'business';
               iconColor = '#9C27B0';
           }
           
           // Determine size based on zoom level
-          if (zoom >= 18) {
-            iconSize = 32;
-          } else if (zoom >= 16) {
-            iconSize = 24;
-          } else if (zoom >= 14) {
+          let iconSize;
+          if (zoom >= 25) {
+            iconSize = 34;
+          } else if (zoom >= 23) {
+            iconSize = 26;
+          } else if (zoom >= 21) {
+            iconSize = 22;
+          } else if (zoom >= 19) {
             iconSize = 18;
-          } else if (zoom >= 12) {
-            iconSize = 14;
           } else {
-            iconSize = 10;
+            iconSize = 16;
+          }
+          
+          if (isSelected) {
+            // Google Maps style red marker with icon inside
+            return L.divIcon({
+              className: 'custom-marker selected',
+              html:
+                '<div style="width:' + (iconSize + 8) + 'px;height:' + (iconSize + 8) + 'px;display:flex;align-items:center;justify-content:center;position:relative;">' +
+                  '<svg width="' + (iconSize + 8) + '" height="' + (iconSize + 8) + '" viewBox="0 0 40 40" style="position:absolute;top:0;left:0;">' +
+                    '<path d="M20 2C11 2 4 9.16 4 18.08c0 7.13 7.13 15.13 14.13 19.13a2.5 2.5 0 0 0 3.74 0C28.87 33.21 36 25.21 36 18.08 36 9.16 29 2 20 2z" fill="#FF5252"/>' +
+                    '<circle cx="20" cy="18" r="6" fill="#fff"/>' +
+                  '</svg>' +
+                  '<span class="material-icons" style="color:#FF5252; font-size:' + (iconSize-6) + 'px;z-index:1;position:relative;">' + iconName + '</span>' +
+                '</div>',
+              iconSize: [iconSize + 8, iconSize + 8],
+              iconAnchor: [(iconSize + 8)/2, iconSize + 2], // anchor at the tip
+              popupAnchor: [0, -iconSize]
+            });
           }
           
           return L.divIcon({
             className: 'custom-marker',
-            html: \`<div style="display:flex;justify-content:center;align-items:center;width:\${iconSize + 8}px;height:\${iconSize + 8}px;background-color:white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
-              <i class="fas \${iconName}" style="color:\${iconColor};font-size:\${iconSize}px;"></i>
-            </div>\`,
+            html: '<div class="facility-marker" style="width: ' + (iconSize + 8) + 'px; height: ' + (iconSize + 8) + 'px;">' +
+                  '<span class="material-icons" style="color: ' + iconColor + '; font-size: ' + iconSize + 'px;">' + iconName + '</span>' +
+                  '</div>',
             iconSize: [iconSize + 8, iconSize + 8],
             iconAnchor: [(iconSize + 8)/2, (iconSize + 8)/2],
             popupAnchor: [0, -((iconSize + 8)/2)]
@@ -505,28 +573,54 @@ export default function HomeScreen() {
           
           window.markersLayer = L.layerGroup().addTo(map);
           
-          // Don't show markers below zoom level 10
-          if (currentZoom < 10) return;
+          // Don't show markers below zoom level 15
+          if (currentZoom < 15) return;
           
           markers.forEach(marker => {
+            const isSelected = window.selectedFacilityId === marker.id;
             const leafletMarker = L.marker(
               [marker.latitude, marker.longitude],
-              { icon: createIcon(marker.type, currentZoom) }
+              { icon: createIcon(marker.type, currentZoom, isSelected) }
             ).addTo(window.markersLayer);
             
-            // Add tooltips for showing business names when zoom level is >= 15
-            if (currentZoom >= 15) {
+            // Add tooltips for showing business names when zoom level is >= 20
+            if (currentZoom >= 16) {
+              let iconColor;
+              switch(marker.type) {
+                case 'Nhà hàng':
+                  iconColor = '#FF5252';
+                  break;
+                case 'Khách sạn':
+                  iconColor = '#2979FF';
+                  break;
+                case 'Cửa hàng':
+                  iconColor = '#00C853';
+                  break;
+                default:
+                  iconColor = '#9C27B0';
+              }
+              
               const tooltipOptions = { 
                 permanent: true, 
                 direction: 'right',
                 className: 'custom-tooltip',
-                offset: [10, 0]
+                offset: [3, 0]  // Reduced offset to bring text closer to icon
               };
-              leafletMarker.bindTooltip(marker.name, tooltipOptions);
+              leafletMarker.bindTooltip(
+                '<span style="color: ' + iconColor + '; font-weight: 700; font-size: 13px;">' + marker.name + '</span>', 
+                tooltipOptions
+              );
             }
             
             // Add click event directly
             leafletMarker.on('click', function() {
+              // Update selected facility
+              window.selectedFacilityId = marker.id;
+              
+              // Update all markers to reflect selection
+              updateMarkers(window.markersData);
+              
+              // Send message to React Native
               window.ReactNativeWebView.postMessage(JSON.stringify({
                 type: 'viewFacility',
                 facilityId: marker.id
@@ -583,24 +677,6 @@ export default function HomeScreen() {
             type: 'mapLoaded'
           }));
         };
-        
-        // Add custom tooltip styles
-        const style = document.createElement('style');
-        style.textContent = 
-          '.custom-tooltip {' +
-          '  background: white;' +
-          '  border: none;' +
-          '  box-shadow: 0 1px 3px rgba(0,0,0,0.2);' +
-          '  border-radius: 4px;' +
-          '  padding: 3px 8px;' +
-          '  font-weight: 500;' +
-          '  font-size: 12px;' +
-          '  white-space: nowrap;' +
-          '}' +
-          '.custom-tooltip:before {' +
-          '  display: none;' +
-          '}';
-        document.head.appendChild(style);
       </script>
     </body>
     </html>
@@ -647,6 +723,8 @@ export default function HomeScreen() {
           id: 1,
           name: 'Nhà hàng ABC',
           type: 'Nhà hàng',
+          iconName: 'restaurant',
+          iconColor: '#FF5252',
           address: '123 Đường ABC, Thái Bình',
           latitude: 20.44879,
           longitude: 106.34259,
@@ -661,6 +739,8 @@ export default function HomeScreen() {
           id: 2,
           name: 'Khách sạn XYZ',
           type: 'Khách sạn',
+          iconName: 'hotel',
+          iconColor: '#2979FF',
           address: '456 Đường XYZ, Thái Bình',
           latitude: 20.45000,
           longitude: 106.34400,
@@ -675,6 +755,8 @@ export default function HomeScreen() {
           id: 3,
           name: 'Cửa hàng 123',
           type: 'Cửa hàng',
+          iconName: 'store',
+          iconColor: '#00C853',
           address: '789 Đường 123, Thái Bình',
           latitude: 20.44700,
           longitude: 106.34100,
@@ -763,6 +845,17 @@ export default function HomeScreen() {
   };
 
   const handleAddReview = () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Cần đăng nhập',
+        'Bạn cần đăng nhập để sử dụng chức năng này.',
+        [
+          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
+          { text: 'Hủy', style: 'cancel' }
+        ]
+      );
+      return;
+    }
     if (!selectedFacility) return;
     
     setIsReviewModalVisible(false);
@@ -785,6 +878,7 @@ export default function HomeScreen() {
     if (!isMountedRef.current) return;
     
     setSelectedFacility(facility);
+    setSelectedMarkerId(facility.id); // Set selected marker
     setBottomSheetVisible(true);
     setIsBottomSheetExpanded(false);
     bottomSheetAnim.setValue(minHeight);
@@ -900,6 +994,17 @@ export default function HomeScreen() {
 
   // Handle report submission
   const handleReportSubmit = () => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Cần đăng nhập',
+        'Bạn cần đăng nhập để sử dụng chức năng này.',
+        [
+          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
+          { text: 'Hủy', style: 'cancel' }
+        ]
+      );
+      return;
+    }
     if (!selectedFacility) return;
     
     if (!reportData.phone.trim()) {
@@ -1032,7 +1137,7 @@ export default function HomeScreen() {
           )}
         </View>
         
-        <View style={styles.actionButtonsContainer}>
+        {isAuthenticated && <View style={styles.actionButtonsContainer}>
           <TouchableOpacity 
             style={[styles.actionButton, {backgroundColor: '#e74c3c'}]}
             onPress={() => setIsReportModalVisible(true)}
@@ -1041,6 +1146,7 @@ export default function HomeScreen() {
             <Text style={styles.actionButtonText}>Phản ánh lên cơ quan chức năng</Text>
           </TouchableOpacity>
         </View>
+        }
         <View style={styles.sectionDivider} />
 
         {/* Thêm phần Bài đánh giá */}
@@ -1073,6 +1179,17 @@ export default function HomeScreen() {
 
   // Add function to handle edit review
   const handleEditReview = (review) => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Cần đăng nhập',
+        'Bạn cần đăng nhập để sử dụng chức năng này.',
+        [
+          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
+          { text: 'Hủy', style: 'cancel' }
+        ]
+      );
+      return;
+    }
     setMenuVisible(false);
     setNewReview({
       title: review.title,
@@ -1085,6 +1202,17 @@ export default function HomeScreen() {
 
   // Add function to handle delete review
   const handleDeleteReview = (review) => {
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Cần đăng nhập',
+        'Bạn cần đăng nhập để sử dụng chức năng này.',
+        [
+          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
+          { text: 'Hủy', style: 'cancel' }
+        ]
+      );
+      return;
+    }
     setMenuVisible(false);
     Alert.alert(
       'Xác nhận xóa',
@@ -1264,14 +1392,14 @@ export default function HomeScreen() {
         <View style={styles.reviewsSection}>
           <View style={styles.reviewsHeaderContainer}>
             <Text style={styles.reviewsHeaderText}>Tất cả đánh giá</Text>
-            <TouchableOpacity
+            {isAuthenticated && userReviews.length === 0 && <TouchableOpacity
               onPress={() => setIsReviewModalVisible(true)}
             >
               <Text style={styles.writeReviewLink}>
                 <Ionicons name="create-outline" size={18} color="#085924"/>
                 {'  '}Viết đánh giá
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
           </View>
           
           {otherReviews.length > 0 ? (
@@ -1668,6 +1796,24 @@ export default function HomeScreen() {
     </Modal>
   );
 
+  // When closing bottom sheet, reset selected marker
+  useEffect(() => {
+    if (!bottomSheetVisible) {
+      setSelectedMarkerId(null);
+      // Remove selection on map
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript('window.selectedFacilityId = null; if(window.markersData) updateMarkers(window.markersData); true;');
+      }
+    }
+  }, [bottomSheetVisible]);
+
+  // Pass selectedMarkerId to WebView when it changes
+  useEffect(() => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript('window.selectedFacilityId = ' + (selectedMarkerId ? selectedMarkerId : 'null') + '; if(window.markersData) updateMarkers(window.markersData); true;');
+    }
+  }, [selectedMarkerId]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}
@@ -1936,7 +2082,16 @@ export default function HomeScreen() {
           </View>
         )}
       </View>
-      
+
+      {/* Login Notice Banner */}
+      {isAuthenticated ? null : <View style={styles.loginBanner}>
+        <Text style={styles.loginText}>Đăng nhập để trải nghiệm đầy đủ tính năng</Text>
+        <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('LoginScreen')}>
+          <Text style={styles.loginButtonText}>Đăng nhập</Text>
+        </TouchableOpacity>
+      </View>
+      }
+
       {/* Bottom Sheet */}
       {bottomSheetVisible && selectedFacility && (
         <Animated.View 

@@ -19,6 +19,7 @@ import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import styles from './GuestHomeScreenStyles';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -47,7 +48,9 @@ export default function GuestHomeScreen() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filteredFacilities, setFilteredFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
-  
+    // Track selected marker for map
+    const [selectedMarkerId, setSelectedMarkerId] = useState(null);
+
   // States for modals
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [isReviewListVisible, setIsReviewListVisible] = useState(false);
@@ -148,7 +151,7 @@ export default function GuestHomeScreen() {
       <title>Leaflet Map</title>
       <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
       <style>
         body, html, #map {
           margin: 0;
@@ -312,6 +315,51 @@ export default function GuestHomeScreen() {
           cursor: pointer;
           z-index: 1000;
         }
+          
+        .custom-tooltip {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          padding: 3px 8px;
+          font-weight: 500;
+          font-size: 12px;
+          white-space: nowrap;
+        }
+        
+        .custom-tooltip:before {
+          display: none;
+        }
+
+        .facility-marker {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          background-color: white;
+          border-radius: 50%;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          transition: all 0.3s ease;
+        }
+
+        .facility-marker.selected {
+          transform: scale(1.2);
+          box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .material-icons {
+          font-family: 'Material Icons';
+          font-weight: normal;
+          font-style: normal;
+          font-size: 24px;
+          line-height: 1;
+          letter-spacing: normal;
+          text-transform: none;
+          display: inline-block;
+          white-space: nowrap;
+          word-wrap: normal;
+          direction: ltr;
+          -webkit-font-feature-settings: 'liga';
+          -webkit-font-smoothing: antialiased;
+        }
       </style>
     </head>
     <body>
@@ -364,48 +412,66 @@ export default function GuestHomeScreen() {
         let currentLayerId = 'map-type-default';
         
         // Create custom icons based on zoom level
-        const createIcon = (type, zoom) => {
+        const createIcon = (type, zoom, isSelected = false) => {
           let iconName;
           let iconColor;
-          let iconSize;
           
           // Determine icon and color based on facility type
           switch(type) {
             case 'Nhà hàng':
-              iconName = 'fa-utensils';
+              iconName = 'restaurant';
               iconColor = '#FF5252';
               break;
             case 'Khách sạn':
-              iconName = 'fa-bed';
+              iconName = 'hotel';
               iconColor = '#2979FF';
               break;
             case 'Cửa hàng':
-              iconName = 'fa-store';
+              iconName = 'store';
               iconColor = '#00C853';
               break;
             default:
-              iconName = 'fa-building';
+              iconName = 'business';
               iconColor = '#9C27B0';
           }
           
           // Determine size based on zoom level
-          if (zoom >= 18) {
-            iconSize = 32;
-          } else if (zoom >= 16) {
-            iconSize = 24;
-          } else if (zoom >= 14) {
+let iconSize;
+          if (zoom >= 25) {
+            iconSize = 34;
+          } else if (zoom >= 23) {
+            iconSize = 26;
+          } else if (zoom >= 21) {
+            iconSize = 22;
+          } else if (zoom >= 19) {
             iconSize = 18;
-          } else if (zoom >= 12) {
-            iconSize = 14;
           } else {
-            iconSize = 10;
+            iconSize = 16;
           }
-          
+
+          if (isSelected) {
+            // Google Maps style red marker with icon inside
+            return L.divIcon({
+              className: 'custom-marker selected',
+              html:
+                '<div style="width:' + (iconSize + 8) + 'px;height:' + (iconSize + 8) + 'px;display:flex;align-items:center;justify-content:center;position:relative;">' +
+                  '<svg width="' + (iconSize + 8) + '" height="' + (iconSize + 8) + '" viewBox="0 0 40 40" style="position:absolute;top:0;left:0;">' +
+                    '<path d="M20 2C11 2 4 9.16 4 18.08c0 7.13 7.13 15.13 14.13 19.13a2.5 2.5 0 0 0 3.74 0C28.87 33.21 36 25.21 36 18.08 36 9.16 29 2 20 2z" fill="#FF5252"/>' +
+                    '<circle cx="20" cy="18" r="6" fill="#fff"/>' +
+                  '</svg>' +
+                  '<span class="material-icons" style="color:#FF5252; font-size:' + (iconSize-6) + 'px;z-index:1;position:relative;">' + iconName + '</span>' +
+                '</div>',
+              iconSize: [iconSize + 8, iconSize + 8],
+              iconAnchor: [(iconSize + 8)/2, iconSize + 2], // anchor at the tip
+              popupAnchor: [0, -iconSize]
+            });
+          }
+
           return L.divIcon({
             className: 'custom-marker',
-            html: \`<div style="display:flex;justify-content:center;align-items:center;width:\${iconSize + 8}px;height:\${iconSize + 8}px;background-color:white;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.3);">
-              <i class="fas \${iconName}" style="color:\${iconColor};font-size:\${iconSize}px;"></i>
-            </div>\`,
+            html: '<div class="facility-marker" style="width: ' + (iconSize + 8) + 'px; height: ' + (iconSize + 8) + 'px;">' +
+                  '<span class="material-icons" style="color: ' + iconColor + '; font-size: ' + iconSize + 'px;">' + iconName + '</span>' +
+                  '</div>',
             iconSize: [iconSize + 8, iconSize + 8],
             iconAnchor: [(iconSize + 8)/2, (iconSize + 8)/2],
             popupAnchor: [0, -((iconSize + 8)/2)]
@@ -475,23 +541,48 @@ export default function GuestHomeScreen() {
         });
         
         // Function to create marker with label
-        const createMarkerWithLabel = (marker, zoom) => {
-          const markerIcon = createIcon(marker.type, zoom);
+        const createMarkerWithLabel = (marker, zoom, isSelected = false) => {
+          const markerIcon = createIcon(marker.type, zoom, isSelected);
           const markerInstance = L.marker([marker.latitude, marker.longitude], { icon: markerIcon });
           
           // Add label when zoom level is >= 15
-          if (zoom >= 15) {
+          if (currentZoom >= 16) {
+              let iconColor;
+              switch(marker.type) {
+                case 'Nhà hàng':
+                  iconColor = '#FF5252';
+                  break;
+                case 'Khách sạn':
+                  iconColor = '#2979FF';
+                  break;
+                case 'Cửa hàng':
+                  iconColor = '#00C853';
+                  break;
+                default:
+                  iconColor = '#9C27B0';
+              }
+              
             const tooltipOptions = { 
               permanent: true, 
               direction: 'right',
               className: 'custom-tooltip',
-              offset: [10, 0]
+              offset: [3, 0]  // Reduced offset to bring text closer to icon
             };
-            markerInstance.bindTooltip(marker.name, tooltipOptions);
+            markerInstance.bindTooltip(
+              '<span style="color: ' + iconColor + '; font-weight: 700; font-size: 13px;">' + marker.name + '</span>', 
+              tooltipOptions
+            );
           }
           
           // Add click event directly
           markerInstance.on('click', function() {
+              // Update selected facility
+              window.selectedFacilityId = marker.id;
+              
+              // Update all markers to reflect selection
+              updateMarkers(window.markersData);
+              
+              // Send message to React Native
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'viewFacility',
               facilityId: marker.id
@@ -501,23 +592,6 @@ export default function GuestHomeScreen() {
           return markerInstance;
         };
         
-        // Add custom tooltip styles
-        const style = document.createElement('style');
-        style.textContent = 
-          '.custom-tooltip {' +
-          '  background: white;' +
-          '  border: none;' +
-          '  box-shadow: 0 1px 3px rgba(0,0,0,0.2);' +
-          '  border-radius: 4px;' +
-          '  padding: 3px 8px;' +
-          '  font-weight: 500;' +
-          '  font-size: 12px;' +
-          '  white-space: nowrap;' +
-          '}' +
-          '.custom-tooltip:before {' +
-          '  display: none;' +
-          '}';
-        document.head.appendChild(style);
         
         // Update markers when zoom changes
         map.on('zoomend', function() {
@@ -537,11 +611,12 @@ export default function GuestHomeScreen() {
           
           window.markersLayer = L.layerGroup().addTo(map);
           
-          // Don't show markers below zoom level 10
-          if (currentZoom < 10) return;
+          // Don't show markers below zoom level 15
+          if (currentZoom < 15) return;
           
           markers.forEach(marker => {
-            const leafletMarker = createMarkerWithLabel(marker, currentZoom);
+            const isSelected = window.selectedFacilityId === marker.id;
+            const leafletMarker = createMarkerWithLabel(marker, currentZoom, isSelected);
             leafletMarker.addTo(window.markersLayer);
           });
         }
@@ -607,6 +682,8 @@ export default function GuestHomeScreen() {
             id: 1,
             name: 'Nhà hàng ABC',
             type: 'Nhà hàng',
+            iconName: 'restaurant',
+            iconColor: '#FF5252',
             address: '123 Đường ABC, Thái Bình',
             latitude: 20.44879,
             longitude: 106.34259,
@@ -621,6 +698,8 @@ export default function GuestHomeScreen() {
             id: 2,
             name: 'Khách sạn XYZ',
             type: 'Khách sạn',
+            iconName: 'hotel',
+            iconColor: '#2979FF',
             address: '456 Đường XYZ, Thái Bình',
             latitude: 20.45000,
             longitude: 106.34400,
@@ -635,6 +714,8 @@ export default function GuestHomeScreen() {
             id: 3,
             name: 'Cửa hàng 123',
             type: 'Cửa hàng',
+            iconName: 'store',
+            iconColor: '#00C853',
             address: '789 Đường 123, Thái Bình',
             latitude: 20.44700,
             longitude: 106.34100,
@@ -715,19 +796,14 @@ export default function GuestHomeScreen() {
   };
 
   const updateMapMarkers = () => {
-    if (!isMountedRef.current || !webViewRef.current) return;
+    if (!webViewRef.current) return;
     
     // Filter facilities based on current filters
     const filteredMarkers = facilities.filter(facility => shouldShowFacility(facility));
     
-    
     // Pass filtered markers to WebView
     webViewRef.current.injectJavaScript(`
-      try {
-        window.addMarkers('${JSON.stringify(filteredMarkers)}');
-      } catch (error) {
-        console.error('Error updating markers:', error);
-      }
+      window.addMarkers('${JSON.stringify(filteredMarkers)}');
       true;
     `);
   };
@@ -740,6 +816,7 @@ export default function GuestHomeScreen() {
     const fullFacility = facilities.find(f => f.id === facility.id) || facility;
     
     setSelectedFacility(fullFacility);
+    setSelectedMarkerId(facility.id); // Set selected marker
     setBottomSheetVisible(true);
     setIsBottomSheetExpanded(false);
     bottomSheetAnim.setValue(minHeight);
@@ -1296,6 +1373,23 @@ export default function GuestHomeScreen() {
     `);
   };
 
+  // When closing bottom sheet, reset selected marker
+  useEffect(() => {
+    if (!bottomSheetVisible) {
+      setSelectedMarkerId(null);
+      // Remove selection on map
+      if (webViewRef.current) {
+        webViewRef.current.injectJavaScript('window.selectedFacilityId = null; if(window.markersData) updateMarkers(window.markersData); true;');
+      }
+    }
+  }, [bottomSheetVisible]);
+
+  // Pass selectedMarkerId to WebView when it changes
+  useEffect(() => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript('window.selectedFacilityId = ' + (selectedMarkerId ? selectedMarkerId : 'null') + '; if(window.markersData) updateMarkers(window.markersData); true;');
+    }
+  }, [selectedMarkerId]);
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}

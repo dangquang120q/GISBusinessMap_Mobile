@@ -65,7 +65,6 @@ const HomeStackScreen = () => {
   
   return (
     <Stack.Navigator>
-      {isAuthenticated ? (
         <>
           <Stack.Screen
             name="Home"
@@ -73,13 +72,6 @@ const HomeStackScreen = () => {
             options={{headerShown: false}}
           />
         </>
-      ) : (
-        <Stack.Screen
-          name="GuestHome"
-          component={GuestHomeScreenWrapper}
-          options={{headerShown: false}}
-        />
-      )}
     </Stack.Navigator>
   );
 };
