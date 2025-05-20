@@ -1,4 +1,4 @@
-import React, {useContext, useState} from 'react';
+import React, {useContext, useState, useEffect} from 'react';
 import {
   SafeAreaView,
   View,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Dimensions,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { Image } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -25,11 +27,126 @@ const LoginScreen = ({navigation}) => {
   const { login, isAuthenticated } = useContext(AuthContext);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [mounted, setMounted] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      setMounted(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('Login successful, navigating to AppScreens');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'AppScreens' }],
+      });
+    }
+  }, [isAuthenticated, navigation]);
+
+  const validateEmail = (text) => {
+    // if (!text.trim()) {
+    //   setEmailError('Vui lòng nhập email');
+    //   return false;
+    // }
+    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // if (!emailRegex.test(text)) {
+    //   setEmailError('Email không hợp lệ');
+    //   return false;
+    // }
+    // setEmailError('');
+    return true;
+  };
+
+  const validatePassword = (text) => {
+    if (!text.trim()) {
+      setPasswordError('Vui lòng nhập mật khẩu');
+      return false;
+    }
+    if (text.length < 6) {
+      setPasswordError('Mật khẩu phải có ít nhất 6 ký tự');
+      return false;
+    }
+    setPasswordError('');
+    return true;
+  };
+
+  const handleLogin = async () => {
+    const isEmailValid = validateEmail(email);
+    const isPasswordValid = validatePassword(password);
+
+    if (!isEmailValid || !isPasswordValid) {
+      return;
+    }
+
+    try {
+      console.log('Starting login process...');
+      setIsLoading(true);
+      setError('');
+      
+      console.log('Calling login API with:', { email });
+      // Call login function
+      const result = await login(email, password);
+      console.log('Login API response:', result);
+      
+      if (!mounted) {
+        console.log('Component unmounted, stopping login process');
+        return;
+      }
+
+      if (!result) {
+        console.log('Login failed: No result returned');
+        setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      } else {
+        console.log('Login successful, waiting for isAuthenticated to update');
+      }
+    } catch (err) {
+      if (!mounted) {
+        console.log('Component unmounted during error handling');
+        return;
+      }
+      
+      console.error('Login error details:', {
+        message: err.message,
+        stack: err.stack,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.log('Error response data:', err.response.data);
+        console.log('Error response status:', err.response.status);
+        setError(`Lỗi server: ${err.response.data?.message || 'Vui lòng thử lại sau'}`);
+      } else if (err.request) {
+        // The request was made but no response was received
+        console.log('No response received:', err.request);
+        setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.log('Error setting up request:', err.message);
+        setError('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      }
+    } finally {
+      if (mounted) {
+        console.log('Login process completed, setting loading to false');
+        setIsLoading(false);
+      }
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <TouchableOpacity 
         style={styles.backButton} 
-        onPress={() => navigation.goBack()}
+        onPress={() => navigation.navigate('Main')}
       >
         <Ionicons name="arrow-back" size={24} color="#085924" />
         <Text style={styles.backButtonText}>Quay lại bản đồ</Text>
@@ -44,50 +161,81 @@ const LoginScreen = ({navigation}) => {
           />
         </View>
 
-        <Text
-          style={{
-            fontFamily: 'Roboto-Medium',
-            fontSize: 28,
-            fontWeight: '500',
-            color: '#085924',
-            marginBottom: 30,
-            textAlign:'center'
-          }}>
+        <Text style={styles.title}>
           Đăng nhập
         </Text>
-        <InputField
-          label={'Email'}
-          icon={
-            <MaterialIcons
-            name="alternate-email"
-            size={20}
-            color="#666"
-            style={{marginRight: 5}}
+
+        {error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : null}
+
+        <View>
+          <InputField
+            label={'Email'}
+            icon={
+              <MaterialIcons
+              name="alternate-email"
+              size={20}
+              color="#666"
+              style={{marginRight: 5}}
+            />
+            }
+            keyboardType="email-address"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError('');
+              validateEmail(text);
+            }}
+            editable={!isLoading}
           />
-          }
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
+          {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
+        </View>
+
+        <View>
+          <InputField
+            label={'Mật khẩu'}
+            icon={
+              <Ionicons
+              name="ios-lock-closed-outline"
+              size={20}
+              color="#666"
+              style={{marginRight: 5}}
+            />
+            }
+            inputType="password"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              setError('');
+              validatePassword(text);
+            }}
+            editable={!isLoading}
+            showPassword={showPassword}
+            fieldButtonIcon={
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Ionicons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#666"
+                />
+              </TouchableOpacity>
+            }
+          />
+          {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
+        </View>
+        
+        <CustomButton 
+          label={isLoading ? "Đang đăng nhập..." : "Đăng nhập"} 
+          onPress={handleLogin}
+          disabled={isLoading}
         />
 
-<InputField
-          label={'Mật khẩu'}
-          icon={
-            <Ionicons
-            name="ios-lock-closed-outline"
-            size={20}
-            color="#666"
-            style={{marginRight: 5}}
-          />
-          }
-          inputType="password"
-          // fieldButtonLabel={"Quên?"}
-          // fieldButtonFunction={() => {}}
-          value={password}
-          onChangeText={setPassword}
-        />
-        
-        <CustomButton label={"Đăng nhập"} onPress={() => {login(email, password)}} />
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#085924" />
+          </View>
+        )}
 
         <Text style={styles.orText}>
           Hoặc, đăng nhập bằng ...
@@ -96,30 +244,24 @@ const LoginScreen = ({navigation}) => {
         <View style={styles.socialButtonsContainer}>
           <TouchableOpacity
             onPress={() => {}}
-            style={styles.socialButton}>
+            style={[styles.socialButton, isLoading && styles.disabledButton]}
+            disabled={isLoading}>
             <GoogleSVG height={24} width={24} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {}}
-            style={styles.socialButton}>
+            style={[styles.socialButton, isLoading && styles.disabledButton]}
+            disabled={isLoading}>
             <FacebookSVG height={24} width={24} />
           </TouchableOpacity>
-          {/* <TouchableOpacity
-            onPress={() => {}}
-            style={styles.socialButton}>
-            <TwitterSVG height={24} width={24} />
-          </TouchableOpacity> */}
         </View>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            marginBottom: 30,
-          }}>
+        <View style={styles.registerContainer}>
           <Text>Bạn chưa có tài khoản?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={{color: '#085924', fontWeight: '700'}}> Đăng ký</Text>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Register')}
+            disabled={isLoading}>
+            <Text style={styles.registerText}> Đăng ký</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -162,6 +304,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
+  title: {
+    fontFamily: 'Roboto-Medium',
+    fontSize: 28,
+    fontWeight: '500',
+    color: '#085924',
+    marginBottom: 30,
+    textAlign: 'center'
+  },
   orText: {
     textAlign: 'center', 
     color: '#666', 
@@ -189,6 +339,40 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 1.00,
     elevation: 1,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  registerText: {
+    color: '#085924',
+    fontWeight: '700'
+  },
+  errorText: {
+    color: '#e74c3c',
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+  fieldError: {
+    color: '#e74c3c',
+    fontSize: 12,
+    marginLeft: 10,
+    marginTop: -20,
+    marginBottom: 10,
+  },
+  loadingContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
 });
 

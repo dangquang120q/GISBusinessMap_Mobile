@@ -23,6 +23,7 @@ import {useNavigation} from '@react-navigation/native';
 import styles from './HomeScreenStyles';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { AuthContext } from '../context/AuthContext';
+import {launchImageLibrary} from 'react-native-image-picker';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -1659,10 +1660,7 @@ export default function HomeScreen() {
                   ))}
                   <TouchableOpacity 
                     style={styles.addMediaButton}
-                    onPress={() => {
-                      // Handle media picker
-                      console.log('Open media picker');
-                    }}
+                    onPress={() => handleMediaPicker('review')}
                   >
                     <Ionicons name="add-circle-outline" size={40} color="#085924" />
                     <Text style={styles.addMediaText}>Thêm</Text>
@@ -1773,10 +1771,7 @@ export default function HomeScreen() {
                   ))}
                   <TouchableOpacity 
                     style={styles.addMediaButton}
-                    onPress={() => {
-                      // Handle media picker
-                      console.log('Open media picker');
-                    }}
+                    onPress={() => handleMediaPicker('report')}
                   >
                     <Ionicons name="add-circle-outline" size={40} color="#085924" />
                     <Text style={styles.addMediaText}>Thêm</Text>
@@ -1813,6 +1808,38 @@ export default function HomeScreen() {
       webViewRef.current.injectJavaScript('window.selectedFacilityId = ' + (selectedMarkerId ? selectedMarkerId : 'null') + '; if(window.markersData) updateMarkers(window.markersData); true;');
     }
   }, [selectedMarkerId]);
+
+  // Thêm hàm xử lý chọn media
+  const handleMediaPicker = (type) => {
+    const options = {
+      mediaType: 'mixed',
+      selectionLimit: 5,
+      quality: 1,
+      includeBase64: false,
+    };
+
+    launchImageLibrary(options, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled media picker');
+        return;
+      }
+
+      if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+        return;
+      }
+
+      if (response.assets && response.assets.length > 0) {
+        const newMedia = response.assets.map(asset => ({
+          type: asset.type?.startsWith('video/') ? 'video' : 'image',
+          url: asset.uri,
+          thumbnail: asset.type?.startsWith('video/') ? asset.uri : asset.uri,
+        }));
+
+        handleAddMedia(type, ...newMedia);
+      }
+    });
+  };
 
   return (
     <SafeAreaView style={styles.container}>
