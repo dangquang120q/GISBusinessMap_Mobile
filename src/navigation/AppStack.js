@@ -16,6 +16,10 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import NotificationsListScreen from '../screens/NotificationsListScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TermOfUseScreen from '../screens/TermOfUseScreen';
+import VersionScreen from '../screens/VersionScreen';
+import RateScreen from '../screens/RateScreen';
 
 import TabNavigator from './TabNavigator';
 
@@ -33,6 +37,10 @@ const AppNavigator = () => {
       <Stack.Screen name="NotificationsScreen" component={NotificationsScreen} />
       <Stack.Screen name="NotificationsListScreen" component={NotificationsListScreen} />
       <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
+      <Stack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
+      <Stack.Screen name="TermOfUseScreen" component={TermOfUseScreen} />
+      <Stack.Screen name="VersionScreen" component={VersionScreen} />
+      <Stack.Screen name="RateScreen" component={RateScreen} />
     </Stack.Navigator>
   );
 };

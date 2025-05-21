@@ -17,6 +17,10 @@ import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
 import { AuthContext } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TermOfUseScreen from '../screens/TermOfUseScreen';
+import VersionScreen from '../screens/VersionScreen';
+import RateScreen from '../screens/RateScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -55,6 +59,10 @@ const SettingsStackScreen = () => {
       <ProfileStack.Screen name="Settings" component={SettingsScreen} />
       <ProfileStack.Screen name="EditProfileScreen" component={EditProfileScreen} />
       <ProfileStack.Screen name="PrivacyScreen" component={PrivacyScreen} />
+      <ProfileStack.Screen name="PrivacyPolicyScreen" component={PrivacyPolicyScreen} />
+      <ProfileStack.Screen name="TermOfUseScreen" component={TermOfUseScreen} />
+      <ProfileStack.Screen name="VersionScreen" component={VersionScreen} />
+      <ProfileStack.Screen name="RateScreen" component={RateScreen} />
     </ProfileStack.Navigator>
   );
 };

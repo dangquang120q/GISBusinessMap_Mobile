@@ -7,6 +7,8 @@ import {
   ScrollView,
   Switch,
   Alert,
+  TextInput,
+  Modal,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,58 +16,57 @@ import { useNavigation } from '@react-navigation/native';
 const PrivacyScreen = () => {
   const navigation = useNavigation();
   
-  // Sample privacy settings - replace with actual data from your API/storage
   const [settings, setSettings] = useState({
-    profileVisibility: 'public', // 'public', 'friends', 'private'
-    locationSharing: true,
-    reviewsVisible: true,
-    dataCollection: {
-      appActivity: true,
-      locationHistory: true,
-      searchHistory: true,
-      personalizedAds: false,
-    },
-    accountActivity: {
-      twoFactorAuth: false,
-      loginAlerts: true,
-      deviceHistory: true,
-    }
+    twoFactorAuth: false,
+    loginAlerts: true,
+    deviceHistory: true,
+    biometricLogin: false,
+    autoLogout: true,
+    autoLogoutTime: '30', // minutes
   });
 
-  const toggleSwitch = (category, subcategory = null) => {
-    if (subcategory) {
-      // Toggle a subcategory
-      setSettings({
-        ...settings,
-        [category]: {
-          ...settings[category],
-          [subcategory]: !settings[category][subcategory]
-        }
-      });
-    } else {
-      // Toggle a main category
-      setSettings({
-        ...settings,
-        [category]: !settings[category]
-      });
-    }
-  };
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
 
-  const setProfileVisibility = (value) => {
+  const toggleSwitch = (setting) => {
     setSettings({
       ...settings,
-      profileVisibility: value
+      [setting]: !settings[setting]
     });
   };
 
-  const handleSave = () => {
-    // Here you would make an API call to save privacy settings
-    // For example: savePrivacySettings(settings);
-    
+  const handlePasswordChange = () => {
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      Alert.alert('Lỗi', 'Mật khẩu mới không khớp');
+      return;
+    }
+
+    // Here you would make an API call to change password
     Alert.alert(
       'Thành công',
-      'Cài đặt quyền riêng tư đã được lưu',
-      [{ text: 'OK' }]
+      'Mật khẩu đã được thay đổi',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            setShowPasswordModal(false);
+            setPasswordData({
+              currentPassword: '',
+              newPassword: '',
+              confirmPassword: '',
+            });
+          }
+        }
+      ]
     );
   };
 
@@ -94,9 +95,12 @@ const PrivacyScreen = () => {
     </View>
   );
 
-  const renderToggleItem = (label, value, onToggle, indent = false) => (
-    <View style={[styles.toggleItem, indent && styles.indentedItem]}>
-      <Text style={styles.toggleLabel}>{label}</Text>
+  const renderToggleItem = (label, value, onToggle, description = null) => (
+    <View style={styles.toggleItem}>
+      <View style={styles.toggleTextContainer}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+        {description && <Text style={styles.toggleDescription}>{description}</Text>}
+      </View>
       <Switch
         trackColor={{ false: "#d1d1d1", true: "#eba6ef" }}
         thumbColor={value ? "#085924" : "#f4f3f4"}
@@ -107,8 +111,6 @@ const PrivacyScreen = () => {
     </View>
   );
 
-  const isSelected = (option) => settings.profileVisibility === option;
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -118,133 +120,97 @@ const PrivacyScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cài đặt quyền riêng tư</Text>
+        <Text style={styles.headerTitle}>Bảo mật tài khoản</Text>
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.section}>
-          {renderSectionHeader('Thông tin cá nhân', 'person-outline')}
+          {renderSectionHeader('Mật khẩu', 'lock-closed-outline')}
           
-          <View style={styles.optionsContainer}>
-            <Text style={styles.optionGroupLabel}>Hiển thị trang cá nhân</Text>
-            
-            <TouchableOpacity 
-              style={[styles.optionItem, isSelected('public') && styles.selectedOption]}
-              onPress={() => setProfileVisibility('public')}
-            >
-              <View style={styles.optionLeft}>
-                <Ionicons name="globe-outline" size={22} color="#444" />
-                <Text style={styles.optionLabel}>Công khai</Text>
-              </View>
-              {isSelected('public') && (
-                <Ionicons name="checkmark-circle" size={22} color="#085924" />
-              )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.optionItem, isSelected('friends') && styles.selectedOption]}
-              onPress={() => setProfileVisibility('friends')}
-            >
-              <View style={styles.optionLeft}>
-                <Ionicons name="people-outline" size={22} color="#444" />
-                <Text style={styles.optionLabel}>Chỉ bạn bè</Text>
-              </View>
-              {isSelected('friends') && (
-                <Ionicons name="checkmark-circle" size={22} color="#085924" />
-              )}
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.optionItem, isSelected('private') && styles.selectedOption]}
-              onPress={() => setProfileVisibility('private')}
-            >
-              <View style={styles.optionLeft}>
-                <Ionicons name="lock-closed-outline" size={22} color="#444" />
-                <Text style={styles.optionLabel}>Riêng tư</Text>
-              </View>
-              {isSelected('private') && (
-                <Ionicons name="checkmark-circle" size={22} color="#085924" />
-              )}
-            </TouchableOpacity>
-            
-            <View style={styles.divider} />
-            
-            {renderToggleItem(
-              'Chia sẻ vị trí', 
-              settings.locationSharing, 
-              () => toggleSwitch('locationSharing')
-            )}
-            
-            {renderToggleItem(
-              'Cho phép xem đánh giá của tôi', 
-              settings.reviewsVisible, 
-              () => toggleSwitch('reviewsVisible')
-            )}
-          </View>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => setShowPasswordModal(true)}
+          >
+            <View style={styles.menuItemLeft}>
+              <Ionicons name="key-outline" size={22} color="#444" />
+              <Text style={styles.menuItemText}>Đổi mật khẩu</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={22} color="#666" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.section}>
-          {renderSectionHeader('Thu thập dữ liệu', 'analytics-outline')}
+        {/* <View style={styles.section}>
+          {renderSectionHeader('Tự động đăng xuất', 'time-outline')}
           
-          <View style={styles.togglesContainer}>
-            {renderToggleItem(
-              'Hoạt động ứng dụng', 
-              settings.dataCollection.appActivity, 
-              () => toggleSwitch('dataCollection', 'appActivity')
-            )}
-            
-            {renderToggleItem(
-              'Lịch sử vị trí', 
-              settings.dataCollection.locationHistory, 
-              () => toggleSwitch('dataCollection', 'locationHistory')
-            )}
-            
-            {renderToggleItem(
-              'Lịch sử tìm kiếm', 
-              settings.dataCollection.searchHistory, 
-              () => toggleSwitch('dataCollection', 'searchHistory')
-            )}
-            
-            {renderToggleItem(
-              'Quảng cáo cá nhân hóa', 
-              settings.dataCollection.personalizedAds, 
-              () => toggleSwitch('dataCollection', 'personalizedAds')
-            )}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          {renderSectionHeader('Bảo mật tài khoản', 'shield-checkmark-outline')}
+          {renderToggleItem(
+            'Tự động đăng xuất',
+            settings.autoLogout,
+            () => toggleSwitch('autoLogout'),
+            'Tự động đăng xuất sau một thời gian không hoạt động'
+          )}
           
-          <View style={styles.togglesContainer}>
-            {renderToggleItem(
-              'Xác thực hai yếu tố', 
-              settings.accountActivity.twoFactorAuth, 
-              () => toggleSwitch('accountActivity', 'twoFactorAuth')
-            )}
-            
-            {renderToggleItem(
-              'Thông báo đăng nhập', 
-              settings.accountActivity.loginAlerts, 
-              () => toggleSwitch('accountActivity', 'loginAlerts')
-            )}
-            
-            {renderToggleItem(
-              'Lịch sử thiết bị', 
-              settings.accountActivity.deviceHistory, 
-              () => toggleSwitch('accountActivity', 'deviceHistory')
-            )}
-          </View>
-        </View>
-        
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Lưu cài đặt</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.dangerButton} onPress={handleDeleteAccount}>
-          <Text style={styles.dangerButtonText}>Xóa tài khoản</Text>
-        </TouchableOpacity>
+          {settings.autoLogout && (
+            <View style={styles.timeInputContainer}>
+              <Text style={styles.timeInputLabel}>Thời gian (phút):</Text>
+              <TextInput
+                style={styles.timeInput}
+                value={settings.autoLogoutTime}
+                onChangeText={(text) => setSettings({...settings, autoLogoutTime: text})}
+                keyboardType="numeric"
+                maxLength={2}
+              />
+            </View>
+          )}
+        </View> */}
       </ScrollView>
+
+      <Modal
+        visible={showPasswordModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)}>
+                <Ionicons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Mật khẩu hiện tại"
+              secureTextEntry
+              value={passwordData.currentPassword}
+              onChangeText={(text) => setPasswordData({...passwordData, currentPassword: text})}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Mật khẩu mới"
+              secureTextEntry
+              value={passwordData.newPassword}
+              onChangeText={(text) => setPasswordData({...passwordData, newPassword: text})}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Xác nhận mật khẩu mới"
+              secureTextEntry
+              value={passwordData.confirmPassword}
+              onChangeText={(text) => setPasswordData({...passwordData, confirmPassword: text})}
+            />
+
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={handlePasswordChange}
+            >
+              <Text style={styles.modalButtonText}>Đổi mật khẩu</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -302,80 +268,67 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 10,
   },
-  optionsContainer: {
-    padding: 16,
-  },
-  optionGroupLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#444',
-    marginBottom: 12,
-  },
-  optionItem: {
+  menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  selectedOption: {
-    backgroundColor: '#f9f0fa',
-  },
-  optionLeft: {
+  menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  optionLabel: {
+  menuItemText: {
     fontSize: 16,
     color: '#444',
     marginLeft: 12,
-  },
-  togglesContainer: {
-    padding: 8,
   },
   toggleItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  indentedItem: {
-    paddingLeft: 32,
+  toggleTextContainer: {
+    flex: 1,
+    marginRight: 10,
   },
   toggleLabel: {
     fontSize: 16,
     color: '#444',
-    flex: 1,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#f0f0f0',
-    marginVertical: 8,
+  toggleDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
   },
-  saveButton: {
-    backgroundColor: '#085924',
-    margin: 16,
-    padding: 15,
-    borderRadius: 30,
+  timeInputContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
+    padding: 16,
+    paddingTop: 0,
   },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  timeInputLabel: {
+    fontSize: 14,
+    color: '#666',
+    marginRight: 10,
+  },
+  timeInput: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 4,
+    padding: 8,
+    width: 50,
+    textAlign: 'center',
   },
   dangerButton: {
     borderColor: '#dc3545',
     borderWidth: 1,
     margin: 16,
-    marginTop: 0,
     padding: 15,
     borderRadius: 30,
     alignItems: 'center',
@@ -386,6 +339,49 @@ const styles = StyleSheet.create({
     color: '#dc3545',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    fontSize: 16,
+  },
+  modalButton: {
+    backgroundColor: '#085924',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

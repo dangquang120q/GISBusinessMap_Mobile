@@ -95,14 +95,20 @@ const SettingsScreen = () => {
     navigation.navigate('PrivacyScreen');
   };
 
-  const goToHelpCenter = () => {
-    // Điều hướng đến trang trung tâm trợ giúp
-    Alert.alert('Thông báo', 'Tính năng đang được phát triển');
+  const goToPrivacy = () => {
+    navigation.navigate('PrivacyPolicyScreen');
   };
 
-  const goToAbout = () => {
-    // Điều hướng đến trang giới thiệu
-    Alert.alert('Thông báo', 'Tính năng đang được phát triển');
+  const goToTermsOfUse = () => {
+    navigation.navigate('TermOfUseScreen');
+  };
+
+  const goToVersion = () => {
+    navigation.navigate('VersionScreen');
+  };
+
+  const goToRate = () => {
+    navigation.navigate('RateScreen');
   };
 
   return (
@@ -118,7 +124,23 @@ const SettingsScreen = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tùy chọn</Text>
+        <Text style={styles.sectionTitle}>Tài khoản và bảo mật</Text>
+        {renderSettingItem(
+          'person-outline',
+          'Thông tin tài khoản',
+          <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToEditProfile
+        )}
+        {renderSettingItem(
+          'lock-closed-outline',
+          'Bảo mật',
+          <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToPrivacySettings
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Ứng dụng</Text>
         {renderSettingItem(
           'notifications-outline',
           'Thông báo',
@@ -141,48 +163,29 @@ const SettingsScreen = () => {
             </Text>
           </View>
         )}
-        
-        {renderSettingItem(
-          'moon-outline',
-          'Chế độ tối',
-          <Switch
-            value={darkMode}
-            onValueChange={toggleDarkMode}
-            trackColor={{false: '#767577', true: '#085924'}}
-            thumbColor={darkMode ? '#fff' : '#f4f3f4'}
-          />,
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Tài khoản</Text>
-        {renderSettingItem(
-          'person-outline',
-          'Thông tin tài khoản',
-          <Ionicons name="chevron-forward" size={24} color="#666" />,
-          goToEditProfile
-        )}
         {renderSettingItem(
           'lock-closed-outline',
-          'Quyền riêng tư & Bảo mật',
+          'Chính sách quyền riêng tư',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
-          goToPrivacySettings
-        )}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Hỗ trợ</Text>
-        {renderSettingItem(
-          'help-circle-outline',
-          'Trung tâm trợ giúp',
-          <Ionicons name="chevron-forward" size={24} color="#666" />,
-          goToHelpCenter
+          goToPrivacy
         )}
         {renderSettingItem(
           'information-circle-outline',
-          'Giới thiệu',
+          'Điều khoản sử dụng',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
-          goToAbout
+          goToTermsOfUse
+        )}
+        {renderSettingItem(
+          'apps-outline',
+          'Phiên bản ứng dụng',
+          <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToVersion
+        )}
+        {renderSettingItem(
+          'thumbs-up-outline',
+          'Đánh giá ứng dụng',
+          <Ionicons name="chevron-forward" size={24} color="#666" />,
+          goToRate
         )}
       </View>
 
