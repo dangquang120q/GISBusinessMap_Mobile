@@ -8,125 +8,57 @@ import {
   SafeAreaView,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import BusinessFeedbackService from '../services/BusinessFeedbackService';
+import BusinessFeedbackType from '../services/BusinessFeedbackType';
 
 const FeedbackHistoryScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'processing', 'resolved'
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Sample data - replace with your actual API call
-  const sampleFeedback = [
-    {
-      id: '1',
-      facilityName: 'Nhà hàng ABC',
-      handler: 'Nguyễn Văn A - Sở Y tế',
-      title: 'Phản ánh về vệ sinh an toàn thực phẩm',
-      content: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề vệ sinh thực phẩm tại cơ sở. Sau khi kiểm tra, chúng tôi đã yêu cầu cơ sở khắc phục các vấn đề và sẽ theo dõi trong thời gian tới.',
-      status: 'resolved',
-      date: '2023-12-10',
-      feedbackContent: 'Nhà hàng không đảm bảo vệ sinh, nhân viên không đeo khẩu trang khi chế biến thức ăn.',
-    },
-    {
-      id: '2',
-      facilityName: 'Khách sạn XYZ',
-      handler: 'Trần Thị B - Sở Du lịch',
-      title: 'Phản ánh về chất lượng dịch vụ',
-      content: 'Cảm ơn bạn đã phản hồi về chất lượng dịch vụ. Chúng tôi đang xem xét vấn đề và sẽ có biện pháp cải thiện trong thời gian tới.',
-      status: 'processing',
-      date: '2023-11-25',
-      feedbackContent: 'Phòng ốc không sạch sẽ, nhân viên phục vụ thiếu chuyên nghiệp.',
-    },
-    {
-      id: '3',
-      facilityName: 'Cửa hàng LMN',
-      handler: 'Lê Văn C - Sở Công Thương',
-      title: 'Phản ánh về tính minh bạch giá cả',
-      content: 'Chúng tôi đã tiếp nhận phản ánh của bạn về vấn đề niêm yết giá. Sau khi kiểm tra, cơ sở đã được yêu cầu tuân thủ quy định về niêm yết giá và thông tin sản phẩm.',
-      status: 'resolved',
-      date: '2023-11-05',
-      feedbackContent: 'Cửa hàng không niêm yết giá rõ ràng, tính giá cao hơn giá niêm yết.',
-    },
-    {
-      id: '4',
-      facilityName: 'Quán cafe PQR',
-      title: 'Phản ánh về tiếng ồn',
-      content: 'Quán cafe hoạt động quá giờ, gây ồn ào ảnh hưởng đến khu dân cư.',
-      status: 'pending',
-      date: '2023-12-15',
-      feedbackContent: 'Quán cafe hoạt động quá giờ, gây ồn ào ảnh hưởng đến khu dân cư.',
-    },
-  ];
-
-  useEffect(() => {
-    // Simulate API fetch
-    const fetchFeedback = async () => {
-      try {
-        // Replace with actual API call
-        // const response = await fetch('your-api-endpoint');
-        // const data = await response.json();
-        // setFeedback(data);
-        
-        // Using sample data for now
-        setTimeout(() => {
-          setFeedback(sampleFeedback);
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Error fetching feedback:', error);
-        setLoading(false);
+  const fetchFeedback = async () => {
+    try {
+      setLoading(true);
+      const result = await BusinessFeedbackService.getUserFeedbacks();
+      if (result && Array.isArray(result.items)) {
+        setFeedback(result.items);
+      } else {
+        setFeedback([]);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      Alert.alert(
+        'Lỗi',
+        'Không thể tải dữ liệu phản ánh. Vui lòng thử lại sau.',
+        [{ text: 'OK' }]
+      );
+      setFeedback([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
+  // Fetch feedback data on component mount
+  useEffect(() => {
     fetchFeedback();
   }, []);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchFeedback();
+  };
 
   const filteredFeedback = feedback.filter(item => {
     if (filter === 'all') return true;
     return item.status === filter;
   });
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'resolved':
-        return '#28a745';
-      case 'processing':
-        return '#ffc107';
-      case 'pending':
-        return '#dc3545';
-      default:
-        return '#6c757d';
-    }
-  };
-
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'resolved':
-        return 'Đã xử lý';
-      case 'processing':
-        return 'Đang xử lý';
-      case 'pending':
-        return 'Chưa xác minh';
-      default:
-        return 'Không xác định';
-    }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'resolved':
-        return 'checkmark-circle';
-      case 'processing':
-        return 'time';
-      case 'pending':
-        return 'alert-circle';
-      default:
-        return 'help-circle';
-    }
-  };
 
   const renderFilterButtons = () => (
     <View style={styles.filterContainer}>
@@ -144,26 +76,26 @@ const FeedbackHistoryScreen = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'pending' && styles.filterButtonActive]}
-          onPress={() => setFilter('pending')}
+          style={[styles.filterButton, filter === BusinessFeedbackType.PENDING && styles.filterButtonActive]}
+          onPress={() => setFilter(BusinessFeedbackType.PENDING)}
         >
-          <Text style={[styles.filterButtonText, filter === 'pending' && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, filter === BusinessFeedbackType.PENDING && styles.filterButtonTextActive]}>
             Chưa xác minh
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'processing' && styles.filterButtonActive]}
-          onPress={() => setFilter('processing')}
+          style={[styles.filterButton, filter === BusinessFeedbackType.PROCESSING && styles.filterButtonActive]}
+          onPress={() => setFilter(BusinessFeedbackType.PROCESSING)}
         >
-          <Text style={[styles.filterButtonText, filter === 'processing' && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, filter === BusinessFeedbackType.PROCESSING && styles.filterButtonTextActive]}>
             Đang xử lý
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'resolved' && styles.filterButtonActive]}
-          onPress={() => setFilter('resolved')}
+          style={[styles.filterButton, filter === BusinessFeedbackType.RESOLVED && styles.filterButtonActive]}
+          onPress={() => setFilter(BusinessFeedbackType.RESOLVED)}
         >
-          <Text style={[styles.filterButtonText, filter === 'resolved' && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, filter === BusinessFeedbackType.RESOLVED && styles.filterButtonTextActive]}>
             Đã xử lý
           </Text>
         </TouchableOpacity>
@@ -179,28 +111,28 @@ const FeedbackHistoryScreen = () => {
       }}
     >
       <View style={styles.feedbackHeader}>
-        <Text style={styles.facilityName}>{item.facilityName}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+        <Text style={styles.facilityName}>{item.businessName || 'Không có tên'}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: BusinessFeedbackType.getStatusColor(item.status) }]}>
           <Ionicons 
-            name={getStatusIcon(item.status)} 
+            name={BusinessFeedbackType.getStatusIcon(item.status)} 
             size={14} 
             color="#fff" 
             style={styles.statusIcon}
           />
-          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+          <Text style={styles.statusText}>{BusinessFeedbackType.getStatusText(item.status)}</Text>
         </View>
       </View>
       
-      {item.status !== 'pending' && (
+      {item.status !== BusinessFeedbackType.PENDING && item.handler && (
         <View style={styles.handlerInfo}>
           <Text style={styles.handlerName}>{item.handler}</Text>
-          <Text style={styles.date}>{item.date}</Text>
+          <Text style={styles.date}>{new Date(item.creationTime).toLocaleDateString()}</Text>
         </View>
       )}
       
-      <Text style={styles.feedbackTitle}>{item.title}</Text>
+      <Text style={styles.feedbackTitle}>{item.title || 'Không có tiêu đề'}</Text>
       <Text style={styles.feedbackContent} numberOfLines={3}>
-        {item.status === 'pending' ? item.feedbackContent : item.content}
+        {item.status === BusinessFeedbackType.PENDING ? item.content : (item.responseContent || item.content)}
       </Text>
     </TouchableOpacity>
   );
@@ -227,8 +159,10 @@ const FeedbackHistoryScreen = () => {
         <FlatList
           data={filteredFeedback}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
         />
       ) : (
         <View style={styles.emptyContainer}>

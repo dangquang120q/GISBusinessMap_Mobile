@@ -9,9 +9,11 @@ import {
   Alert,
   TextInput,
   Modal,
+  ActivityIndicator
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import SessionService from '../services/SessionService';
 
 const PrivacyScreen = () => {
   const navigation = useNavigation();
@@ -31,6 +33,7 @@ const PrivacyScreen = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const toggleSwitch = (setting) => {
     setSettings({
@@ -39,7 +42,7 @@ const PrivacyScreen = () => {
     });
   };
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
       Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
       return;
@@ -50,24 +53,48 @@ const PrivacyScreen = () => {
       return;
     }
 
-    // Here you would make an API call to change password
-    Alert.alert(
-      'Thành công',
-      'Mật khẩu đã được thay đổi',
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setShowPasswordModal(false);
-            setPasswordData({
-              currentPassword: '',
-              newPassword: '',
-              confirmPassword: '',
-            });
+    try {
+      setIsChangingPassword(true);
+      
+      // Call service to change password
+      await SessionService.changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      });
+      
+      Alert.alert(
+        'Thành công',
+        'Mật khẩu đã được thay đổi',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowPasswordModal(false);
+              setPasswordData({
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: '',
+              });
+            }
           }
+        ]
+      );
+    } catch (error) {
+      console.error('Error changing password:', error);
+      
+      let errorMessage = 'Không thể thay đổi mật khẩu. Vui lòng thử lại sau.';
+      
+      if (error.response && error.response.data && error.response.data.error) {
+        const serverError = error.response.data.error;
+        if (serverError.message) {
+          errorMessage = `Lỗi: ${serverError.message}`;
         }
-      ]
-    );
+      }
+      
+      Alert.alert('Lỗi', errorMessage);
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const handleDeleteAccount = () => {
@@ -205,8 +232,13 @@ const PrivacyScreen = () => {
             <TouchableOpacity 
               style={styles.modalButton}
               onPress={handlePasswordChange}
+              disabled={isChangingPassword}
             >
-              <Text style={styles.modalButtonText}>Đổi mật khẩu</Text>
+              {isChangingPassword ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.modalButtonText}>Đổi mật khẩu</Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>

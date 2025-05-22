@@ -9,6 +9,7 @@ export const AuthProvider = ({children}) => {
     const [userToken, setUserToken] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [userRole, setUserRole] = useState(null);
     
     const login = async (userNameOrEmailAddress, password, rememberClient = false) => {
         try {
@@ -28,6 +29,14 @@ export const AuthProvider = ({children}) => {
             .then(response => {
                 setUserToken(response.data.result.accessToken);
                 AsyncStorage.setItem('userToken', response.data.result.accessToken);
+                
+                // Set user role - In a real app, this would come from the API response
+                // For this example, determine role based on email or username
+                // const role = userNameOrEmailAddress.includes('business') ? 'business' : 'citizen';
+                const role = 'business';
+                setUserRole(role);
+                AsyncStorage.setItem('userRole', role);
+                
                 setIsAuthenticated(true);
                 setIsLoading(false);
             })
@@ -44,8 +53,10 @@ export const AuthProvider = ({children}) => {
     const logout = async () => {
         setIsLoading(true);
         setUserToken(null);
+        setUserRole(null);
         setIsAuthenticated(false);
         await AsyncStorage.removeItem('userToken');
+        await AsyncStorage.removeItem('userRole');
         setIsLoading(false);
     };
 
@@ -53,7 +64,10 @@ export const AuthProvider = ({children}) => {
         try {
             setIsLoading(true);
             const userToken = await AsyncStorage.getItem('userToken');
+            const storedUserRole = await AsyncStorage.getItem('userRole');
+            
             setUserToken(userToken);
+            setUserRole(storedUserRole);
             setIsAuthenticated(userToken !== null);
             setIsLoading(false);
         } catch (error) {
@@ -71,6 +85,7 @@ export const AuthProvider = ({children}) => {
             userToken,
             isAuthenticated,
             isLoading,
+            userRole,
             login,
             logout
         }}>

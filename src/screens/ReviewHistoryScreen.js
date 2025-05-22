@@ -8,69 +8,123 @@ import {
   SafeAreaView,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import BusinessReviewService from '../services/BusinessReviewService';
 
 const ReviewHistoryScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all', 'approved', 'pending'
-
-  // Sample data - replace with your actual API call
-  const sampleReviews = [
-    {
-      id: '1',
-      facilityName: 'Nhà hàng ABC',
-      facilityType: 'Nhà hàng',
-      rating: 4,
-      content: 'Đồ ăn ngon, phục vụ tốt.',
-      date: '2023-12-05',
-      status: 'approved',
-    },
-    {
-      id: '2',
-      facilityName: 'Khách sạn XYZ',
-      facilityType: 'Khách sạn',
-      rating: 5,
-      content: 'Phòng sạch sẽ, nhân viên thân thiện.',
-      date: '2023-11-28',
-      status: 'pending',
-    },
-    {
-      id: '3',
-      facilityName: 'Cửa hàng LMN',
-      facilityType: 'Cửa hàng',
-      rating: 3,
-      content: 'Sản phẩm đa dạng, giá khá cao.',
-      date: '2023-11-15',
-      status: 'approved',
-    },
-  ];
+  const [error, setError] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    // Simulate API fetch
-    const fetchReviews = async () => {
-      try {
-        // Replace with actual API call
-        // const response = await fetch('your-api-endpoint');
-        // const data = await response.json();
-        // setReviews(data);
-        
-        // Using sample data for now
-        setTimeout(() => {
-          setReviews(sampleReviews);
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        console.error('Error fetching reviews:', error);
-        setLoading(false);
-      }
-    };
-
     fetchReviews();
   }, []);
+
+  const fetchReviews = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Get all reviews for the current user
+      // Since API automatically filters for the current authenticated user
+      // We're using the getAll method with appropriate pagination
+      const response = await BusinessReviewService.getAll({
+        maxResultCount: 50, // Adjust as needed
+        skipCount: 0,
+        isGetTotalCount: true,
+        sorting: 'creationTime DESC' // Sort by newest first
+      });
+      
+      if (response && Array.isArray(response.items)) {
+        // Map the API response to our review format
+        const mappedReviews = response.items.map(item => ({
+          id: item.id,
+          facilityName: item.businessName || 'Không có tên',
+          facilityType: item.businessTypeName || 'Không phân loại',
+          rating: item.rating || 0,
+          content: item.content || '',
+          date: formatDate(item.creationTime),
+          status: item.isApproved ? 'approved' : 'pending',
+        }));
+        
+        setReviews(mappedReviews);
+      } else {
+        // Fallback to empty array if response format is unexpected
+        setReviews([]);
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      setError('Có lỗi xảy ra khi tải dữ liệu đánh giá');
+      
+      // Show error alert
+      Alert.alert(
+        'Lỗi',
+        'Không thể tải danh sách đánh giá. Vui lòng thử lại sau.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteReview = (reviewId) => {
+    Alert.alert(
+      'Xác nhận xóa',
+      'Bạn có chắc chắn muốn xóa đánh giá này?',
+      [
+        {
+          text: 'Hủy',
+          style: 'cancel'
+        },
+        {
+          text: 'Xóa',
+          style: 'destructive',
+          onPress: () => deleteReview(reviewId)
+        }
+      ]
+    );
+  };
+
+  const deleteReview = async (reviewId) => {
+    try {
+      setDeleting(true);
+      await BusinessReviewService.delete(reviewId);
+      
+      // Update the local state after successful deletion
+      setReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
+      
+      // Show success message
+      Alert.alert('Thành công', 'Đã xóa đánh giá thành công');
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      Alert.alert('Lỗi', 'Không thể xóa đánh giá. Vui lòng thử lại sau.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // Helper function to format date from ISO string to local date format
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString;
+    }
+  };
 
   const filteredReviews = reviews.filter(review => {
     if (filter === 'all') return true;
@@ -128,31 +182,58 @@ const ReviewHistoryScreen = () => {
   );
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.reviewItem}
-      onPress={() => {
-        navigation.navigate('ReviewDetail', { reviewId: item.id });
-      }}
-    >
-      <View style={styles.reviewHeader}>
-        <Text style={styles.facilityName}>{item.facilityName}</Text>
-        <View style={styles.headerRight}>
-          <View style={[
-            styles.statusBadge,
-            item.status === 'approved' ? styles.statusApproved : styles.statusPending
-          ]}>
-            <Text style={styles.statusText}>
-              {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
-            </Text>
+    <View style={styles.reviewItem}>
+      <TouchableOpacity
+        style={styles.reviewContent}
+        onPress={() => {
+          navigation.navigate('ReviewDetail', { reviewId: item.id });
+        }}
+      >
+        <View style={styles.reviewHeader}>
+          <Text style={styles.facilityName}>{item.facilityName}</Text>
+          <View style={styles.headerRight}>
+            <View style={[
+              styles.statusBadge,
+              item.status === 'approved' ? styles.statusApproved : styles.statusPending
+            ]}>
+              <Text style={styles.statusText}>
+                {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+              </Text>
+            </View>
           </View>
         </View>
+        <Text style={styles.facilityType}>{item.facilityType}</Text>
+        <Text style={styles.date}>{item.date}</Text>
+        <Text>{renderStars(item.rating)}</Text>
+        <Text style={styles.content}>{item.content}</Text>
+      </TouchableOpacity>
+      
+      <View style={styles.reviewActions}>
+        {/* Only allow editing of pending reviews */}
+        {item.status === 'pending' && (
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={() => navigation.navigate('EditReview', { reviewId: item.id })}
+          >
+            <Ionicons name="create-outline" size={18} color="#085924" />
+            <Text style={styles.editButtonText}>Sửa</Text>
+          </TouchableOpacity>
+        )}
+        
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={() => handleDeleteReview(item.id)}
+        >
+          <Ionicons name="trash-outline" size={18} color="#e74c3c" />
+          <Text style={styles.deleteButtonText}>Xóa</Text>
+        </TouchableOpacity>
       </View>
-      <Text style={styles.facilityType}>{item.facilityType}</Text>
-      <Text style={styles.date}>{item.date}</Text>
-      <Text>{renderStars(item.rating)}</Text>
-      <Text style={styles.content}>{item.content}</Text>
-    </TouchableOpacity>
+    </View>
   );
+
+  const handleRefresh = () => {
+    fetchReviews();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -168,16 +249,27 @@ const ReviewHistoryScreen = () => {
 
       {renderFilterButtons()}
 
-      {loading ? (
+      {loading || deleting ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#085924" />
+          {deleting && <Text style={styles.loadingText}>Đang xóa đánh giá...</Text>}
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
         </View>
       ) : filteredReviews.length > 0 ? (
         <FlatList
           data={filteredReviews}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContainer}
+          refreshing={loading}
+          onRefresh={handleRefresh}
         />
       ) : (
         <View style={styles.emptyContainer}>
@@ -249,6 +341,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#555',
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
   listContainer: {
     padding: 16,
   },
@@ -262,6 +383,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
+  },
+  reviewContent: {
+    flex: 1,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -295,6 +419,33 @@ const styles = StyleSheet.create({
   content: {
     fontSize: 16,
     color: '#444',
+  },
+  reviewActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+    paddingTop: 10,
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  editButtonText: {
+    color: '#085924',
+    marginLeft: 4,
+    fontSize: 14,
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#e74c3c',
+    marginLeft: 4,
+    fontSize: 14,
   },
   emptyContainer: {
     flex: 1,

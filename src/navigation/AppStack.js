@@ -6,7 +6,6 @@ import CustomDrawer from '../components/CustomDrawer';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
 import ReviewDetailScreen from '../screens/ReviewDetailScreen';
@@ -67,15 +66,6 @@ const DrawerScreens = () => {
         options={{
           drawerIcon: ({color}) => (
             <Ionicons name="home-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          drawerIcon: ({color}) => (
-            <Ionicons name="person-outline" size={22} color={color} />
           ),
         }}
       />

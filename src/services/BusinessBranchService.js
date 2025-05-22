@@ -1,9 +1,76 @@
 import api from './api';
 
 /**
- * Service để tương tác với API BusinessBranches
+ * Service để tương tác với API Business Branch
  */
 class BusinessBranchService {
+  /**
+   * Lấy danh sách các cơ sở kinh doanh
+   * 
+   * @param {Object} params Tham số tìm kiếm
+   * @param {string} params.keyword Từ khóa tìm kiếm
+   * @param {string} params.types Loại cơ sở kinh doanh (comma-separated: restaurant,hotel,shop)
+   * @param {number} params.maxResultCount Số lượng kết quả tối đa
+   * @param {number} params.skipCount Số lượng kết quả bỏ qua (phân trang)
+   * @returns {Promise} Promise với kết quả danh sách cơ sở kinh doanh
+   */
+  async getList(params = {}) {
+    try {
+      const response = await api.get('/api/services/app/BusinessBranch/GetList', { params });
+      return response.result;
+    } catch (error) {
+      console.error('Error fetching business branches:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lấy chi tiết cơ sở kinh doanh theo ID
+   * 
+   * @param {string} id ID của cơ sở kinh doanh
+   * @returns {Promise} Promise với kết quả chi tiết cơ sở kinh doanh
+   */
+  async get(id) {
+    try {
+      const response = await api.get(`/api/services/app/BusinessBranch/Get?id=${id}`);
+      return response.result;
+    } catch (error) {
+      console.error('Error fetching business branch details:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lấy danh sách các cơ sở kinh doanh trong phạm vi bản đồ
+   * 
+   * @param {Object} bounds Ranh giới bản đồ
+   * @param {Object} bounds.northEast Tọa độ góc đông bắc
+   * @param {number} bounds.northEast.lat Vĩ độ góc đông bắc
+   * @param {number} bounds.northEast.lng Kinh độ góc đông bắc
+   * @param {Object} bounds.southWest Tọa độ góc tây nam
+   * @param {number} bounds.southWest.lat Vĩ độ góc tây nam
+   * @param {number} bounds.southWest.lng Kinh độ góc tây nam
+   * @param {string} types Loại cơ sở kinh doanh (comma-separated: restaurant,hotel,shop)
+   * @returns {Promise} Promise với kết quả danh sách cơ sở kinh doanh trong phạm vi
+   */
+  async getInBounds(bounds, types) {
+    try {
+      const params = {
+        northEastLat: bounds.northEast.lat,
+        northEastLng: bounds.northEast.lng,
+        southWestLat: bounds.southWest.lat,
+        southWestLng: bounds.southWest.lng,
+        types: types
+      };
+      
+      const response = await api.get('/api/services/app/BusinessBranch/GetInBounds', { params });
+      return response.result;
+    } catch (error) {
+      console.error('Error fetching business branches in bounds:', error);
+      throw error;
+    }
+  }
+
   /**
    * Lấy danh sách tất cả chi nhánh kinh doanh với các bộ lọc
    * 
@@ -18,30 +85,18 @@ class BusinessBranchService {
    * @param {boolean} params.isGetTotalCount Có lấy tổng số bản ghi không
    * @param {number} params.skipCount Số bản ghi bỏ qua
    * @param {number} params.maxResultCount Số bản ghi tối đa
+   * @param {AbortSignal} signal Signal để hủy request
    * @returns {Promise} Promise với kết quả danh sách chi nhánh kinh doanh
    */
-  async getAll(params = {}) {
+  async getAll(params = {}, signal) {
     try {
-      const response = await api.get('/api/services/app/BusinessBranches/GetAll', params);
+      const response = await api.get('/api/services/app/BusinessBranches/GetAll', { 
+        params,
+        signal
+      });
       return response.result;
     } catch (error) {
       console.error('Error fetching business branches:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Lấy thông tin một chi nhánh kinh doanh theo ID
-   * 
-   * @param {number} id ID của chi nhánh
-   * @returns {Promise} Promise với kết quả chi nhánh kinh doanh
-   */
-  async get(id) {
-    try {
-      const response = await api.get('/api/services/app/BusinessBranches/Get', { Id: id });
-      return response.result;
-    } catch (error) {
-      console.error(`Error fetching business branch with id ${id}:`, error);
       throw error;
     }
   }

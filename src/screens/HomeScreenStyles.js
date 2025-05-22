@@ -110,14 +110,20 @@ const styles = StyleSheet.create({
   filterButtonActive: {
     backgroundColor: '#085924',
   },
+  filterButtonDisabled: {
+    opacity: 0.7,
+  },
   filterButtonText: {
+    fontSize: 13,
     color: '#666',
-    fontSize: 14,
-    fontWeight: '500',
     marginLeft: 5,
   },
   filterButtonTextActive: {
     color: '#fff',
+    fontWeight: '500',
+  },
+  filterButtonTextDisabled: {
+    opacity: 0.8,
   },
   filterButtonIcon: {
     marginRight: 5,

@@ -3,16 +3,21 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
 import HomeScreen from '../screens/HomeScreen';
-import GuestHomeScreen from '../screens/GuestHomeScreen';
-import ProfileScreen from '../screens/ProfileScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
 import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
 import NotificationsListScreen from '../screens/NotificationsListScreen';
-import LoginButton from '../components/LoginButton';
 import ReviewDetailScreen from '../screens/ReviewDetailScreen';
 import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
+import BusinessFacilityScreen from '../screens/BusinessFacilityScreen';
+import ForeignerManagementScreen from '../screens/ForeignerManagementScreen';
+import ForeignerDetailScreen from '../screens/ForeignerDetailScreen';
+import AddForeignerScreen from '../screens/AddForeignerScreen';
+import EditForeignerScreen from '../screens/EditForeignerScreen';
+import BusinessFacilityDetailScreen from '../screens/BusinessFacilityDetailScreen';
+import AddBusinessFacilityScreen from '../screens/AddBusinessFacilityScreen';
+import EditBusinessFacilityScreen from '../screens/EditBusinessFacilityScreen';
 
 import { AuthContext } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -27,10 +32,11 @@ const Stack = createNativeStackNavigator();
 const ReviewStack = createNativeStackNavigator();
 const FeedbackStack = createNativeStackNavigator();
 const ProfileStack = createNativeStackNavigator();
+const BusinessFacilityStack = createNativeStackNavigator();
+const ForeignerManagementStack = createNativeStackNavigator();
 
 // Wrapper components to avoid inline functions
 const AuthenticatedHomeScreen = () => <HomeScreen />;
-const GuestHomeScreenWrapper = () => <GuestHomeScreen />;
 
 // Review Stack Navigator
 const ReviewStackScreen = () => {
@@ -49,6 +55,30 @@ const FeedbackStackScreen = () => {
       <FeedbackStack.Screen name="FeedbackHistory" component={FeedbackHistoryScreen} />
       <FeedbackStack.Screen name="FeedbackDetail" component={FeedbackDetailScreen} />
     </FeedbackStack.Navigator>
+  );
+};
+
+// Business Facility Stack Navigator
+const BusinessFacilityStackScreen = () => {
+  return (
+    <BusinessFacilityStack.Navigator screenOptions={{headerShown: false}}>
+      <BusinessFacilityStack.Screen name="BusinessFacility" component={BusinessFacilityScreen} />
+      <BusinessFacilityStack.Screen name="BusinessFacilityDetail" component={BusinessFacilityDetailScreen} />
+      <BusinessFacilityStack.Screen name="AddBusinessFacility" component={AddBusinessFacilityScreen} />
+      <BusinessFacilityStack.Screen name="EditBusinessFacility" component={EditBusinessFacilityScreen} />
+    </BusinessFacilityStack.Navigator>
+  );
+};
+
+// Foreigner Management Stack Navigator
+const ForeignerManagementStackScreen = () => {
+  return (
+    <ForeignerManagementStack.Navigator screenOptions={{headerShown: false}}>
+      <ForeignerManagementStack.Screen name="ForeignerManagement" component={ForeignerManagementScreen} />
+      <ForeignerManagementStack.Screen name="ForeignerDetail" component={ForeignerDetailScreen} />
+      <ForeignerManagementStack.Screen name="AddForeigner" component={AddForeignerScreen} />
+      <ForeignerManagementStack.Screen name="EditForeigner" component={EditForeignerScreen} />
+    </ForeignerManagementStack.Navigator>
   );
 };
 
@@ -85,7 +115,7 @@ const HomeStackScreen = () => {
 };
 
 const TabNavigator = () => {
-  const { isAuthenticated } = useContext(AuthContext);
+  const { isAuthenticated, userRole } = useContext(AuthContext);
 
   return (
     <Tab.Navigator
@@ -100,7 +130,6 @@ const TabNavigator = () => {
         name="Home2"
         component={HomeStackScreen}
         options={({route}) => {
-          // Ẩn bottom tab khi đang ở GuestHomeScreen
           let tabBarStyle = {
             display: getTabBarVisibility(route),
             backgroundColor: '#085924',
@@ -120,28 +149,59 @@ const TabNavigator = () => {
       />
       {isAuthenticated ? (
         <>
-          <Tab.Screen
-            name="Review"
-            component={ReviewStackScreen}
-            options={{
-              tabBarBadge: 3,
-              tabBarBadgeStyle: {backgroundColor: 'yellow'},
-              tabBarIcon: ({color, size}) => (
-                <Ionicons name="time-outline" color={color} size={size} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Messages"
-            component={FeedbackStackScreen}
-            options={{
-              tabBarBadge: 3,
-              tabBarBadgeStyle: {backgroundColor: 'yellow'},
-              tabBarIcon: ({color, size}) => (
-                <Ionicons name="warning-outline" color={color} size={size} />
-              ),
-            }}
-          />
+          {userRole === 'business' ? (
+            // Business Role Tabs
+            <>
+              <Tab.Screen
+                name="BusinessFacilities"
+                component={BusinessFacilityStackScreen}
+                options={{
+                  tabBarBadge: 2,
+                  tabBarBadgeStyle: {backgroundColor: 'yellow'},
+                  tabBarIcon: ({color, size}) => (
+                    <Ionicons name="business-outline" color={color} size={size} />
+                  ),
+                }}
+              />
+              <Tab.Screen
+                name="ForeignerManagement"
+                component={ForeignerManagementStackScreen}
+                options={{
+                  tabBarBadge: 3,
+                  tabBarBadgeStyle: {backgroundColor: 'yellow'},
+                  tabBarIcon: ({color, size}) => (
+                    <Ionicons name="people-outline" color={color} size={size} />
+                  ),
+                }}
+              />
+            </>
+          ) : (
+            // Citizen Role Tabs
+            <>
+              <Tab.Screen
+                name="Review"
+                component={ReviewStackScreen}
+                options={{
+                  tabBarBadge: 3,
+                  tabBarBadgeStyle: {backgroundColor: 'yellow'},
+                  tabBarIcon: ({color, size}) => (
+                    <Ionicons name="time-outline" color={color} size={size} />
+                  ),
+                }}
+              />
+              <Tab.Screen
+                name="Messages"
+                component={FeedbackStackScreen}
+                options={{
+                  tabBarBadge: 3,
+                  tabBarBadgeStyle: {backgroundColor: 'yellow'},
+                  tabBarIcon: ({color, size}) => (
+                    <Ionicons name="warning-outline" color={color} size={size} />
+                  ),
+                }}
+              />
+            </>
+          )}
           <Tab.Screen
             name="Notifications"
             component={NotificationsListScreen}
@@ -151,15 +211,6 @@ const TabNavigator = () => {
               ),
             }}
           />
-          {/* <Tab.Screen
-            name="ProfileTab"
-            component={ProfileStackScreen}
-            options={{
-              tabBarIcon: ({color, size}) => (
-                <Ionicons name="person-outline" color={color} size={size} />
-              ),
-            }}
-          /> */}
           <Tab.Screen
             name="SettingsTab"
             component={SettingsStackScreen}

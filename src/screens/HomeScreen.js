@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef, useContext} from 'react';
+import React, {useState, useEffect, useRef, useContext, useMemo} from 'react';
 import {
   View,
   Text,
@@ -8,16 +8,15 @@ import {
   FlatList,
   Modal,
   ScrollView,
-  Switch,
   Platform,
   Dimensions,
   Alert,
   PanResponder,
   Animated,
   Image,
-  StyleSheet,
   PermissionsAndroid,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -28,6 +27,7 @@ import { AuthContext } from '../context/AuthContext';
 import {launchImageLibrary} from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MultiSelectDropdown, REPORT_TYPE_OPTIONS } from '../components/MultiSelectDropdown';
+import BusinessBranchService from '../services/BusinessBranchService';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -53,12 +53,13 @@ export default function HomeScreen() {
   };
   
   // States for facilities
-  const [facilities, setFacilities] = useState([]);
+  const [allFacilities, setAllFacilities] = useState([]); // Store all facilities from API
+  const [facilities, setFacilities] = useState([]); // Store filtered facilities
   const [searchKeyword, setSearchKeyword] = useState('');
   const [filteredFacilities, setFilteredFacilities] = useState([]);
   const [selectedFacility, setSelectedFacility] = useState(null);
-  // Track selected marker for map
   const [selectedMarkerId, setSelectedMarkerId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // States for modals
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
@@ -110,6 +111,14 @@ export default function HomeScreen() {
   // Add new state for review tab
   const [reviewTab, setReviewTab] = useState('all'); // 'all' or 'my'
   
+  // Use individual loading states instead of a single global loading state
+  const [loadingState, setLoadingState] = useState({
+    restaurant: false,
+    hotel: false, 
+    shop: false,
+    global: false
+  });
+  
   // Cleanup khi component unmount
   useEffect(() => {
     return () => {
@@ -117,6 +126,216 @@ export default function HomeScreen() {
     };
   }, []);
   
+  // Fetch all facilities once when component mounts
+  useEffect(() => {
+    let isMounted = true;
+    const controller = new AbortController();
+    
+    const fetchAllData = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Fetching all facilities data...');
+        
+        const response = await BusinessBranchService.getAll({
+          maxResultCount: 1000, // Get a large number of results
+          isGetTotalCount: true
+        }, controller.signal);
+        
+        if (!isMounted) return;
+        
+        if (response && Array.isArray(response.items)) {
+          console.log(`Received ${response.items.length} total facilities from API`);
+          
+          // Map API response to our facility format
+          const mappedFacilities = response.items.map(item => ({
+            id: item.id,
+            name: item.name || 'Không có tên',
+            type: mapBusinessTypeToDisplayType(item.type),
+            rawType: item.type, // Store the original type
+            iconName: mapBusinessTypeToIconName(item.type),
+            iconColor: mapBusinessTypeToColor(item.type),
+            address: item.address || 'Không có địa chỉ',
+            latitude: item.latitude || 0,
+            longitude: item.longitude || 0,
+            phone: item.phone || '',
+            email: item.email || '',
+            facebook: item.facebook || '',
+            website: item.website || '',
+            openHours: item.openHours || '',
+            description: item.description || '',
+          }));
+          
+          // Store all facilities
+          setAllFacilities(mappedFacilities);
+          
+          // Apply initial filters
+          applyFilters(mappedFacilities, filters);
+        } else {
+          console.warn('API returned unexpected format, using fallback data');
+          useFallbackData();
+        }
+      } catch (error) {
+        console.error('Error loading all facilities:', error);
+        useFallbackData();
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    fetchAllData();
+    
+    return () => {
+      isMounted = false;
+      controller.abort();
+    };
+  }, []);
+
+  // Function to apply filters to the data
+  const applyFilters = (data, currentFilters) => {
+    // Apply type filters
+    const filteredData = data.filter(facility => {
+      // Check if the facility type matches any of the active filters
+      if (facility.rawType === 'restaurant' && currentFilters.restaurant) return true;
+      if (facility.rawType === 'hotel' && currentFilters.hotel) return true;
+      if (facility.rawType === 'shop' && currentFilters.shop) return true;
+      return false;
+    });
+    
+    setFacilities(filteredData);
+    console.log(`Applied filters, showing ${filteredData.length} facilities`);
+  };
+
+  // Update displayed facilities when filters change
+  useEffect(() => {
+    if (allFacilities.length > 0) {
+      applyFilters(allFacilities, filters);
+    }
+  }, [filters, allFacilities]);
+
+  // Filter facilities based on search keyword
+  useEffect(() => {
+    if (searchKeyword.trim() === '') {
+      setFilteredFacilities([]);
+      return;
+    }
+
+    const normalizedKeyword = removeVietnameseTones(searchKeyword.toLowerCase().trim());
+    const filtered = allFacilities.filter(facility => {
+      const normalizedName = removeVietnameseTones(facility.name.toLowerCase());
+      return normalizedName.includes(normalizedKeyword);
+    });
+    
+    setFilteredFacilities(filtered);
+  }, [searchKeyword, allFacilities]);
+
+  // Map markers are updated when filtered facilities change
+  useEffect(() => {
+    if (mapLoaded && facilities.length > 0) {
+      updateMapMarkers();
+    }
+  }, [facilities, mapLoaded]);
+
+  // Use a simplified fallback for demo data
+  const useFallbackData = () => {
+    const mockFacilities = [
+      {
+        id: 1,
+        name: 'Nhà hàng ABC',
+        type: 'Nhà hàng',
+        rawType: 'restaurant',
+        iconName: 'restaurant',
+        iconColor: '#FF5252',
+        address: '123 Đường ABC, Thái Bình',
+        latitude: 20.44879,
+        longitude: 106.34259,
+        phone: '0987654321',
+        email: 'nhahangabc@example.com',
+        facebook: 'https://facebook.com/nhahangabc',
+        website: 'https://nhahangabc.com',
+        openHours: '8:00 - 22:00',
+        description: 'Nhà hàng ABC là một trong những nhà hàng nổi tiếng tại Thái Bình với các món ăn đặc sản địa phương.',
+      },
+      {
+        id: 2,
+        name: 'Khách sạn XYZ',
+        type: 'Khách sạn',
+        rawType: 'hotel',
+        iconName: 'hotel',
+        iconColor: '#2979FF',
+        address: '456 Đường XYZ, Thái Bình',
+        latitude: 20.45000,
+        longitude: 106.34400,
+        phone: '0123456789',
+        email: 'hotel@xyz.com',
+        facebook: 'https://facebook.com/hotel.xyz',
+        website: 'https://hotelxyz.com',
+        openHours: '24/7',
+        description: 'Khách sạn XYZ là khách sạn 4 sao với 100 phòng nghỉ tiện nghi.',
+      },
+      {
+        id: 3,
+        name: 'Cửa hàng 123',
+        type: 'Cửa hàng',
+        rawType: 'shop',
+        iconName: 'store',
+        iconColor: '#00C853',
+        address: '789 Đường 123, Thái Bình',
+        latitude: 20.44700,
+        longitude: 106.34100,
+        phone: '0345678912',
+        email: 'shop@123.com',
+        facebook: 'https://facebook.com/shop.123',
+        website: 'https://shop123.com',
+        openHours: '7:30 - 21:30',
+        description: 'Cửa hàng 123 chuyên kinh doanh các sản phẩm địa phương chất lượng cao.',
+      },
+    ];
+      
+    setAllFacilities(mockFacilities);
+    applyFilters(mockFacilities, filters);
+  };
+
+  const updateMapMarkers = () => {
+    if (!webViewRef.current) return;
+    
+    // Pass filtered facilities to WebView
+    webViewRef.current.injectJavaScript(`
+      window.addMarkers('${JSON.stringify(facilities)}');
+      true;
+    `);
+  };
+
+  // Simplified filter change handler without API calls
+  const handleFilterChange = (filterType, value) => {
+    console.log(`Filter ${filterType} clicked, setting to ${value}`);
+    
+    // Update the filter
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value,
+    }));
+    
+    // Filters will be applied in the useEffect
+  };
+  
+  // Filter facilities based on search keyword
+  useEffect(() => {
+    if (searchKeyword.trim() === '') {
+      setFilteredFacilities([]);
+      return;
+    }
+
+    const normalizedKeyword = removeVietnameseTones(searchKeyword.toLowerCase().trim());
+    const filtered = facilities.filter(facility => {
+      const normalizedName = removeVietnameseTones(facility.name.toLowerCase());
+      return normalizedName.includes(normalizedKeyword);
+    });
+    
+    setFilteredFacilities(filtered);
+  }, [searchKeyword, facilities]);
+
   // Simplify the panResponder to just detect drag direction
   const panResponder = useRef(
     PanResponder.create({
@@ -687,112 +906,6 @@ export default function HomeScreen() {
     </html>
   `;
 
-  useEffect(() => {
-    // Load facilities from API
-    loadFacilities();
-  }, []);
-
-  useEffect(() => {
-    // Update markers when filters change
-    if (mapLoaded && facilities.length > 0) {
-      updateMapMarkers();
-    }
-  }, [filters, facilities, mapLoaded]);
-
-  useEffect(() => {
-    // Filter facilities based on search keyword
-    if (searchKeyword.trim() === '') {
-      setFilteredFacilities([]);
-      return;
-    }
-
-    const normalizedKeyword = removeVietnameseTones(searchKeyword.toLowerCase().trim());
-    const filtered = facilities.filter(facility => {
-      const normalizedName = removeVietnameseTones(facility.name.toLowerCase());
-      return normalizedName.includes(normalizedKeyword);
-    });
-    
-    setFilteredFacilities(filtered);
-  }, [searchKeyword, facilities]);
-
-  const loadFacilities = async () => {
-    try {
-      // In a real app, replace this with actual API call
-      // const response = await fetch(`${API_URL}/api/services/app/Facility/GetList`);
-      // const data = await response.json();
-      // setFacilities(data.result);
-      
-      // For now, using mock data
-      const mockFacilities = [
-        {
-          id: 1,
-          name: 'Nhà hàng ABC',
-          type: 'Nhà hàng',
-          iconName: 'restaurant',
-          iconColor: '#FF5252',
-          address: '123 Đường ABC, Thái Bình',
-          latitude: 20.44879,
-          longitude: 106.34259,
-          phone: '0987654321',
-          email: 'nhahangabc@example.com',
-          facebook: 'https://facebook.com/nhahangabc',
-          website: 'https://nhahangabc.com',
-          openHours: '8:00 - 22:00',
-          description: 'Nhà hàng ABC là một trong những nhà hàng nổi tiếng tại Thái Bình với các món ăn đặc sản địa phương. Được thành lập từ năm 2010, nhà hàng đã phục vụ hàng nghìn thực khách trong và ngoài tỉnh. Không gian nhà hàng được thiết kế hiện đại, thoáng mát phù hợp cho cả gia đình.',
-        },
-        {
-          id: 2,
-          name: 'Khách sạn XYZ',
-          type: 'Khách sạn',
-          iconName: 'hotel',
-          iconColor: '#2979FF',
-          address: '456 Đường XYZ, Thái Bình',
-          latitude: 20.45000,
-          longitude: 106.34400,
-          phone: '0123456789',
-          email: 'hotel@xyz.com',
-          facebook: 'https://facebook.com/hotel.xyz',
-          website: 'https://hotelxyz.com',
-          openHours: '24/7',
-          description: 'Khách sạn XYZ là khách sạn 4 sao với 100 phòng nghỉ tiện nghi. Khách sạn có vị trí trung tâm, thuận tiện cho việc di chuyển và tham quan các điểm du lịch. Khách sạn cung cấp dịch vụ đưa đón sân bay, nhà hàng, phòng hội nghị và các tiện nghi cao cấp khác.',
-        },
-        {
-          id: 3,
-          name: 'Cửa hàng 123',
-          type: 'Cửa hàng',
-          iconName: 'store',
-          iconColor: '#00C853',
-          address: '789 Đường 123, Thái Bình',
-          latitude: 20.44700,
-          longitude: 106.34100,
-          phone: '0345678912',
-          email: 'shop@123.com',
-          facebook: 'https://facebook.com/shop.123',
-          website: 'https://shop123.com',
-          openHours: '7:30 - 21:30',
-          description: 'Cửa hàng 123 chuyên kinh doanh các sản phẩm địa phương chất lượng cao. Với 15 năm kinh nghiệm trong ngành bán lẻ, cửa hàng luôn đảm bảo mang đến cho khách hàng những sản phẩm chất lượng với giá cả hợp lý. Cửa hàng thường xuyên có các chương trình khuyến mãi hấp dẫn.',
-        },
-      ];
-      
-      setFacilities(mockFacilities);
-    } catch (error) {
-      console.error('Error loading facilities:', error);
-    }
-  };
-
-  const updateMapMarkers = () => {
-    if (!webViewRef.current) return;
-    
-    // Filter facilities based on current filters
-    const filteredMarkers = facilities.filter(facility => shouldShowFacility(facility));
-    
-    // Pass filtered markers to WebView
-    webViewRef.current.injectJavaScript(`
-      window.addMarkers('${JSON.stringify(filteredMarkers)}');
-      true;
-    `);
-  };
-
   const handleWebViewMessage = (event) => {
     if (!isMountedRef.current) return;
     
@@ -960,24 +1073,22 @@ export default function HomeScreen() {
     setFilteredFacilities([]);
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilters({
-      ...filters,
-      [filterType]: value,
-    });
-  };
-
   const shouldShowFacility = (facility) => {
-    switch (facility.type.toLowerCase()) {
-      case 'nhà hàng':
-        return filters.restaurant;
-      case 'khách sạn':
-        return filters.hotel;
-      case 'cửa hàng':
-        return filters.shop;
-      default:
-        return false;
+    const facilityType = facility.type.toLowerCase();
+    
+    if (facilityType.includes('nhà hàng') || facilityType === 'restaurant') {
+      return filters.restaurant;
     }
+    
+    if (facilityType.includes('khách sạn') || facilityType === 'hotel') {
+      return filters.hotel;
+    }
+    
+    if (facilityType.includes('cửa hàng') || facilityType === 'shop') {
+      return filters.shop;
+    }
+    
+    return false;
   };
 
   // Render the star rating
@@ -2090,57 +2201,69 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filters.restaurant && styles.filterButtonActive
+              filters.restaurant && styles.filterButtonActive,
             ]}
             onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
           >
-            <Ionicons 
-              name="restaurant" 
-              size={18} 
-              color={filters.restaurant ? "#fff" : "#666"} 
-              style={styles.filterButtonIcon}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color={filters.restaurant ? "#fff" : "#666"} style={styles.filterButtonIcon} />
+            ) : (
+              <Ionicons 
+                name="restaurant" 
+                size={18} 
+                color={filters.restaurant ? "#fff" : "#666"} 
+                style={styles.filterButtonIcon}
+              />
+            )}
             <Text style={[
               styles.filterButtonText,
-              filters.restaurant && styles.filterButtonTextActive
+              filters.restaurant && styles.filterButtonTextActive,
             ]}>Nhà hàng</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filters.hotel && styles.filterButtonActive
+              filters.hotel && styles.filterButtonActive,
             ]}
             onPress={() => handleFilterChange('hotel', !filters.hotel)}
           >
-            <Ionicons 
-              name="bed" 
-              size={18} 
-              color={filters.hotel ? "#fff" : "#666"}
-              style={styles.filterButtonIcon}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color={filters.hotel ? "#fff" : "#666"} style={styles.filterButtonIcon} />
+            ) : (
+              <Ionicons 
+                name="bed" 
+                size={18} 
+                color={filters.hotel ? "#fff" : "#666"}
+                style={styles.filterButtonIcon}
+              />
+            )}
             <Text style={[
               styles.filterButtonText,
-              filters.hotel && styles.filterButtonTextActive
+              filters.hotel && styles.filterButtonTextActive,
             ]}>Khách sạn</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={[
               styles.filterButton,
-              filters.shop && styles.filterButtonActive
+              filters.shop && styles.filterButtonActive,
             ]}
             onPress={() => handleFilterChange('shop', !filters.shop)}
           >
-            <Ionicons 
-              name="cart" 
-              size={18} 
-              color={filters.shop ? "#fff" : "#666"}
-              style={styles.filterButtonIcon}
-            />
+            {isLoading ? (
+              <ActivityIndicator size="small" color={filters.shop ? "#fff" : "#666"} style={styles.filterButtonIcon} />
+            ) : (
+              <Ionicons 
+                name="cart" 
+                size={18} 
+                color={filters.shop ? "#fff" : "#666"}
+                style={styles.filterButtonIcon}
+              />
+            )}
             <Text style={[
               styles.filterButtonText,
-              filters.shop && styles.filterButtonTextActive
+              filters.shop && styles.filterButtonTextActive,
             ]}>Cửa hàng</Text>
           </TouchableOpacity>
         </ScrollView>

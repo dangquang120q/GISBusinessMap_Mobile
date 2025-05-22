@@ -37,14 +37,12 @@ apiClient.interceptors.request.use(
 // Interceptor xử lý response
 apiClient.interceptors.response.use(
   (response) => {
-    console.log('response', response);
     // Trong trường hợp response thành công, chỉ trả về data
     return response;
   },
   async (error) => {
     // Xử lý các trường hợp lỗi phổ biến
     if (error.response) {
-      console.log('error.response', error.response);
       // Lỗi từ server với mã trạng thái
       const { status } = error.response;
       

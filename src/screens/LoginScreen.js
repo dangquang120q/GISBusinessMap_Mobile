@@ -33,6 +33,7 @@ const LoginScreen = ({navigation}) => {
   const [passwordError, setPasswordError] = useState('');
   const [mounted, setMounted] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedRole, setSelectedRole] = useState('citizen'); // Default role is citizen
 
   useEffect(() => {
     return () => {
@@ -90,10 +91,13 @@ const LoginScreen = ({navigation}) => {
       setIsLoading(true);
       setError('');
       
-      console.log('Calling login API with:', { email });
-      // Call login function
-      const result = await login(email, password);
-      console.log('Login API response:', result);
+      // Modify email to include role information for demo
+      const emailWithRole = selectedRole === 'business' 
+        ? `business_${email}` // Add business_ prefix for business role
+        : email; // Keep original for citizen role
+      
+      // Call login function with the modified email
+      const result = await login(emailWithRole, password);
       
       if (!mounted) {
         console.log('Component unmounted, stopping login process');
@@ -101,7 +105,6 @@ const LoginScreen = ({navigation}) => {
       }
 
       if (!result) {
-        console.log('Login failed: No result returned');
         setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       } else {
         console.log('Login successful, waiting for isAuthenticated to update');
@@ -168,6 +171,54 @@ const LoginScreen = ({navigation}) => {
         {error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : null}
+
+        {/* Role Selection */}
+        <View style={styles.roleContainer}>
+          <Text style={styles.roleLabel}>Chọn vai trò:</Text>
+          <View style={styles.roleButtonsContainer}>
+            <TouchableOpacity
+              style={[
+                styles.roleButton,
+                selectedRole === 'citizen' && styles.roleButtonActive,
+              ]}
+              onPress={() => setSelectedRole('citizen')}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={selectedRole === 'citizen' ? '#fff' : '#085924'}
+              />
+              <Text style={[
+                styles.roleButtonText,
+                selectedRole === 'citizen' && styles.roleButtonTextActive,
+              ]}>
+                Người dân
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.roleButton,
+                selectedRole === 'business' && styles.roleButtonActive,
+              ]}
+              onPress={() => setSelectedRole('business')}
+              disabled={isLoading}
+            >
+              <Ionicons
+                name="business-outline"
+                size={20}
+                color={selectedRole === 'business' ? '#fff' : '#085924'}
+              />
+              <Text style={[
+                styles.roleButtonText,
+                selectedRole === 'business' && styles.roleButtonTextActive,
+              ]}>
+                Doanh nghiệp
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
         <View>
           <InputField
@@ -311,6 +362,40 @@ const styles = StyleSheet.create({
     color: '#085924',
     marginBottom: 30,
     textAlign: 'center'
+  },
+  roleContainer: {
+    marginBottom: 20,
+  },
+  roleLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 10,
+  },
+  roleButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  roleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: '#085924',
+    borderRadius: 8,
+    width: '48%',
+  },
+  roleButtonActive: {
+    backgroundColor: '#085924',
+  },
+  roleButtonText: {
+    marginLeft: 8,
+    color: '#085924',
+    fontWeight: '500',
+  },
+  roleButtonTextActive: {
+    color: '#fff',
   },
   orText: {
     textAlign: 'center', 
