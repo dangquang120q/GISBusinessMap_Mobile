@@ -2,30 +2,34 @@ import React, { useContext } from 'react';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 
-import HomeScreen from '../screens/HomeScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
-import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
-import NotificationsListScreen from '../screens/NotificationsListScreen';
-import ReviewDetailScreen from '../screens/ReviewDetailScreen';
-import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
-import BusinessFacilityScreen from '../screens/BusinessFacilityScreen';
-import ForeignerManagementScreen from '../screens/ForeignerManagementScreen';
-import ForeignerDetailScreen from '../screens/ForeignerDetailScreen';
-import AddForeignerScreen from '../screens/AddForeignerScreen';
-import EditForeignerScreen from '../screens/EditForeignerScreen';
-import BusinessFacilityDetailScreen from '../screens/BusinessFacilityDetailScreen';
-import AddBusinessFacilityScreen from '../screens/AddBusinessFacilityScreen';
-import EditBusinessFacilityScreen from '../screens/EditBusinessFacilityScreen';
-
 import { AuthContext } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import PrivacyScreen from '../screens/PrivacyScreen';
-import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
-import TermOfUseScreen from '../screens/TermOfUseScreen';
-import VersionScreen from '../screens/VersionScreen';
-import RateScreen from '../screens/RateScreen';
+
+// Import from screen folders using index.js
+import { HomeScreen } from '../screens/home';
+import { EditProfileScreen, SettingsScreen } from '../screens/profile';
+import { ReviewHistoryScreen, ReviewDetailScreen } from '../screens/reviews';
+import { FeedbackHistoryScreen, FeedbackDetailScreen } from '../screens/feedback';
+import { NotificationsListScreen } from '../screens/notifications';
+import { 
+  BusinessFacilityScreen, 
+  BusinessFacilityDetailScreen, 
+  AddBusinessFacilityScreen, 
+  EditBusinessFacilityScreen 
+} from '../screens/business';
+import { 
+  ForeignerManagementScreen, 
+  ForeignerDetailScreen, 
+  AddForeignerScreen, 
+  EditForeignerScreen 
+} from '../screens/foreigners';
+import { 
+  PrivacyScreen, 
+  PrivacyPolicyScreen, 
+  TermOfUseScreen, 
+  VersionScreen, 
+  RateScreen 
+} from '../screens/info';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -149,7 +153,7 @@ const TabNavigator = () => {
       />
       {isAuthenticated ? (
         <>
-          {userRole === 'business' ? (
+          {userRole === 2 ? (
             // Business Role Tabs
             <>
               <Tab.Screen
@@ -164,7 +168,7 @@ const TabNavigator = () => {
                 }}
               />
               <Tab.Screen
-                name="ForeignerManagement"
+                name="ForeignerManagementTab"
                 component={ForeignerManagementStackScreen}
                 options={{
                   tabBarBadge: 3,

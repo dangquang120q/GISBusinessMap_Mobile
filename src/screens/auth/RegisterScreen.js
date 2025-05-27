@@ -13,18 +13,13 @@ import {
 
 import DatePicker from 'react-native-date-picker';
 
-import InputField from '../components/InputField';
-import ImageViewer from '../components/ImageViewer';
-import Colors from '../constants/Colors';
+import InputField from '../../components/InputField';
+import Colors from '../../constants/Colors';
 
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import RegistrationSVG from '../assets/images/misc/registration.svg';
-import GoogleSVG from '../assets/images/misc/google.svg';
-import FacebookSVG from '../assets/images/misc/facebook.svg';
-import TwitterSVG from '../assets/images/misc/twitter.svg';
-import CustomButton from '../components/CustomButton';
+import CustomButton from '../../components/CustomButton';
 
 const RegisterScreen = ({navigation}) => {
   const [date, setDate] = useState(new Date());
@@ -38,7 +33,7 @@ const RegisterScreen = ({navigation}) => {
         style={styles.scrollView}>
         <View style={styles.imageContainer}>
           <Image
-            source={require('../assets/images/logo.png')}
+            source={require('../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

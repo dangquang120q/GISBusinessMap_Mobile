@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import BusinessReviewService from '../services/BusinessReviewService';
+import BusinessReviewService from '../../services/BusinessReviewService';
 
 const ReviewHistoryScreen = () => {
   const navigation = useNavigation();

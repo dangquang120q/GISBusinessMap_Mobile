@@ -74,23 +74,14 @@ class BusinessBranchService {
   /**
    * Lấy danh sách tất cả chi nhánh kinh doanh với các bộ lọc
    * 
-   * @param {Object} params Các tham số lọc và phân trang
-   * @param {string} params.keyword Từ khóa tìm kiếm
-   * @param {string} params.sorting Cách sắp xếp
-   * @param {string} params.businessCode Mã doanh nghiệp
-   * @param {string} params.organizationName Tên tổ chức
-   * @param {string} params.branchName Tên chi nhánh
-   * @param {string} params.districtName Tên quận/huyện
-   * @param {string} params.wardName Tên phường/xã
-   * @param {boolean} params.isGetTotalCount Có lấy tổng số bản ghi không
-   * @param {number} params.skipCount Số bản ghi bỏ qua
-   * @param {number} params.maxResultCount Số bản ghi tối đa
-   * @param {AbortSignal} signal Signal để hủy request
-   * @returns {Promise} Promise với kết quả danh sách chi nhánh kinh doanh
+   * @param {number} params.minLat Số bản ghi bỏ qua
+   * @param {number} params.maxLat Số bản ghi tối đa
+   * @param {number} params.minLng Số bản ghi bỏ qua
+   * @param {number} params.maxLng Số bản ghi tối đa
    */
   async getAll(params = {}, signal) {
     try {
-      const response = await api.get('/api/services/app/BusinessBranches/GetAll', { 
+      const response = await api.get('/api/services/app/BusinessBranches/GetInBounds', { 
         params,
         signal
       });

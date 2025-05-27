@@ -17,9 +17,9 @@ class ForeignersService {
    * @param {number} params.maxResultCount Số bản ghi tối đa
    * @returns {Promise} Promise với kết quả danh sách người nước ngoài
    */
-  async getAll(params = {}) {
+  async getAllByBusiness(params = {}) {
     try {
-      const response = await api.get('/api/services/app/Foreigners/GetAll', params);
+      const response = await api.get('/api/services/app/Foreigners/GetAllByBusiness', params);
       return response.result;
     } catch (error) {
       console.error('Error fetching foreigners:', error);

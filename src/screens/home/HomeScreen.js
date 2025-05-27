@@ -22,12 +22,11 @@ import { WebView } from 'react-native-webview';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import {useNavigation} from '@react-navigation/native';
 import styles from './HomeScreenStyles';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '../../context/AuthContext';
 import {launchImageLibrary} from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MultiSelectDropdown, REPORT_TYPE_OPTIONS } from '../components/MultiSelectDropdown';
-import BusinessBranchService from '../services/BusinessBranchService';
+import { MultiSelectDropdown, REPORT_TYPE_OPTIONS } from '../../components/MultiSelectDropdown';
+import BusinessBranchService from '../../services/BusinessBranchService';
 
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
@@ -38,6 +37,77 @@ import BusinessBranchService from '../services/BusinessBranchService';
 //   'Khách sạn': require('../assets/images/hotel_icon.png'),
 //   'Cửa hàng': require('../assets/images/shop_icon.png'),
 // };
+
+// Add helper functions for business type mapping
+const mapBusinessTypeToDisplayType = (type) => {
+  switch (type) {
+    case 'restaurant':
+      return 'Nhà hàng';
+    case 'hotel':
+      return 'Khách sạn';
+    case 'shop':
+      return 'Cửa hàng';
+    default:
+      return 'Không xác định';
+  }
+};
+
+const mapBusinessTypeToIconName = (type) => {
+  switch (type) {
+    case 'restaurant':
+      return 'restaurant';
+    case 'hotel':
+      return 'bed';
+    case 'shop':
+      return 'cart';
+    default:
+      return 'business';
+  }
+};
+
+const mapBusinessTypeToColor = (type) => {
+  switch (type) {
+    case 'restaurant':
+      return '#FF5252';
+    case 'hotel':
+      return '#2979FF';
+    case 'shop':
+      return '#00C853';
+    default:
+      return '#9C27B0';
+  }
+};
+
+// Add function to map API business types to our format
+const mapApiBusinessType = (typeName) => {
+  const typeLower = typeName.toLowerCase();
+  
+  if (typeLower.includes('nhà hàng') || typeLower.includes('restaurant')) {
+    return {
+      rawType: 'restaurant',
+      iconName: 'restaurant',
+      color: '#FF5252'
+    };
+  } else if (typeLower.includes('khách sạn') || typeLower.includes('hotel')) {
+    return {
+      rawType: 'hotel',
+      iconName: 'bed',
+      color: '#2979FF'
+    };
+  } else if (typeLower.includes('cửa hàng') || typeLower.includes('shop') || typeLower.includes('store')) {
+    return {
+      rawType: 'shop',
+      iconName: 'cart',
+      color: '#00C853'
+    };
+  } else {
+    return {
+      rawType: 'other',
+      iconName: 'business',
+      color: '#9C27B0'
+    };
+  }
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -133,50 +203,87 @@ export default function HomeScreen() {
     
     const fetchAllData = async () => {
       try {
+        if (!isMounted) return;
         setIsLoading(true);
-        console.log('Fetching all facilities data...');
         
         const response = await BusinessBranchService.getAll({
-          maxResultCount: 1000, // Get a large number of results
-          isGetTotalCount: true
+          
         }, controller.signal);
         
         if (!isMounted) return;
         
-        if (response && Array.isArray(response.items)) {
-          console.log(`Received ${response.items.length} total facilities from API`);
+        if (response && Array.isArray(response)) {
           
-          // Map API response to our facility format
-          const mappedFacilities = response.items.map(item => ({
-            id: item.id,
-            name: item.name || 'Không có tên',
-            type: mapBusinessTypeToDisplayType(item.type),
-            rawType: item.type, // Store the original type
-            iconName: mapBusinessTypeToIconName(item.type),
-            iconColor: mapBusinessTypeToColor(item.type),
-            address: item.address || 'Không có địa chỉ',
-            latitude: item.latitude || 0,
-            longitude: item.longitude || 0,
-            phone: item.phone || '',
-            email: item.email || '',
-            facebook: item.facebook || '',
-            website: item.website || '',
-            openHours: item.openHours || '',
-            description: item.description || '',
-          }));
-          
+          // Map API response to our facility format based on actual API structure
+          const mappedFacilities = response.map(item => {
+            // Determine business type for icon and display
+            const businessType = mapApiBusinessType(item.businessTypeName || 'Không xác định');
+            
+            return {
+              id: item.id,
+              name: item.branchName || 'Không có tên',
+              type: item.businessTypeName || 'Không xác định',
+              rawType: businessType.rawType,
+              iconName: businessType.iconName,
+              iconColor: businessType.color,
+              address: item.addressDetail || 'Không có địa chỉ',
+              latitude: item.latitude || 0,
+              longitude: item.longitude || 0,
+              phone: item.phoneNumber || '',
+              email: item.email || '',
+              facebook: item.socialMediaUrl || '',
+              website: item.website || '',
+              openHours: '',
+              description: `${item.organizationName || ''} - ${item.representativeName || ''}`,
+            };
+          });
+          console.log(mappedFacilities);
           // Store all facilities
-          setAllFacilities(mappedFacilities);
+          if (isMounted) {
+            setAllFacilities(mappedFacilities);
+            // The useEffect will handle applying filters
+          }
+        } else if (response && Array.isArray(response.items)) {
+          // Handle the case where response might have an items array
+          console.log(`Received ${response.items.length} total facilities from API (items array)`);
           
-          // Apply initial filters
-          applyFilters(mappedFacilities, filters);
+          const mappedFacilities = response.items.map(item => {
+            // Determine business type for icon and display
+            const businessType = mapApiBusinessType(item.businessTypeName || item.type || 'Không xác định');
+            
+            return {
+              id: item.id,
+              name: item.branchName || item.name || 'Không có tên',
+              type: item.businessTypeName || item.type || 'Không xác định',
+              rawType: businessType.rawType,
+              iconName: businessType.iconName,
+              iconColor: businessType.color,
+              address: item.addressDetail || item.address || 'Không có địa chỉ',
+              latitude: item.latitude || 0,
+              longitude: item.longitude || 0,
+              phone: item.phoneNumber || item.phone || '',
+              email: item.email || '',
+              facebook: item.socialMediaUrl || item.facebook || '',
+              website: item.website || '',
+              openHours: '', // May not be provided in API
+              description: item.description || `${item.organizationName || ''} - ${item.representativeName || ''}`,
+            };
+          });
+          
+          if (isMounted) {
+            setAllFacilities(mappedFacilities);
+          }
         } else {
           console.warn('API returned unexpected format, using fallback data');
-          useFallbackData();
+          if (isMounted) {
+            useFallbackData();
+          }
         }
       } catch (error) {
         console.error('Error loading all facilities:', error);
-        useFallbackData();
+        if (isMounted) {
+          useFallbackData();
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -194,6 +301,8 @@ export default function HomeScreen() {
 
   // Function to apply filters to the data
   const applyFilters = (data, currentFilters) => {
+    if (!isMountedRef.current) return;
+    
     // Apply type filters
     const filteredData = data.filter(facility => {
       // Check if the facility type matches any of the active filters
@@ -203,12 +312,16 @@ export default function HomeScreen() {
       return false;
     });
     
-    setFacilities(filteredData);
-    console.log(`Applied filters, showing ${filteredData.length} facilities`);
+    if (isMountedRef.current) {
+      setFacilities(filteredData);
+      console.log(`Applied filters, showing ${filteredData.length} facilities`);
+    }
   };
 
   // Update displayed facilities when filters change
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     if (allFacilities.length > 0) {
       applyFilters(allFacilities, filters);
     }
@@ -216,6 +329,8 @@ export default function HomeScreen() {
 
   // Filter facilities based on search keyword
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     if (searchKeyword.trim() === '') {
       setFilteredFacilities([]);
       return;
@@ -227,11 +342,15 @@ export default function HomeScreen() {
       return normalizedName.includes(normalizedKeyword);
     });
     
-    setFilteredFacilities(filtered);
+    if (isMountedRef.current) {
+      setFilteredFacilities(filtered);
+    }
   }, [searchKeyword, allFacilities]);
 
   // Map markers are updated when filtered facilities change
   useEffect(() => {
+    if (!isMountedRef.current) return;
+    
     if (mapLoaded && facilities.length > 0) {
       updateMapMarkers();
     }
@@ -294,15 +413,23 @@ export default function HomeScreen() {
     ];
       
     setAllFacilities(mockFacilities);
-    applyFilters(mockFacilities, filters);
+    // The useEffect will handle applying filters
   };
 
   const updateMapMarkers = () => {
     if (!webViewRef.current) return;
     
+    // Convert data to ensure all values are proper types before stringifying
+    const safeMarkers = facilities.map(facility => ({
+      ...facility,
+      id: String(facility.id),
+      latitude: Number(facility.latitude),
+      longitude: Number(facility.longitude)
+    }));
+    
     // Pass filtered facilities to WebView
     webViewRef.current.injectJavaScript(`
-      window.addMarkers('${JSON.stringify(facilities)}');
+      window.addMarkers('${JSON.stringify(safeMarkers)}');
       true;
     `);
   };
@@ -919,13 +1046,13 @@ export default function HomeScreen() {
           
         case 'mapClick':
           setSelectedFacility({
-            latitude: data.latitude,
-            longitude: data.longitude,
+            latitude: Number(data.latitude),
+            longitude: Number(data.longitude),
           });
           break;
           
         case 'reviewFacility':
-          const facilityToReview = facilities.find(f => f.id === data.facilityId);
+          const facilityToReview = facilities.find(f => String(f.id) === String(data.facilityId));
           if (facilityToReview && isMountedRef.current) {
             setSelectedFacility(facilityToReview);
             setIsReviewModalVisible(true);
@@ -933,7 +1060,7 @@ export default function HomeScreen() {
           break;
           
         case 'viewReviews':
-          const facilityToView = facilities.find(f => f.id === data.facilityId);
+          const facilityToView = facilities.find(f => String(f.id) === String(data.facilityId));
           if (facilityToView && isMountedRef.current) {
             handleViewFacilityDetails(facilityToView);
             setActiveTab('reviews');
@@ -941,7 +1068,7 @@ export default function HomeScreen() {
           break;
           
         case 'viewFacility':
-          const facilityToShow = facilities.find(f => f.id === data.facilityId);
+          const facilityToShow = facilities.find(f => String(f.id) === String(data.facilityId));
           if (facilityToShow && isMountedRef.current) {
             handleViewFacilityDetails(facilityToShow);
           }
@@ -1064,7 +1191,7 @@ export default function HomeScreen() {
   const focusFacility = (facility) => {
     if (webViewRef.current) {
       webViewRef.current.injectJavaScript(`
-        window.focusOnFacility(${facility.latitude}, ${facility.longitude}, 18);
+        window.focusOnFacility(${Number(facility.latitude)}, ${Number(facility.longitude)}, 18);
         true;
       `);
     }
@@ -1907,49 +2034,103 @@ export default function HomeScreen() {
   // Pass selectedMarkerId to WebView when it changes
   useEffect(() => {
     if (webViewRef.current) {
-      webViewRef.current.injectJavaScript('window.selectedFacilityId = ' + (selectedMarkerId ? selectedMarkerId : 'null') + '; if(window.markersData) updateMarkers(window.markersData); true;');
+      webViewRef.current.injectJavaScript(`
+        window.selectedFacilityId = ${selectedMarkerId ? `"${selectedMarkerId}"` : 'null'}; 
+        if(window.markersData) updateMarkers(window.markersData); 
+        true;
+      `);
     }
   }, [selectedMarkerId]);
 
   // Chỉ xin quyền khi người dùng nhấn Thêm media
   const requestMediaPermission = async () => {
     if (Platform.OS === 'android') {
-      let result;
-      if (Platform.Version >= 33) {
-        result = await PermissionsAndroid.requestMultiple([
-          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
-          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
-        ]);
-        if (
-          Object.values(result).includes(PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)
-        ) {
-          return 'never_ask_again';
+      try {
+        // Check if permission constants are defined correctly
+        if (!PermissionsAndroid.PERMISSIONS) {
+          console.error('PermissionsAndroid.PERMISSIONS is undefined');
+          return 'denied';
         }
-        return Object.values(result).every(
-          (permission) => permission === PermissionsAndroid.RESULTS.GRANTED
-        )
-          ? 'granted'
-          : 'denied';
-      } else {
-        result = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
-        );
-        if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          return 'never_ask_again';
+
+        const permissions = Platform.Version >= 33 
+          ? [
+              PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES, 
+              PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO
+            ]
+          : [PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE];
+
+        // Verify if permissions are defined before proceeding
+        if (Platform.Version >= 33) {
+          if (!PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES || 
+              !PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO) {
+            console.error('Media permission constants are undefined');
+            return 'denied';
+          }
+        } else {
+          if (!PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE) {
+            console.error('Storage permission constant is undefined');
+            return 'denied';
+          }
         }
-        return result === PermissionsAndroid.RESULTS.GRANTED
-          ? 'granted'
-          : 'denied';
+
+        // Request permissions
+        let result;
+        if (Platform.Version >= 33) {
+          result = await PermissionsAndroid.requestMultiple(permissions);
+        } else {
+          result = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+          );
+        }
+
+        // Handle null/undefined result
+        if (!result) {
+          console.warn('Permission result is null or undefined');
+          return 'denied';
+        }
+
+        // Check result format and process accordingly
+        if (Platform.Version >= 33) {
+          // For multiple permissions, check if the result is an object
+          if (typeof result !== 'object') {
+            console.warn(`Unexpected result type: ${typeof result}`);
+            return 'denied';
+          }
+          
+          // Check for NEVER_ASK_AGAIN
+          if (Object.values(result).some(r => 
+              r === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN)) {
+            return 'never_ask_again';
+          }
+          
+          // Check if all permissions are granted
+          return Object.values(result).every(r => 
+              r === PermissionsAndroid.RESULTS.GRANTED)
+            ? 'granted'
+            : 'denied';
+        } else {
+          // For single permission
+          if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+            return 'never_ask_again';
+          }
+          return result === PermissionsAndroid.RESULTS.GRANTED
+            ? 'granted'
+            : 'denied';
+        }
+      } catch (error) {
+        console.error('Error requesting permissions:', error);
+        return 'denied';
       }
     }
-    return 'granted'; // iOS tự động xin quyền khi cần
+    
+    return 'granted'; // iOS automatically handles permissions
   };
 
   const handleMediaPicker = async (type) => {
     try {
-      let permission = 'granted';
       if (Platform.OS === 'android') {
-        permission = await requestMediaPermission();
+        const permission = await requestMediaPermission();
+        
         if (permission === 'never_ask_again') {
           Alert.alert(
             'Cần quyền truy cập',
@@ -1961,11 +2142,16 @@ export default function HomeScreen() {
           );
           return;
         } else if (permission === 'denied') {
-          // Không hiện Alert nữa, chỉ để hệ thống xử lý dialog xin quyền
+          Alert.alert(
+            'Cần quyền truy cập',
+            'Ứng dụng cần quyền truy cập media để hoạt động chính xác',
+            [{ text: 'Đã hiểu', style: 'cancel' }]
+          );
           return;
         }
       }
 
+      // Continue with image picker if permission granted
       const options = {
         mediaType: 'mixed',
         selectionLimit: 5,
@@ -1975,31 +2161,36 @@ export default function HomeScreen() {
         presentationStyle: 'pageSheet',
       };
 
-      const result = await launchImageLibrary(options);
-      
-      if (result.didCancel) {
-        console.log('User cancelled media picker');
-        return;
-      }
+      try {
+        const result = await launchImageLibrary(options);
+        
+        if (result.didCancel) {
+          console.log('User cancelled media picker');
+          return;
+        }
 
-      if (result.errorCode) {
-        console.log('ImagePicker Error: ', result.errorMessage);
-        Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh. Vui lòng thử lại sau.');
-        return;
-      }
+        if (result.errorCode) {
+          console.log('ImagePicker Error: ', result.errorMessage);
+          Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh. Vui lòng thử lại sau.');
+          return;
+        }
 
-      if (result.assets && result.assets.length > 0) {
-        const newMedia = result.assets.map(asset => ({
-          type: asset.type?.startsWith('video/') ? 'video' : 'image',
-          url: asset.uri,
-          thumbnail: asset.type?.startsWith('video/') ? asset.uri : asset.uri,
-        }));
+        if (result.assets && result.assets.length > 0) {
+          const newMedia = result.assets.map(asset => ({
+            type: asset.type?.startsWith('video/') ? 'video' : 'image',
+            url: asset.uri,
+            thumbnail: asset.type?.startsWith('video/') ? asset.uri : asset.uri,
+          }));
 
-        handleAddMedia(type, ...newMedia);
+          handleAddMedia(type, ...newMedia);
+        }
+      } catch (imagePickerError) {
+        console.error('Error in image picker:', imagePickerError);
+        Alert.alert('Lỗi', 'Có lỗi xảy ra khi chọn media. Vui lòng thử lại sau.');
       }
     } catch (error) {
-      console.error('Error picking media:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi chọn media. Vui lòng thử lại sau.');
+      console.error('Error in handleMediaPicker:', error);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý quyền truy cập. Vui lòng thử lại sau.');
     }
   };
 
@@ -2007,15 +2198,30 @@ export default function HomeScreen() {
   useEffect(() => {
     const checkAndRequestFirstTime = async () => {
       try {
+        // Check if we've already requested permissions
         const requested = await AsyncStorage.getItem('media_permission_requested');
         if (!requested) {
-          await requestMediaPermission();
-          await AsyncStorage.setItem('media_permission_requested', 'true');
+          // Log that we're making the initial permission request
+          console.log('Making initial permission request');
+          
+          // Use a timeout to ensure the app is fully loaded before requesting permissions
+          setTimeout(async () => {
+            try {
+              const result = await requestMediaPermission();
+              console.log('Initial permission request result:', result);
+              await AsyncStorage.setItem('media_permission_requested', 'true');
+            } catch (error) {
+              console.error('Error in delayed permission request:', error);
+            }
+          }, 2000);
+        } else {
+          console.log('Permissions were previously requested');
         }
       } catch (e) {
         console.warn('Error checking/storing media permission flag:', e);
       }
     };
+    
     checkAndRequestFirstTime();
   }, []);
 

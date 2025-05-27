@@ -14,10 +14,11 @@ import {
   Platform,
   Dimensions,
   PermissionsAndroid,
+  Linking,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import SessionService from '../services/SessionService';
+import SessionService from '../../services/SessionService';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -136,6 +137,13 @@ const EditProfileScreen = () => {
     // Check permissions on Android
     if (Platform.OS === 'android') {
       try {
+        // Check if permission constants are defined correctly
+        if (!PermissionsAndroid.PERMISSIONS || !PermissionsAndroid.PERMISSIONS.CAMERA) {
+          console.error('Camera permission constant is undefined');
+          Alert.alert('Lỗi', 'Không thể xác định quyền camera. Vui lòng thử lại sau.');
+          return;
+        }
+
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.CAMERA,
           {
@@ -146,33 +154,65 @@ const EditProfileScreen = () => {
             buttonPositive: "OK"
           }
         );
+
+        // Handle null/undefined result
+        if (granted === undefined || granted === null) {
+          console.warn('Camera permission result is null or undefined');
+          Alert.alert('Lỗi quyền truy cập', 'Không thể xác định quyền camera. Vui lòng thử lại sau.');
+          return;
+        }
+
+        // Check permission result
+        if (granted === PermissionsAndroid.RESULTS.DENIED) {
+          Alert.alert('Từ chối quyền', 'Quyền camera bị từ chối. Bạn cần cấp quyền để chụp ảnh.');
+          return;
+        }
+
+        if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          Alert.alert(
+            'Quyền bị chặn',
+            'Bạn đã chặn quyền camera. Vui lòng mở cài đặt để cấp quyền.',
+            [
+              { text: 'Hủy', style: 'cancel' },
+              { text: 'Mở cài đặt', onPress: () => Linking.openSettings() }
+            ]
+          );
+          return;
+        }
+
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permission Denied', 'Camera permission is required to take photos');
+          Alert.alert('Từ chối quyền', 'Camera không được cấp quyền. Vui lòng thử lại.');
           return;
         }
       } catch (err) {
-        console.warn(err);
+        console.error('Error requesting camera permission:', err);
+        Alert.alert('Lỗi', 'Có lỗi xảy ra khi xin quyền camera. Vui lòng thử lại sau.');
         return;
       }
     }
     
-    launchCamera(options, response => {
-      if (response.didCancel) {
-        console.log('User cancelled camera');
-      } else if (response.errorCode) {
-        console.error('Camera Error: ', response.errorMessage);
-        Alert.alert('Lỗi', 'Không thể mở máy ảnh. Vui lòng thử lại sau.');
-      } else if (response.assets && response.assets.length > 0) {
-        const source = response.assets[0];
-        setSelectedImage({
-          uri: source.uri,
-          width: source.width,
-          height: source.height,
-          type: source.type,
-        });
-        setShowCropModal(true);
-      }
-    });
+    try {
+      launchCamera(options, response => {
+        if (response.didCancel) {
+          console.log('User cancelled camera');
+        } else if (response.errorCode) {
+          console.error('Camera Error: ', response.errorMessage);
+          Alert.alert('Lỗi', 'Không thể mở máy ảnh. Vui lòng thử lại sau.');
+        } else if (response.assets && response.assets.length > 0) {
+          const source = response.assets[0];
+          setSelectedImage({
+            uri: source.uri,
+            width: source.width,
+            height: source.height,
+            type: source.type,
+          });
+          setShowCropModal(true);
+        }
+      });
+    } catch (error) {
+      console.error('Error launching camera:', error);
+      Alert.alert('Lỗi', 'Không thể mở máy ảnh. Vui lòng thử lại sau.');
+    }
   };
 
   // Handle choosing from gallery

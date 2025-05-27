@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import BusinessFeedbackService from '../services/BusinessFeedbackService';
-import BusinessFeedbackType from '../services/BusinessFeedbackType';
+import BusinessFeedbackService from '../../services/BusinessFeedbackService';
+import BusinessFeedbackType from '../../services/BusinessFeedbackType';
 
 const FeedbackHistoryScreen = () => {
   const navigation = useNavigation();

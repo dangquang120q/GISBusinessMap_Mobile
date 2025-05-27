@@ -6,21 +6,20 @@ import CustomDrawer from '../components/CustomDrawer';
 
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import SettingsScreen from '../screens/SettingsScreen';
-import ReviewHistoryScreen from '../screens/ReviewHistoryScreen';
-import ReviewDetailScreen from '../screens/ReviewDetailScreen';
-import FeedbackHistoryScreen from '../screens/FeedbackHistoryScreen';
-import FeedbackDetailScreen from '../screens/FeedbackDetailScreen';
-import EditProfileScreen from '../screens/EditProfileScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import NotificationsListScreen from '../screens/NotificationsListScreen';
-import PrivacyScreen from '../screens/PrivacyScreen';
-import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
-import TermOfUseScreen from '../screens/TermOfUseScreen';
-import VersionScreen from '../screens/VersionScreen';
-import RateScreen from '../screens/RateScreen';
-
 import TabNavigator from './TabNavigator';
+
+// Import from screen folders using index.js
+import { SettingsScreen, EditProfileScreen } from '../screens/profile';
+import { ReviewHistoryScreen, ReviewDetailScreen } from '../screens/reviews';
+import { FeedbackHistoryScreen, FeedbackDetailScreen } from '../screens/feedback';
+import { NotificationsScreen, NotificationsListScreen } from '../screens/notifications';
+import { 
+  PrivacyScreen, 
+  PrivacyPolicyScreen, 
+  TermOfUseScreen, 
+  VersionScreen, 
+  RateScreen 
+} from '../screens/info';
 
 const Drawer = createDrawerNavigator();
 const Stack = createNativeStackNavigator();

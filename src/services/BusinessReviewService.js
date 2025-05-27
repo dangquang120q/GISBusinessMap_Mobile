@@ -19,32 +19,39 @@ class BusinessReviewService {
    * @param {number} params.maxResultCount Số bản ghi tối đa
    * @returns {Promise} Promise với kết quả danh sách đánh giá
    */
-  async getAll(params = {}) {
+  async getAllByBusiness(params = {}) {
     try {
-      const response = await api.get('/api/services/app/BusinessReviews/GetAll', params);
+      const response = await api.get('/api/services/app/BusinessReviews/GetAllByBusiness', params);
       return response.result;
     } catch (error) {
       console.error('Error fetching business reviews:', error);
       throw error;
     }
   }
-
   /**
-   * Lấy danh sách đánh giá theo doanh nghiệp
+   * Lấy danh sách tất cả đánh giá với các bộ lọc
    * 
-   * @param {number} businessId ID doanh nghiệp
+   * @param {Object} params Các tham số lọc và phân trang
+   * @param {string} params.keyword Từ khóa tìm kiếm
+   * @param {string} params.sorting Cách sắp xếp
+   * @param {number} params.id ID đánh giá
+   * @param {number} params.branchId ID chi nhánh
+   * @param {string} params.organizationName Tên tổ chức
+   * @param {string} params.reviewerName Tên người đánh giá
+   * @param {number} params.rating Số sao đánh giá
+   * @param {number} params.skipCount Số bản ghi bỏ qua
+   * @param {number} params.maxResultCount Số bản ghi tối đa
    * @returns {Promise} Promise với kết quả danh sách đánh giá
    */
-  async getList(businessId) {
+  async getAllByUser(params = {}) {
     try {
-      const response = await api.get('/api/services/app/BusinessReviews/GetList', { businessId });
+      const response = await api.get('/api/services/app/BusinessReviews/GetAllByUser', params);
       return response.result;
     } catch (error) {
-      console.error(`Error fetching business reviews list for business ID ${businessId}:`, error);
+      console.error('Error fetching business reviews:', error);
       throw error;
     }
   }
-
   /**
    * Lấy thông tin một đánh giá theo ID
    * 
@@ -105,22 +112,6 @@ class BusinessReviewService {
       return response;
     } catch (error) {
       console.error(`Error deleting business review with id ${id}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Xóa nhiều đánh giá
-   * 
-   * @param {Array} reviews Danh sách đánh giá cần xóa
-   * @returns {Promise} Promise với kết quả xóa
-   */
-  async deleteMultiple(reviews) {
-    try {
-      const response = await api.deleteWithData('/api/services/app/BusinessReviews/DeleteMultiple', reviews);
-      return response.result;
-    } catch (error) {
-      console.error('Error deleting multiple business reviews:', error);
       throw error;
     }
   }

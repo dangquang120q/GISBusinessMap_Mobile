@@ -20,7 +20,7 @@ class BusinessFeedbackService {
    */
   async getAll(params = {}) {
     try {
-      const response = await api.get('/api/services/app/BusinessFeedbacks/GetAll', params);
+      const response = await api.get('/api/services/app/BusinessFeedbacks/GetAllByUser', params);
       return response.result;
     } catch (error) {
       console.error('Error fetching business feedbacks:', error);
@@ -88,22 +88,6 @@ class BusinessFeedbackService {
       return response;
     } catch (error) {
       console.error(`Error deleting business feedback with id ${id}:`, error);
-      throw error;
-    }
-  }
-
-  /**
-   * Xóa nhiều phản hồi
-   * 
-   * @param {Array} feedbacks Danh sách phản hồi cần xóa
-   * @returns {Promise} Promise với kết quả xóa
-   */
-  async deleteMultiple(feedbacks) {
-    try {
-      const response = await api.deleteWithData('/api/services/app/BusinessFeedbacks/DeleteMultiple', feedbacks);
-      return response.result;
-    } catch (error) {
-      console.error('Error deleting multiple business feedbacks:', error);
       throw error;
     }
   }

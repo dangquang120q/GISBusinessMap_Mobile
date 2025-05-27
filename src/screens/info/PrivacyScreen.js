@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import SessionService from '../services/SessionService';
+import SessionService from '../../services/SessionService';
 
 const PrivacyScreen = () => {
   const navigation = useNavigation();

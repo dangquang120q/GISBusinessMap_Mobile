@@ -14,14 +14,13 @@ import { Image } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
-import GoogleSVG from '../assets/images/misc/google.svg';
-import FacebookSVG from '../assets/images/misc/facebook.svg';
-import TwitterSVG from '../assets/images/misc/twitter.svg';
+import GoogleSVG from '../../assets/images/misc/google.svg';
+import FacebookSVG from '../../assets/images/misc/facebook.svg';
 
-import CustomButton from '../components/CustomButton';
-import InputField from '../components/InputField';
+import CustomButton from '../../components/CustomButton';
+import InputField from '../../components/InputField';
 
-import {AuthContext} from '../context/AuthContext';
+import {AuthContext} from '../../context/AuthContext';
 
 const LoginScreen = ({navigation}) => {
   const { login, isAuthenticated } = useContext(AuthContext);
@@ -91,13 +90,8 @@ const LoginScreen = ({navigation}) => {
       setIsLoading(true);
       setError('');
       
-      // Modify email to include role information for demo
-      const emailWithRole = selectedRole === 'business' 
-        ? `business_${email}` // Add business_ prefix for business role
-        : email; // Keep original for citizen role
-      
       // Call login function with the modified email
-      const result = await login(emailWithRole, password);
+      const result = await login(email, password);
       
       if (!mounted) {
         console.log('Component unmounted, stopping login process');
@@ -158,7 +152,7 @@ const LoginScreen = ({navigation}) => {
       <View style={{paddingHorizontal: 25}}>
         <View style={styles.logoContainer}>
           <Image
-            source={require('../assets/images/logo.png')}
+            source={require('../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -173,7 +167,7 @@ const LoginScreen = ({navigation}) => {
         ) : null}
 
         {/* Role Selection */}
-        <View style={styles.roleContainer}>
+        {/* <View style={styles.roleContainer}>
           <Text style={styles.roleLabel}>Chọn vai trò:</Text>
           <View style={styles.roleButtonsContainer}>
             <TouchableOpacity
@@ -218,7 +212,7 @@ const LoginScreen = ({navigation}) => {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </View> */}
 
         <View>
           <InputField
