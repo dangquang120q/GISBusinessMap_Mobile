@@ -250,7 +250,6 @@ export default function HomeScreen() {
     
     if (isMountedRef.current) {
       setFacilities(filteredData);
-      console.log('filteredData', filteredData);
     }
   };
 
@@ -301,43 +300,71 @@ export default function HomeScreen() {
   };
 
   const updateMapMarkers = () => {
-    if (!webViewRef.current) return;
+    if (!webViewRef.current) {
+      console.error('WebView reference is not available');
+      return;
+    }
     
-    console.log('Updating map markers with facilities:', facilities);
+    console.log('Updating map markers with facilities:', facilities.length);
     
-    // Convert data to ensure all values are proper types before stringifying
-    const safeMarkers = facilities.map(facility => {
-      // Get business type info directly here
-      const typeId = typeof facility.businessTypeId === 'string' ? 
-        parseInt(facility.businessTypeId, 10) : facility.businessTypeId;
+    if (facilities.length === 0) {
+      console.log('No facilities to display on map');
+      return;
+    }
+    
+    try {
+      // Ensure all facility IDs are properly converted to strings for comparison
+      const facilitiesWithStringIds = facilities.map(facility => {
+        if (!facility) return null;
+        
+        // Make sure the id is always a string to avoid type comparison issues
+        const id = String(facility.id || '');
+        
+        return {
+          id: id,
+          name: String(facility.name || ''),
+          type: String(facility.type || 'Không xác định'),
+          iconName: String(facility.iconName || 'business'),
+          iconColor: String(facility.iconColor || '#9C27B0'),
+          latitude: Number(facility.latitude || 0),
+          longitude: Number(facility.longitude || 0),
+          status: String(facility.status || ''),
+          businessTypeId: Number(facility.businessTypeId || 0)
+        };
+      }).filter(Boolean); // Remove any null entries
       
-      const businessType = businessTypes.find(type => type.id === typeId) || {};
+      // Properly escape the JSON string for safe injection into JavaScript
+      const jsonString = JSON.stringify(facilitiesWithStringIds)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"');
       
-      return {
-        ...facility,
-        id: String(facility.id),
-        latitude: Number(facility.latitude),
-        longitude: Number(facility.longitude),
-        // Use values from businessType for icon if facility doesn't have them
-        iconName: facility.iconName || businessType.businessTypeIcon || 'business',
-        iconColor: facility.iconColor || businessType.color || businessType.businessTypeColor || '#9C27B0',
-        // Also include the type name
-        type: facility.type || businessType.businessTypeName || 'Không xác định'
-      };
-    });
-    
-    console.log('Safe markers prepared for map:', safeMarkers);
-    
-    // Pass filtered facilities to WebView
-    webViewRef.current.injectJavaScript(`
-      try {
-        window.addMarkers('${JSON.stringify(safeMarkers)}');
-        true;
-      } catch(e) {
-        console.error('Error adding markers:', e);
-        true;
-      }
-    `);
+      console.log(`Sending ${facilitiesWithStringIds.length} markers to map`);
+      
+      // Pass filtered facilities to WebView using a safe approach
+      const jsCode = `
+        (function() {
+          try {
+            const markersJSON = "${jsonString}";
+            const markers = JSON.parse(markersJSON);
+            console.log('Received markers in WebView:', markers.length);
+            if (typeof window.addMarkers === 'function') {
+              window.addMarkers(markers);
+            } else {
+              console.error('addMarkers function not defined in WebView');
+            }
+            return true;
+          } catch(e) {
+            console.error('Error adding markers:', e);
+            return false;
+          }
+        })();
+      `;
+      
+      webViewRef.current.injectJavaScript(jsCode);
+    } catch (error) {
+      console.error('Error preparing markers for map:', error);
+    }
   };
 
   // Simplified filter change handler
@@ -749,7 +776,6 @@ export default function HomeScreen() {
         
         // Create custom icons based on zoom level
         const createIcon = (businessTypeId, zoom, isSelected = false, iconName = 'business', status = '', iconColor = '#9C27B0') => {
-          // Use the provided iconName and iconColor directly (we already resolved them in the React Native code)
           const icon = iconName || 'business';
           
           // Determine size based on zoom level
@@ -849,26 +875,59 @@ export default function HomeScreen() {
             
             // Add click event directly
             leafletMarker.on('click', function() {
-              // Update selected facility
-              window.selectedFacilityId = marker.id;
-              
-              // Update all markers to reflect selection
-              updateMarkers(window.markersData);
-              
-              // Send message to React Native
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'viewFacility',
-                facilityId: marker.id
-              }));
+              try {
+                // Update selected facility
+                window.selectedFacilityId = marker.id;
+                
+                // Update all markers to reflect selection
+                updateMarkers(window.markersData);
+                
+                console.log('Marker clicked, sending facility ID:', marker.id);
+                
+                // Send message to React Native - ensure marker.id is treated as a string
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'viewFacility',
+                  facilityId: String(marker.id)
+                }));
+              } catch (e) {
+                console.error('Error in marker click handler:', e);
+              }
             });
           });
         }
         
         // Function to add markers (called from React Native)
         window.addMarkers = function(markersData) {
-          const markers = JSON.parse(markersData);
-          window.markersData = markers; // Save for zoom updates
-          updateMarkers(markers);
+          try {
+            // Parse the JSON data safely
+            let markers;
+            if (typeof markersData === 'string') {
+              markers = JSON.parse(markersData);
+              console.log('Parsed markers from string:', markers.length);
+            } else {
+              markers = markersData;
+              console.log('Using markers object directly:', markers.length);
+            }
+            
+            if (!Array.isArray(markers)) {
+              console.error('Markers data is not an array:', markers);
+              return;
+            }
+            
+            // Ensure all marker IDs are strings for consistent comparison
+            markers.forEach(marker => {
+              if (marker.id !== undefined && marker.id !== null) {
+                marker.id = String(marker.id);
+              }
+            });
+            
+            console.log('Processed markers:', markers.length);
+            window.markersData = markers; // Save for zoom updates
+            updateMarkers(markers);
+          } catch (error) {
+            console.error('Error parsing markers data:', error);
+            console.error('Raw markers data:', markersData);
+          }
         };
         
         // Function to change map type (called from React Native)
@@ -918,10 +977,17 @@ export default function HomeScreen() {
   `;
 
   const handleWebViewMessage = (event) => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current || !event || !event.nativeEvent) return;
     
     try {
       const data = JSON.parse(event.nativeEvent.data);
+      console.log('WebView message received:', data);
+      
+      // Ensure data.type exists
+      if (!data || !data.type) {
+        console.error('Invalid WebView message format:', data);
+        return;
+      }
       
       switch (data.type) {
         case 'mapLoaded':
@@ -929,38 +995,82 @@ export default function HomeScreen() {
           break;
           
         case 'mapClick':
-          setSelectedFacility({
-            latitude: Number(data.latitude),
-            longitude: Number(data.longitude),
-          });
+          if (data.latitude && data.longitude) {
+            setSelectedFacility({
+              latitude: Number(data.latitude),
+              longitude: Number(data.longitude),
+            });
+          }
           break;
           
         case 'reviewFacility':
+          if (!data.facilityId) {
+            console.error('Missing facilityId in reviewFacility message');
+            return;
+          }
+          
           const facilityToReview = facilities.find(f => String(f.id) === String(data.facilityId));
           if (facilityToReview && isMountedRef.current) {
             setSelectedFacility(facilityToReview);
             setIsReviewModalVisible(true);
+          } else {
+            console.error('Facility not found for review:', data.facilityId);
           }
           break;
           
         case 'viewReviews':
+          if (!data.facilityId) {
+            console.error('Missing facilityId in viewReviews message');
+            return;
+          }
+          
           const facilityToView = facilities.find(f => String(f.id) === String(data.facilityId));
           if (facilityToView && isMountedRef.current) {
             handleViewFacilityDetails(facilityToView);
             setActiveTab('reviews');
+          } else {
+            console.error('Facility not found for viewing reviews:', data.facilityId);
           }
           break;
           
         case 'viewFacility':
-          const facilityToShow = facilities.find(f => String(f.id) === String(data.facilityId));
-          if (facilityToShow && isMountedRef.current) {
-            handleViewFacilityDetails(facilityToShow);
+          try {
+            if (!data.facilityId) {
+              console.error('Missing facilityId in viewFacility message');
+              return;
+            }
+            
+            console.log('Finding facility with ID:', data.facilityId);
+            
+            if (!facilities || facilities.length === 0) {
+              console.error('No facilities available');
+              return;
+            }
+            
+            console.log('Available facilities:', facilities.map(f => f.id));
+            
+            const facilityId = String(data.facilityId);
+            const facilityToShow = facilities.find(f => String(f.id) === facilityId);
+            console.log('Found facility:', facilityToShow);
+            
+            if (facilityToShow && isMountedRef.current) {
+              console.log('Opening bottom sheet for facility:', facilityToShow.name);
+              handleViewFacilityDetails(facilityToShow);
+            } else {
+              console.error('Facility not found for ID:', facilityId);
+            }
+          } catch (viewError) {
+            console.error('Error in viewFacility handler:', viewError);
           }
           break;
+          
+        default:
+          console.log('Unhandled WebView message type:', data.type);
       }
     } catch (error) {
       if (isMountedRef.current) {
         console.error('Error parsing WebView message:', error);
+        console.error('Original message:', event.nativeEvent.data);
       }
     }
   };
@@ -1004,71 +1114,77 @@ export default function HomeScreen() {
   };
 
   const handleViewFacilityDetails = (facility) => {
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current || !facility) {
+      console.error('Cannot view facility details:', facility ? 'isMounted is false' : 'facility is null');
+      return;
+    }
     
-    setSelectedFacility(facility);
-    setSelectedMarkerId(facility.id); // Set selected marker
-    setBottomSheetVisible(true);
-    setIsBottomSheetExpanded(false);
-    bottomSheetAnim.setValue(minHeight);
-    setActiveTab('overview');
+    console.log('Showing facility details:', facility.id, facility.name);
     
-    // Mặc định sẽ load đánh giá khi xem chi tiết
-    if (isMountedRef.current) {
-      const mockReviews = [
-        {
-          id: 1,
-          reviewerName: 'Nguyễn Văn A',
-          rating: 5,
-          title: 'Dịch vụ xuất sắc!',
-          content: 'Dịch vụ rất tuyệt vời! Nhân viên phục vụ chuyên nghiệp, không gian sạch sẽ và thoáng mát. Tôi sẽ quay lại vào lần sau. Đồ ăn ngon, giá cả phải chăng. Đặc biệt là món đặc sản địa phương rất đáng để thử.',
-          date: '15/08/2023',
-          likes: 12,
-          replies: 3,
-          status: 'pending', // 'approved' or 'pending'
-          media: [
+    try {
+      // Ensure all facility properties have default values to avoid rendering issues
+      const safetyFacility = {
+        id: facility.id || 0,
+        name: facility.name || 'Không có tên',
+        type: facility.type || 'Không xác định',
+        iconName: facility.iconName || 'business',
+        iconColor: facility.iconColor || '#9C27B0',
+        address: facility.address || 'Không có địa chỉ',
+        latitude: facility.latitude || 0,
+        longitude: facility.longitude || 0,
+        phone: facility.phone || '',
+        email: facility.email || '',
+        facebook: facility.facebook || '',
+        website: facility.website || '',
+        openHours: facility.openHours || '',
+        description: facility.description || 'Chưa có thông tin chi tiết về cơ sở này.',
+        status: facility.status || '',
+        businessTypeId: facility.businessTypeId || 0
+      };
+      
+      // Set the facility data
+      setSelectedFacility(safetyFacility);
+      setSelectedMarkerId(String(safetyFacility.id));
+      
+      // Show the bottom sheet immediately
+      setBottomSheetVisible(true);
+      setIsBottomSheetExpanded(false);
+      bottomSheetAnim.setValue(minHeight);
+      setActiveTab('overview');
+      
+      // Set empty reviews to avoid any rendering issues
+      setReviews([]);
+      
+      // After a short delay, load mock reviews
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          const mockReviews = [
             {
-              type: 'image',
-              url: 'https://example.com/image1.jpg'
+              id: 1,
+              reviewerName: 'Nguyễn Văn A',
+              rating: 5,
+              title: 'Dịch vụ xuất sắc!',
+              content: 'Dịch vụ rất tuyệt vời!',
+              date: '15/08/2023',
+              likes: 2,
+              replies: 0,
             },
             {
-              type: 'video',
-              url: 'https://example.com/video1.mp4',
-              thumbnail: 'https://example.com/thumbnail1.jpg'
-            }
-          ]
-        },
-        {
-          id: 2,
-          reviewerName: 'Trần Thị B',
-          rating: 4,
-          title: 'Tốt nhưng vẫn có thể cải thiện',
-          content: 'Dịch vụ tốt, giá cả phải chăng. Tuy nhiên, thời gian chờ đợi hơi lâu vào giờ cao điểm. Nhân viên thân thiện nhưng đôi khi phục vụ chậm. Không gian thoáng đãng, sạch sẽ. Sẽ quay lại nếu có cơ hội.',
-          date: '20/07/2023',
-          likes: 5,
-          replies: 1,
-          status: 'pending',
-          media: [
-            {
-              type: 'image',
-              url: 'https://example.com/image2.jpg'
-            }
-          ]
-        },
-        {
-          id: 3,
-          reviewerName: 'Lê Văn C',
-          rating: 3,
-          title: 'Trải nghiệm trung bình',
-          content: 'Chất lượng dịch vụ ở mức trung bình. Cần cải thiện thêm về thái độ phục vụ của một số nhân viên. Đồ ăn ngon nhưng phần hơi nhỏ so với giá tiền. Vị trí thuận tiện, dễ tìm.',
-          date: '05/06/2023',
-          likes: 2,
-          replies: 0,
-          status: 'approved',
-          media: []
+              id: 2,
+              reviewerName: 'Trần Thị B',
+              rating: 4,
+              title: 'Tốt nhưng vẫn có thể cải thiện',
+              content: 'Dịch vụ tốt, giá cả phải chăng.',
+              date: '20/07/2023',
+              likes: 0,
+              replies: 1,
+            },
+          ];
+          setReviews(mockReviews);
         }
-      ];
-      setReviews(mockReviews);
+      }, 500);
+    } catch (error) {
+      console.error('Error showing facility details:', error);
     }
   };
 
@@ -1087,19 +1203,32 @@ export default function HomeScreen() {
 
   // Render the star rating
   const renderStars = (rating) => {
+    // Ensure rating is a valid number
+    const validRating = typeof rating === 'number' ? rating : 0;
+    
+    // Create an array to hold star icons
     const stars = [];
+    
+    // Add star icons to the array
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <Ionicons
-          key={i}
-          name={i <= rating ? 'star' : 'star-outline'}
-          size={16}
-          color="#FFD700"
-          style={{marginRight: 2}}
-        />
+        <View key={i}>
+          <Ionicons
+            name={i <= validRating ? 'star' : 'star-outline'}
+            size={16}
+            color="#FFD700"
+            style={{marginRight: 2}}
+          />
+        </View>
       );
     }
-    return <View style={{flexDirection: 'row'}}>{stars}</View>;
+    
+    // Return stars in a row
+    return (
+      <View style={{flexDirection: 'row', alignItems: 'center'}}>
+        {stars}
+      </View>
+    );
   };
 
   // Handle report submission
@@ -1157,71 +1286,81 @@ export default function HomeScreen() {
 
   // Thêm component cho tab content
   const renderOverviewTab = () => {
+    // Safety check for null/undefined selectedFacility
     if (!selectedFacility) {
-      return <View style={styles.emptyContent}><Text>Không có dữ liệu</Text></View>;
+      return (
+        <View style={styles.emptyContent}>
+          <Text>Không có dữ liệu</Text>
+        </View>
+      );
     }
+    
+    // Simple section component to ensure consistent structure
+    const InfoSection = ({ title, icon, text, color }) => (
+      <>
+        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>{title}</Text>
+        <View style={styles.infoRow}>
+          <View style={{marginRight: 10}}>
+            <View>
+              <Ionicons name={icon} size={20} color={color || "#085924"} />
+            </View>
+          </View>
+          <Text style={[styles.infoText, color ? {color} : null]}>
+            {text}
+          </Text>
+        </View>
+      </>
+    );
     
     return (
       <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 10}}>
-        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Địa chỉ</Text>
-        <View style={styles.infoRow}>
-          <Ionicons name="location-outline" size={20} color="#085924" style={styles.infoIcon} />
-          <Text style={styles.infoText}>{selectedFacility.address || 'Chưa có thông tin'}</Text>
-        </View>
-        {selectedFacility.latitude && (
-          <>
-            <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Vị trí</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="locate-outline" size={20} color="#085924" style={styles.infoIcon} />
-              <Text style={styles.infoText}>[{selectedFacility.latitude},{selectedFacility.longitude}]</Text>
-            </View>
-          </>
-        )}
-
-        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Loại hình</Text>
-        <View style={styles.infoRow}>
-          <Ionicons 
-            name={
-              selectedFacility.type === 'Nhà hàng' ? 'restaurant-outline' : 
-              selectedFacility.type === 'Khách sạn' ? 'bed-outline' : 'cart-outline'
-            } 
-            size={20} 
-            color="#085924" 
-            style={styles.infoIcon} 
+        {/* Address section */}
+        <InfoSection 
+          title="Địa chỉ"
+          icon="location-outline"
+          text={selectedFacility.address || 'Chưa có thông tin'}
+        />
+        
+        {/* Location section */}
+        {selectedFacility.latitude ? (
+          <InfoSection 
+            title="Vị trí"
+            icon="locate-outline"
+            text={`[${String(selectedFacility.latitude || 0)},${String(selectedFacility.longitude || 0)}]`}
           />
-          <Text style={styles.infoText}>{selectedFacility.type || 'Chưa phân loại'}</Text>
-        </View>
+        ) : null}
         
-        {/* Add status indicator */}
-        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Trạng thái</Text>
-        <View style={styles.infoRow}>
-          <Ionicons 
-            name={selectedFacility.status === 'A' ? 'checkmark-circle-outline' : 'time-outline'} 
-            size={20} 
-            color={selectedFacility.status === 'A' ? "#085924" : "#f39c12"} 
-            style={styles.infoIcon} 
+        {/* Type section */}
+        <InfoSection 
+          title="Loại hình"
+          icon={
+            selectedFacility.type === 'Nhà hàng' ? 'restaurant-outline' : 
+            selectedFacility.type === 'Khách sạn' ? 'bed-outline' : 'cart-outline'
+          }
+          text={selectedFacility.type || 'Chưa phân loại'}
+        />
+        
+        {/* Status section */}
+        <InfoSection 
+          title="Trạng thái"
+          icon={selectedFacility.status === 'A' ? 'checkmark-circle-outline' : 'time-outline'}
+          color={selectedFacility.status === 'A' ? "#085924" : "#f39c12"}
+          text={selectedFacility.status === 'A' ? 'Đã duyệt' : 'Chờ duyệt'}
+        />
+        
+        {/* Contact section */}
+        {selectedFacility.phone ? (
+          <InfoSection 
+            title="Liên hệ"
+            icon="call-outline"
+            text={selectedFacility.phone}
           />
-          <Text style={[
-            styles.infoText, 
-            {color: selectedFacility.status === 'A' ? "#085924" : "#f39c12"}
-          ]}>
-            {selectedFacility.status === 'A' ? 'Đã duyệt' : 'Chờ duyệt'}
-          </Text>
-        </View>
+        ) : null}
         
-        {selectedFacility.phone && (
-          <>
-            <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Liên hệ</Text>
-            <View style={styles.infoRow}>
-              <Ionicons name="call-outline" size={20} color="#085924" style={styles.infoIcon} />
-              <Text style={styles.infoText}>{selectedFacility.phone}</Text>
-            </View>
-          </>
-        )}
-        
+        {/* Links section */}
         <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Liên kết</Text>
         <View style={styles.socialLinks}>
-          {selectedFacility.facebook && (
+          {selectedFacility.facebook ? (
             <TouchableOpacity 
               style={styles.socialButton}
               onPress={() => {
@@ -1235,12 +1374,16 @@ export default function HomeScreen() {
                 );
               }}
             >
-              <Ionicons name="logo-facebook" size={20} color="#fff" />
-              <Text style={styles.socialButtonText}>Facebook</Text>
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <View>
+                  <Ionicons name="logo-facebook" size={20} color="#fff" />
+                </View>
+                <Text style={styles.socialButtonText}>Facebook</Text>
+              </View>
             </TouchableOpacity>
-          )}
+          ) : null}
           
-          {selectedFacility.website && (
+          {selectedFacility.website ? (
             <TouchableOpacity 
               style={[styles.socialButton, {backgroundColor: '#4285F4'}]}
               onPress={() => {
@@ -1254,36 +1397,63 @@ export default function HomeScreen() {
                 );
               }}
             >
-              <Ionicons name="globe-outline" size={20} color="#fff" />
-              <Text style={styles.socialButtonText}>Website</Text>
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <View>
+                  <Ionicons name="globe-outline" size={20} color="#fff" />
+                </View>
+                <Text style={styles.socialButtonText}>Website</Text>
+              </View>
             </TouchableOpacity>
-          )}
+          ) : null}
           
-          {!selectedFacility.facebook && !selectedFacility.website && (
+          {!selectedFacility.facebook && !selectedFacility.website ? (
             <Text style={styles.noDataText}>Chưa có liên kết</Text>
-          )}
+          ) : null}
         </View>
         
-        {isAuthenticated && <View style={styles.actionButtonsContainer}>
-          <TouchableOpacity 
-            style={[styles.actionButton, {backgroundColor: '#e74c3c'}]}
-            onPress={() => setIsReportModalVisible(true)}
-          >
-            <Ionicons name="warning-outline" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>Phản ánh lên cơ quan chức năng</Text>
-          </TouchableOpacity>
-        </View>
-        }
+        {/* Action buttons */}
+        {isAuthenticated ? (
+          <View style={styles.actionButtonsContainer}>
+            <TouchableOpacity 
+              style={[styles.actionButton, {backgroundColor: '#e74c3c'}]}
+              onPress={() => setIsReportModalVisible(true)}
+            >
+              <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                <View>
+                  <Ionicons name="warning-outline" size={20} color="#fff" />
+                </View>
+                <Text style={styles.actionButtonText}>Phản ánh lên cơ quan chức năng</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        
         <View style={styles.sectionDivider} />
 
-        {/* Thêm phần Bài đánh giá */}
-        <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Bài đánh giá</Text>
-        {renderReviewsTab()}
-
-        {/* Thêm phần Giới thiệu */}
-        <View style={styles.sectionDivider} />
+        {/* Description section */}
         <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Giới thiệu</Text>
-        {renderAboutTab()}
+        <Text style={styles.descriptionText}>
+          {selectedFacility.description || "Chưa có thông tin chi tiết về cơ sở này."}
+        </Text>
+      </ScrollView>
+    );
+  };
+
+  const renderAboutTab = () => {
+    if (!selectedFacility) {
+      return (
+        <View style={styles.tabContent}>
+          <Text>Không có dữ liệu</Text>
+        </View>
+      );
+    }
+    
+    return (
+      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 10}}>
+        <Text style={styles.aboutTitle}>Thông tin chi tiết</Text>
+        <Text style={styles.aboutDescription}>
+          {selectedFacility.description || "Chưa có thông tin chi tiết về cơ sở này."}
+        </Text>
       </ScrollView>
     );
   };
@@ -1367,268 +1537,78 @@ export default function HomeScreen() {
   };
 
   const renderReviewsTab = () => {
-    const isUserReview = (reviewerName) => {
-      return reviewerName === 'Nguyễn Văn A';
-    };
-
-    // Separate user reviews and other reviews
-    const userReviews = reviews.filter(review => isUserReview(review.reviewerName));
-    const otherReviews = reviews.filter(review => !isUserReview(review.reviewerName));
-
-    return (
-      <ScrollView 
-        style={styles.tabContent} 
-        contentContainerStyle={{paddingBottom: 30}}
-        nestedScrollEnabled={true}
-      >
-        {/* Rating Overview */}
-        <View style={styles.ratingOverview}>
-          <View style={styles.ratingScoreContainer}>
-            <Text style={styles.ratingScoreText}>4.2</Text>
-            <View style={styles.ratingStarsSmall}>
-              {renderStars(4.2)}
-            </View>
-            <Text style={styles.ratingCountText}>(28)</Text>
-          </View>
-          
-          <View style={styles.ratingBarsContainer}>
-            <View style={styles.ratingBarRow}>
-              <Text style={styles.ratingBarLabel}>5</Text>
-              <View style={styles.ratingBarBackground}>
-                <View style={[styles.ratingBarFill, {width: '65%'}]} />
-              </View>
-            </View>
-            <View style={styles.ratingBarRow}>
-              <Text style={styles.ratingBarLabel}>4</Text>
-              <View style={styles.ratingBarBackground}>
-                <View style={[styles.ratingBarFill, {width: '20%'}]} />
-              </View>
-            </View>
-            <View style={styles.ratingBarRow}>
-              <Text style={styles.ratingBarLabel}>3</Text>
-              <View style={styles.ratingBarBackground}>
-                <View style={[styles.ratingBarFill, {width: '10%'}]} />
-              </View>
-            </View>
-            <View style={styles.ratingBarRow}>
-              <Text style={styles.ratingBarLabel}>2</Text>
-              <View style={styles.ratingBarBackground}>
-                <View style={[styles.ratingBarFill, {width: '3%'}]} />
-              </View>
-            </View>
-            <View style={styles.ratingBarRow}>
-              <Text style={styles.ratingBarLabel}>1</Text>
-              <View style={styles.ratingBarBackground}>
-                <View style={[styles.ratingBarFill, {width: '2%'}]} />
-              </View>
-            </View>
-          </View>
+    // Safety check for null selectedFacility
+    if (!selectedFacility) {
+      return (
+        <View style={styles.tabContent}>
+          <Text>Không có dữ liệu</Text>
         </View>
-
-        {/* User's Reviews Section */}
-        {userReviews.length > 0 && (
-          <View style={styles.reviewsSection}>
-            <View style={styles.reviewsHeaderContainer}>
-              <Text style={styles.reviewsHeaderText}>Đánh giá của tôi</Text>
-            </View>
-            
-            {userReviews.map(item => (
-              <View key={item.id.toString()} style={styles.reviewItem}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewerInfo}>
-                    <View style={styles.avatarContainer}>
-                      <Text style={styles.avatarText}>
-                        {item.reviewerName.charAt(0).toUpperCase()}
-                      </Text>
-                    </View>
-                    <View>
-                      <Text style={styles.reviewerName}>{item.reviewerName}</Text>
-                      <View style={styles.reviewMetaContainer}>
-                        <View style={styles.ratingRow}>
-                          {renderStars(item.rating)}
-                        </View>
-                        <Text style={styles.reviewDate}>{item.date}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  
-                  <View style={styles.reviewHeaderRight}>
-                    <View style={[
-                      styles.statusBadge,
-                      item.status === 'approved' ? styles.statusApproved : styles.statusPending
-                    ]}>
-                      <Text style={styles.statusText}>
-                        {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
-                      </Text>
-                    </View>
-                    
-                    <TouchableOpacity 
-                      ref={menuButtonRef}
-                      style={styles.menuButton}
-                      onPress={(event) => handleMenuPress(event, item)}
-                    >
-                      <Ionicons name="ellipsis-vertical" size={20} color="#666" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                
-                {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
-                <Text style={styles.reviewContent}>{item.content}</Text>
-                
-                {/* Media Gallery */}
-                {item.media && item.media.length > 0 && (
-                  <View style={styles.mediaGallery}>
-                    {item.media.map((media, index) => (
-                      <TouchableOpacity 
-                        key={index}
-                        style={styles.mediaItem}
-                        onPress={() => {
-                          if (media.type === 'video') {
-                            console.log('Open video:', media.url);
-                          } else {
-                            console.log('Open image:', media.url);
-                          }
-                        }}
-                      >
-                        {media.type === 'video' ? (
-                          <View style={styles.videoThumbnail}>
-                            <Image 
-                              source={{ uri: media.thumbnail }} 
-                              style={styles.mediaThumbnail}
-                            />
-                            <View style={styles.playButton}>
-                              <Ionicons name="play" size={24} color="#fff" />
-                            </View>
-                          </View>
-                        ) : (
-                          <Image 
-                            source={{ uri: media.url }} 
-                            style={styles.mediaThumbnail}
-                          />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+      );
+    }
+    
+    // If no reviews or invalid reviews array
+    if (!reviews || !Array.isArray(reviews) || reviews.length === 0) {
+      return (
+        <ScrollView style={styles.tabContent}>
+          <View style={styles.emptyReviews}>
+            <View style={{alignItems: 'center', marginBottom: 10}}>
+              <View>
+                <Ionicons name="star-outline" size={50} color="#ccc" />
               </View>
-            ))}
-          </View>
-        )}
-
-        {/* All Reviews Section */}
-        <View style={styles.reviewsSection}>
-          <View style={styles.reviewsHeaderContainer}>
-            <Text style={styles.reviewsHeaderText}>Tất cả đánh giá</Text>
-            {isAuthenticated && userReviews.length === 0 && <TouchableOpacity
-              onPress={() => setIsReviewModalVisible(true)}
-            >
-              <Text style={styles.writeReviewLink}>
-                <Ionicons name="create-outline" size={18} color="#085924"/>
-                {'  '}Viết đánh giá
-              </Text>
-            </TouchableOpacity>}
-          </View>
-          
-          {otherReviews.length > 0 ? (
-            <View>
-              {otherReviews.map(item => (
-                <View key={item.id.toString()} style={styles.reviewItem}>
-                  <View style={styles.reviewHeader}>
-                    <View style={styles.reviewerInfo}>
-                      <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>
-                          {item.reviewerName.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-                      <View>
-                        <Text style={styles.reviewerName}>{item.reviewerName}</Text>
-                        <View style={styles.reviewMetaContainer}>
-                          <View style={styles.ratingRow}>
-                            {renderStars(item.rating)}
-                          </View>
-                          <Text style={styles.reviewDate}>{item.date}</Text>
-                        </View>
-                      </View>
-                    </View>
-                    
-                    <View style={styles.reviewHeaderRight}>
-                      <View style={[
-                        styles.statusBadge,
-                        item.status === 'approved' ? styles.statusApproved : styles.statusPending
-                      ]}>
-                        <Text style={styles.statusText}>
-                          {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                  
-                  {item.title && <Text style={styles.reviewTitle}>{item.title}</Text>}
-                  <Text style={styles.reviewContent}>{item.content}</Text>
-                  
-                  {/* Media Gallery */}
-                  {item.media && item.media.length > 0 && (
-                    <View style={styles.mediaGallery}>
-                      {item.media.map((media, index) => (
-                        <TouchableOpacity 
-                          key={index}
-                          style={styles.mediaItem}
-                          onPress={() => {
-                            if (media.type === 'video') {
-                              console.log('Open video:', media.url);
-                            } else {
-                              console.log('Open image:', media.url);
-                            }
-                          }}
-                        >
-                          {media.type === 'video' ? (
-                            <View style={styles.videoThumbnail}>
-                              <Image 
-                                source={{ uri: media.thumbnail }} 
-                                style={styles.mediaThumbnail}
-                              />
-                              <View style={styles.playButton}>
-                                <Ionicons name="play" size={24} color="#fff" />
-                              </View>
-                            </View>
-                          ) : (
-                            <Image 
-                              source={{ uri: media.url }} 
-                              style={styles.mediaThumbnail}
-                            />
-                          )}
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              ))}
             </View>
-          ) : (
-            <View style={styles.emptyReviews}>
-              <Ionicons name="star-outline" size={50} color="#ccc" />
-              <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
+            <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
+            {isAuthenticated && (
               <TouchableOpacity 
                 style={styles.addReviewButton}
-                onPress={() => setIsReviewModalVisible(true)}>
+                onPress={() => setIsReviewModalVisible(true)}
+              >
                 <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
               </TouchableOpacity>
+            )}
+          </View>
+        </ScrollView>
+      );
+    }
+
+    // Render reviews with simplified structure
+    return (
+      <ScrollView style={styles.tabContent}>
+        <View style={{padding: 15}}>
+          <Text style={{fontSize: 18, fontWeight: 'bold', marginBottom: 15}}>
+            Đánh giá ({reviews.length})
+          </Text>
+          
+          {reviews.map((item, index) => (
+            <View key={index} style={{marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 10}}>
+              <Text style={{fontWeight: 'bold'}}>
+                {item.reviewerName || 'Ẩn danh'}
+              </Text>
+              
+              <View style={{flexDirection: 'row', marginVertical: 5}}>
+                {renderStars(item.rating || 0)}
+              </View>
+              
+              {item.title && (
+                <Text style={{fontWeight: 'bold', marginBottom: 5}}>
+                  {item.title}
+                </Text>
+              )}
+              
+              <Text>
+                {item.content || 'Không có nội dung'}
+              </Text>
             </View>
+          ))}
+          
+          {isAuthenticated && (
+            <TouchableOpacity
+              style={{backgroundColor: '#085924', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10}}
+              onPress={() => setIsReviewModalVisible(true)}
+            >
+              <Text style={{color: '#fff'}}>Thêm đánh giá mới</Text>
+            </TouchableOpacity>
           )}
         </View>
-      </ScrollView>
-    );
-  };
-
-  const renderAboutTab = () => {
-    if (!selectedFacility) return null;
-    
-    return (
-      <ScrollView style={styles.tabContent} contentContainerStyle={{paddingBottom: 10}}>
-        <Text style={styles.aboutTitle}>Thông tin chi tiết</Text>
-        <Text style={styles.aboutDescription}>
-          {selectedFacility.description || "Chưa có thông tin chi tiết về cơ sở này."}
-        </Text>
       </ScrollView>
     );
   };
@@ -1710,7 +1690,9 @@ export default function HomeScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Đánh giá cơ sở</Text>
             <TouchableOpacity onPress={() => setIsReviewModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#333" />
+              <View>
+                <Ionicons name="close" size={24} color="#333" />
+              </View>
             </TouchableOpacity>
           </View>
           
@@ -1739,12 +1721,13 @@ export default function HomeScreen() {
                   <TouchableOpacity
                     key={star}
                     onPress={() => setNewReview({...newReview, rating: star})}>
-                    <Ionicons
-                      name={star <= newReview.rating ? "star" : "star-outline"}
-                      size={30}
-                      color="#FFD700"
-                      style={styles.starIcon}
-                    />
+                    <View>
+                      <Ionicons
+                        name={star <= newReview.rating ? "star" : "star-outline"}
+                        size={30}
+                        color="#FFD700"
+                      />
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -1780,7 +1763,9 @@ export default function HomeScreen() {
                         style={styles.removeMediaButton}
                         onPress={() => handleRemoveMedia('review', index)}
                       >
-                        <Ionicons name="close-circle" size={24} color="#e74c3c" />
+                        <View>
+                          <Ionicons name="close-circle" size={24} color="#e74c3c" />
+                        </View>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -1788,7 +1773,9 @@ export default function HomeScreen() {
                     style={styles.addMediaButton}
                     onPress={() => handleMediaPicker('review')}
                   >
-                    <Ionicons name="add-circle-outline" size={40} color="#085924" />
+                    <View>
+                      <Ionicons name="add-circle-outline" size={40} color="#085924" />
+                    </View>
                     <Text style={styles.addMediaText}>Thêm</Text>
                   </TouchableOpacity>
                 </ScrollView>
@@ -1817,7 +1804,9 @@ export default function HomeScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Phản ánh lên cơ quan chức năng</Text>
             <TouchableOpacity onPress={() => setIsReportModalVisible(false)}>
-              <Ionicons name="close" size={24} color="#085924" />
+              <View>
+                <Ionicons name="close" size={24} color="#085924" />
+              </View>
             </TouchableOpacity>
           </View>
           
@@ -1878,7 +1867,9 @@ export default function HomeScreen() {
                         style={styles.removeMediaButton}
                         onPress={() => handleRemoveMedia('report', index)}
                       >
-                        <Ionicons name="close-circle" size={24} color="#e74c3c" />
+                        <View>
+                          <Ionicons name="close-circle" size={24} color="#e74c3c" />
+                        </View>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -1886,7 +1877,9 @@ export default function HomeScreen() {
                     style={styles.addMediaButton}
                     onPress={() => handleMediaPicker('report')}
                   >
-                    <Ionicons name="add-circle-outline" size={40} color="#085924" />
+                    <View>
+                      <Ionicons name="add-circle-outline" size={40} color="#085924" />
+                    </View>
                     <Text style={styles.addMediaText}>Thêm</Text>
                   </TouchableOpacity>
                 </ScrollView>
@@ -2131,6 +2124,14 @@ export default function HomeScreen() {
         javaScriptEnabled={true}
         domStorageEnabled={true}
         geolocationEnabled={true}
+        onError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('WebView error:', nativeEvent);
+        }}
+        onHttpError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.error('WebView HTTP error:', nativeEvent);
+        }}
       />
       
       {/* Menu Tooltip */}
@@ -2163,20 +2164,22 @@ export default function HomeScreen() {
               elevation: 5,
             }
           ]}>
-            {selectedReview && selectedReview.status === 'pending' && (
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={() => handleEditReview(selectedReview)}
-              >
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={() => handleEditReview(selectedReview)}
+            >
+              <View>
                 <Ionicons name="create-outline" size={20} color="#333" />
-                <Text style={styles.menuItemText}>Sửa</Text>
-              </TouchableOpacity>
-            )}
+              </View>
+              <Text style={styles.menuItemText}>Sửa</Text>
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.menuItem}
               onPress={() => handleDeleteReview(selectedReview)}
             >
-              <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+              <View>
+                <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+              </View>
               <Text style={[styles.menuItemText, { color: '#e74c3c' }]}>Xóa</Text>
             </TouchableOpacity>
           </View>
@@ -2188,7 +2191,9 @@ export default function HomeScreen() {
         style={styles.mapTypeButton}
         onPress={() => setIsMapTypeModalVisible(true)}
       >
-        <Ionicons name="layers-outline" size={24} color="#333" />
+        <View>
+          <Ionicons name="layers-outline" size={24} color="#333" />
+        </View>
       </TouchableOpacity>
       
       {/* Map Type Modal */}
@@ -2214,12 +2219,13 @@ export default function HomeScreen() {
                 setIsMapTypeModalVisible(false);
               }}
             >
-              <Ionicons 
-                name="map-outline" 
-                size={24} 
-                color={mapType === 'default' ? "#085924" : "#333"} 
-                style={styles.mapTypeOptionIcon}
-              />
+              <View style={styles.mapTypeOptionIcon}>
+                <Ionicons 
+                  name="map-outline" 
+                  size={24} 
+                  color={mapType === 'default' ? "#085924" : "#333"} 
+                />
+              </View>
               <Text style={[
                 styles.mapTypeOptionText,
                 mapType === 'default' && styles.mapTypeOptionTextActive
@@ -2236,12 +2242,13 @@ export default function HomeScreen() {
                 setIsMapTypeModalVisible(false);
               }}
             >
-              <Ionicons 
-                name="globe-outline" 
-                size={24} 
-                color={mapType === 'satellite' ? "#085924" : "#333"} 
-                style={styles.mapTypeOptionIcon}
-              />
+              <View style={styles.mapTypeOptionIcon}>
+                <Ionicons 
+                  name="globe-outline" 
+                  size={24} 
+                  color={mapType === 'satellite' ? "#085924" : "#333"} 
+                />
+              </View>
               <Text style={[
                 styles.mapTypeOptionText,
                 mapType === 'satellite' && styles.mapTypeOptionTextActive
@@ -2258,12 +2265,13 @@ export default function HomeScreen() {
                 setIsMapTypeModalVisible(false);
               }}
             >
-              <Ionicons 
-                name="trail-sign-outline" 
-                size={24} 
-                color={mapType === 'terrain' ? "#085924" : "#333"} 
-                style={styles.mapTypeOptionIcon}
-              />
+              <View style={styles.mapTypeOptionIcon}>
+                <Ionicons 
+                  name="trail-sign-outline" 
+                  size={24} 
+                  color={mapType === 'terrain' ? "#085924" : "#333"} 
+                />
+              </View>
               <Text style={[
                 styles.mapTypeOptionText,
                 mapType === 'terrain' && styles.mapTypeOptionTextActive
@@ -2276,7 +2284,9 @@ export default function HomeScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <Ionicons name="search" size={20} color="#085924" />
+          <View>
+            <Ionicons name="search" size={20} color="#085924" />
+          </View>
           <TextInput
             style={styles.searchInput}
             placeholder="Tìm kiếm"
@@ -2286,7 +2296,9 @@ export default function HomeScreen() {
           />
           {searchKeyword.length > 0 && (
             <TouchableOpacity onPress={() => setSearchKeyword('')}>
-              <Ionicons name="close-circle" size={20} color="#085924" />
+              <View>
+                <Ionicons name="close-circle" size={20} color="#085924" />
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -2310,12 +2322,13 @@ export default function HomeScreen() {
               {isLoading ? (
                 <ActivityIndicator size="small" color={filters[type.id] ? "#fff" : "#666"} style={styles.filterButtonIcon} />
               ) : (
-                <Ionicons 
-                  name={type.businessTypeIcon || 'business'} 
-                  size={18} 
-                  color={filters[type.id] ? "#fff" : "#666"} 
-                  style={styles.filterButtonIcon}
-                />
+                <View>
+                  <Ionicons 
+                    name={type.businessTypeIcon || 'business'} 
+                    size={18} 
+                    color={filters[type.id] ? "#fff" : "#666"} 
+                  />
+                </View>
               )}
               <Text style={[
                 styles.filterButtonText,
@@ -2344,11 +2357,13 @@ export default function HomeScreen() {
                     style={styles.searchResultItem}
                     onPress={() => focusFacility(item)}>
                     <View style={styles.searchResultIconContainer}>
-                      <Ionicons 
-                        name={businessType.businessTypeIcon || 'business'} 
-                        size={16} 
-                        color="#fff" 
-                      />
+                      <View>
+                        <Ionicons 
+                          name={businessType.businessTypeIcon || 'business'} 
+                          size={16} 
+                          color="#fff" 
+                        />
+                      </View>
                     </View>
                     <View style={styles.searchResultTextContainer}>
                       <Text style={styles.searchResultName}>
@@ -2365,7 +2380,9 @@ export default function HomeScreen() {
                       </Text>
                       <Text style={styles.searchResultAddress}>{item.address}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={16} color="#085924" />
+                    <View>
+                      <Ionicons name="chevron-forward" size={16} color="#085924" />
+                    </View>
                   </TouchableOpacity>
                 );
               }}
@@ -2384,7 +2401,7 @@ export default function HomeScreen() {
       }
 
       {/* Bottom Sheet */}
-      {bottomSheetVisible && selectedFacility && (
+      {bottomSheetVisible && selectedFacility ? (
         <Animated.View 
           ref={bottomSheetRef}
           style={[
@@ -2411,13 +2428,15 @@ export default function HomeScreen() {
           
           <View style={styles.bottomSheetHeader}>
             <Text style={styles.facilityName} numberOfLines={1} ellipsizeMode="tail">
-              {selectedFacility.name}
+              {selectedFacility.name || 'Không có tên'}
             </Text>
             <TouchableOpacity 
               style={styles.closeButton} 
               onPress={() => setBottomSheetVisible(false)}
             >
-              <Ionicons name="close" size={24} color="#333" />
+              <View>
+                <Ionicons name="close" size={24} color="#333" />
+              </View>
             </TouchableOpacity>
           </View>
           
@@ -2451,12 +2470,12 @@ export default function HomeScreen() {
           </View>
           
           <View style={styles.tabContentContainer}>
-            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'overview' && selectedFacility && renderOverviewTab()}
             {activeTab === 'reviews' && renderReviewsTab()}
-            {activeTab === 'about' && renderAboutTab()}
+            {activeTab === 'about' && selectedFacility && renderAboutTab()}
           </View>
         </Animated.View>
-      )}
+      ) : null}
       
       {renderReviewModal()}
       {renderReportModal()}
@@ -2472,7 +2491,9 @@ export default function HomeScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Đánh giá về cơ sở</Text>
               <TouchableOpacity onPress={() => setIsReviewListVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <View>
+                  <Ionicons name="close" size={24} color="#333" />
+                </View>
               </TouchableOpacity>
             </View>
             
@@ -2510,9 +2531,9 @@ export default function HomeScreen() {
                               </View>
                             </View>
                             <View style={styles.reviewMetaContainer}>
-                              <Text style={styles.reviewDate}>{item.date}</Text>
+                              <Text style={styles.reviewDate}>{item.date || ''}</Text>
                               <View style={styles.ratingRow}>
-                                {renderStars(item.rating)}
+                                {renderStars(item.rating || 0)}
                               </View>
                             </View>
                           </View>
@@ -2547,7 +2568,9 @@ export default function HomeScreen() {
                                     style={styles.mediaThumbnail}
                                   />
                                   <View style={styles.playButton}>
-                                    <Ionicons name="play" size={24} color="#fff" />
+                                    <View>
+                                      <Ionicons name="play" size={24} color="#fff" />
+                                    </View>
                                   </View>
                                 </View>
                               ) : (
@@ -2562,13 +2585,23 @@ export default function HomeScreen() {
                       )}
                       
                       <View style={styles.reviewActions}>
-                        <TouchableOpacity style={styles.reviewAction}>
-                          <Ionicons name="thumbs-up-outline" size={18} color="#666" />
+                        <TouchableOpacity 
+                          style={styles.reviewAction}
+                          onPress={() => {/* handle action */}}
+                        >
+                          <View>
+                            <Ionicons name="thumbs-up-outline" size={18} color="#666" />
+                          </View>
                           <Text style={styles.reviewActionText}>{item.likes || 0}</Text>
                         </TouchableOpacity>
                         
-                        <TouchableOpacity style={styles.reviewAction}>
-                          <Ionicons name="chatbubble-outline" size={18} color="#666" />
+                        <TouchableOpacity 
+                          style={styles.reviewAction}
+                          onPress={() => {/* handle action */}}
+                        >
+                          <View>
+                            <Ionicons name="chatbubble-outline" size={18} color="#666" />
+                          </View>
                           <Text style={styles.reviewActionText}>{item.replies || 0}</Text>
                         </TouchableOpacity>
                       </View>
@@ -2583,16 +2616,20 @@ export default function HomeScreen() {
                 />
               ) : (
                 <View style={styles.emptyReviews}>
-                  <Ionicons name="star-outline" size={50} color="#ccc" />
+                  <View style={{alignItems: 'center', marginBottom: 10}}>
+                    <View>
+                      <Ionicons name="star-outline" size={50} color="#ccc" />
+                    </View>
+                  </View>
                   <Text style={styles.emptyReviewsText}>Chưa có đánh giá nào</Text>
-                  <TouchableOpacity 
-                    style={styles.addReviewButton}
-                    onPress={() => {
-                      setIsReviewListVisible(false);
-                      setIsReviewModalVisible(true);
-                    }}>
-                    <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
-                  </TouchableOpacity>
+                  {isAuthenticated && (
+                    <TouchableOpacity 
+                      style={styles.addReviewButton}
+                      onPress={() => setIsReviewModalVisible(true)}
+                    >
+                      <Text style={styles.addReviewButtonText}>Thêm đánh giá đầu tiên</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </View>
@@ -2613,20 +2650,22 @@ export default function HomeScreen() {
           onPress={() => setIsMenuModalVisible(false)}
         >
           <View style={styles.menuModalContent}>
-            {selectedReview && selectedReview.status === 'pending' && (
-              <TouchableOpacity 
-                style={styles.menuModalItem}
-                onPress={() => handleEditReview(selectedReview)}
-              >
+            <TouchableOpacity 
+              style={styles.menuModalItem}
+              onPress={() => handleEditReview(selectedReview)}
+            >
+              <View>
                 <Ionicons name="create-outline" size={20} color="#333" />
-                <Text style={styles.menuModalItemText}>Sửa</Text>
-              </TouchableOpacity>
-            )}
+              </View>
+              <Text style={styles.menuModalItemText}>Sửa</Text>
+            </TouchableOpacity>
             <TouchableOpacity 
               style={styles.menuModalItem}
               onPress={() => handleDeleteReview(selectedReview)}
             >
-              <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+              <View>
+                <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+              </View>
               <Text style={[styles.menuModalItemText, { color: '#e74c3c' }]}>Xóa</Text>
             </TouchableOpacity>
           </View>
@@ -2645,7 +2684,9 @@ export default function HomeScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Sửa đánh giá</Text>
               <TouchableOpacity onPress={() => setIsEditReviewModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+                <View>
+                  <Ionicons name="close" size={24} color="#333" />
+                </View>
               </TouchableOpacity>
             </View>
             
@@ -2657,12 +2698,13 @@ export default function HomeScreen() {
                     <TouchableOpacity
                       key={star}
                       onPress={() => setNewReview({...newReview, rating: star})}>
-                      <Ionicons
-                        name={star <= newReview.rating ? "star" : "star-outline"}
-                        size={30}
-                        color="#FFD700"
-                        style={styles.starIcon}
-                      />
+                      <View>
+                        <Ionicons
+                          name={star <= newReview.rating ? "star" : "star-outline"}
+                          size={30}
+                          color="#FFD700"
+                        />
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </View>
