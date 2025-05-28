@@ -18,7 +18,7 @@ class BusinessFeedbackService {
    * @param {number} params.maxResultCount Số bản ghi tối đa
    * @returns {Promise} Promise với kết quả danh sách phản hồi
    */
-  async getAll(params = {}) {
+  async getAllByUser(params = {}) {
     try {
       const response = await api.get('/api/services/app/BusinessFeedbacks/GetAllByUser', params);
       return response.result;

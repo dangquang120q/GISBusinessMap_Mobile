@@ -21,18 +21,31 @@ const FeedbackHistoryScreen = () => {
   const [feedback, setFeedback] = useState([]);
   const [filter, setFilter] = useState('all'); // 'all', 'pending', 'processing', 'resolved'
   const [refreshing, setRefreshing] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+  const [error, setError] = useState(null);
 
   const fetchFeedback = async () => {
     try {
       setLoading(true);
-      const result = await BusinessFeedbackService.getUserFeedbacks();
+      setError(null);
+      
+      const result = await BusinessFeedbackService.getAllByUser({
+        maxResultCount: 50,
+        skipCount: 0,
+        isGetTotalCount: true,
+        sorting: 'feedbackDate DESC'
+      });
+      
       if (result && Array.isArray(result.items)) {
         setFeedback(result.items);
+        setTotalCount(result.totalCount || 0);
       } else {
         setFeedback([]);
+        setTotalCount(0);
       }
     } catch (error) {
       console.error('Error fetching feedback:', error);
+      setError('Không thể tải dữ liệu phản ánh.');
       Alert.alert(
         'Lỗi',
         'Không thể tải dữ liệu phản ánh. Vui lòng thử lại sau.',
@@ -111,29 +124,39 @@ const FeedbackHistoryScreen = () => {
       }}
     >
       <View style={styles.feedbackHeader}>
-        <Text style={styles.facilityName}>{item.businessName || 'Không có tên'}</Text>
+        <Text style={styles.facilityName}>{item.branchName || item.organizationName || 'Không có tên'}</Text>
         <View style={[styles.statusBadge, { backgroundColor: BusinessFeedbackType.getStatusColor(item.status) }]}>
-          <Ionicons 
-            name={BusinessFeedbackType.getStatusIcon(item.status)} 
-            size={14} 
-            color="#fff" 
-            style={styles.statusIcon}
-          />
+          <View>
+            <Ionicons 
+              name={BusinessFeedbackType.getStatusIcon(item.status)} 
+              size={14} 
+              color="#fff"
+            />
+          </View>
           <Text style={styles.statusText}>{BusinessFeedbackType.getStatusText(item.status)}</Text>
         </View>
       </View>
       
-      {item.status !== BusinessFeedbackType.PENDING && item.handler && (
+      {item.status !== BusinessFeedbackType.PENDING && item.assignedToName && (
         <View style={styles.handlerInfo}>
-          <Text style={styles.handlerName}>{item.handler}</Text>
-          <Text style={styles.date}>{new Date(item.creationTime).toLocaleDateString()}</Text>
+          <Text style={styles.handlerName}>{item.assignedToName}</Text>
+          <Text style={styles.date}>{new Date(item.feedbackDate || item.createdDate).toLocaleDateString()}</Text>
         </View>
       )}
       
-      <Text style={styles.feedbackTitle}>{item.title || 'Không có tiêu đề'}</Text>
+      <Text style={styles.feedbackTitle}>{item.feedbackTypeName || 'Phản ánh'}</Text>
       <Text style={styles.feedbackContent} numberOfLines={3}>
         {item.status === BusinessFeedbackType.PENDING ? item.content : (item.responseContent || item.content)}
       </Text>
+      
+      {item.attachmentUrl && (
+        <View style={styles.mediaIndicator}>
+          <View>
+            <Ionicons name="images-outline" size={16} color="#666" />
+          </View>
+          <Text style={styles.mediaText}>Có hình ảnh đính kèm</Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -144,9 +167,13 @@ const FeedbackHistoryScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <View>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </View>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lịch sử phản ánh</Text>
+        <Text style={styles.headerTitle}>
+          Lịch sử phản ánh {totalCount > 0 ? `(${totalCount})` : ''}
+        </Text>
       </View>
 
       {renderFilterButtons()}
@@ -154,6 +181,16 @@ const FeedbackHistoryScreen = () => {
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#085924" />
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <View>
+            <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
+          </View>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
         </View>
       ) : filteredFeedback.length > 0 ? (
         <FlatList
@@ -166,8 +203,14 @@ const FeedbackHistoryScreen = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubble-ellipses-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>Chưa có phản ánh nào</Text>
+          <View>
+            <Ionicons name="chatbubble-ellipses-outline" size={80} color="#ccc" />
+          </View>
+          <Text style={styles.emptyText}>
+            {filter === 'all' 
+              ? 'Chưa có phản ánh nào' 
+              : `Không có phản ánh nào ${filter === BusinessFeedbackType.RESOLVED ? 'đã xử lý' : filter === BusinessFeedbackType.PROCESSING ? 'đang xử lý' : 'chưa xác minh'}`}
+          </Text>
         </View>
       )}
     </SafeAreaView>
@@ -272,9 +315,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  statusIcon: {
-    marginRight: 4,
+    marginLeft: 4,
   },
   handlerInfo: {
     flexDirection: 'row',
@@ -300,6 +341,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#555',
   },
+  mediaIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  mediaText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -311,6 +362,30 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 16,
     textAlign: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#555',
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

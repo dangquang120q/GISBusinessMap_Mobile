@@ -8,9 +8,11 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import BusinessReviewService from '../../services/BusinessReviewService';
 
 const ReviewDetailScreen = () => {
   const navigation = useNavigation();
@@ -20,71 +22,20 @@ const ReviewDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const [review, setReview] = useState(null);
   
-  // Sample review data - replace with your actual API call
-  const sampleReviews = [
-    {
-      id: '1',
-      facilityName: 'Nhà hàng ABC',
-      facilityType: 'Nhà hàng',
-      rating: 4,
-      content: 'Đồ ăn ngon, phục vụ tốt. Giá cả hợp lý, không gian thoáng mát và sạch sẽ. Nhân viên thân thiện và nhiệt tình. Sẽ quay lại lần sau.',
-      date: '2023-12-05',
-      address: '123 Đường Lê Lợi, Quận 1, TP HCM',
-      photoUrls: [
-        'https://via.placeholder.com/500x300',
-        'https://via.placeholder.com/500x300',
-      ],
-      reviewerName: 'Nguyễn Văn A',
-      status: 'approved',
-    },
-    {
-      id: '2',
-      facilityName: 'Khách sạn XYZ',
-      facilityType: 'Khách sạn',
-      rating: 5,
-      content: 'Phòng sạch sẽ, nhân viên thân thiện. Vị trí trung tâm, thuận tiện đi lại. Dịch vụ phòng nhanh chóng và chất lượng. Bữa sáng đa dạng và ngon miệng.',
-      date: '2023-11-28',
-      address: '456 Đường Nguyễn Huệ, Quận 1, TP HCM',
-      photoUrls: [
-        'https://via.placeholder.com/500x300',
-        'https://via.placeholder.com/500x300',
-      ],
-      reviewerName: 'Trần Thị B',
-      status: 'pending',
-    },
-    {
-      id: '3',
-      facilityName: 'Cửa hàng LMN',
-      facilityType: 'Cửa hàng',
-      rating: 3,
-      content: 'Sản phẩm đa dạng, giá khá cao. Nhân viên phục vụ còn thiếu nhiệt tình. Không gian cửa hàng hơi chật, trưng bày sản phẩm chưa hợp lý.',
-      date: '2023-11-15',
-      address: '789 Đường Lê Duẩn, Quận 3, TP HCM',
-      photoUrls: [
-        'https://via.placeholder.com/500x300',
-      ],
-      reviewerName: 'Phạm Văn C',
-      status: 'rejected',
-    },
-  ];
-
   useEffect(() => {
-    // Simulate API fetch
     const fetchReviewDetail = async () => {
       try {
-        // Replace with actual API call
-        // const response = await fetch(`your-api-endpoint/${reviewId}`);
-        // const data = await response.json();
-        // setReview(data);
-        
-        // Using sample data for now
-        setTimeout(() => {
-          const foundReview = sampleReviews.find(r => r.id === reviewId);
-          setReview(foundReview || null);
-          setLoading(false);
-        }, 1000);
+        setLoading(true);
+        const response = await BusinessReviewService.getById(reviewId);
+        if (response) {
+          setReview(response);
+        } else {
+          console.error('No review data returned');
+        }
       } catch (error) {
         console.error('Error fetching review details:', error);
+        Alert.alert('Lỗi', 'Không thể tải thông tin đánh giá. Vui lòng thử lại sau.');
+      } finally {
         setLoading(false);
       }
     };
@@ -96,17 +47,54 @@ const ReviewDetailScreen = () => {
     return (
       <View style={styles.starContainer}>
         {[...Array(5)].map((_, i) => (
-          <Ionicons
-            key={i}
-            name={i < rating ? 'star' : 'star-outline'}
-            size={24}
-            color="#FFD700"
-            style={styles.starIcon}
-          />
+          <View key={i}>
+            <Ionicons
+              name={i < rating ? 'star' : 'star-outline'}
+              size={24}
+              color="#FFD700"
+              style={styles.starIcon}
+            />
+          </View>
         ))}
         <Text style={styles.ratingText}>{rating}/5</Text>
       </View>
     );
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  const getStatusText = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'A':
+        return 'Đã duyệt';
+      case 'P':
+        return 'Chờ duyệt';
+      case 'R':
+        return 'Từ chối';
+      default:
+        return 'Không xác định';
+    }
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'A':
+        return { bg: '#e8f5e9', text: '#2e7d32' };
+      case 'P':
+        return { bg: '#fff3e0', text: '#f57c00' };
+      case 'R':
+        return { bg: '#ffebee', text: '#c62828' };
+      default:
+        return { bg: '#f5f5f5', text: '#757575' };
+    }
   };
 
   if (loading) {
@@ -125,17 +113,24 @@ const ReviewDetailScreen = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="arrow-back" size={24} color="#333" />
+            <View>
+              <Ionicons name="arrow-back" size={24} color="#333" />
+            </View>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chi tiết đánh giá</Text>
         </View>
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={80} color="#ccc" />
+          <View>
+            <Ionicons name="alert-circle-outline" size={80} color="#ccc" />
+          </View>
           <Text style={styles.errorText}>Không tìm thấy thông tin đánh giá</Text>
         </View>
       </SafeAreaView>
     );
   }
+
+  const statusStyle = getStatusColor(review.status);
+  const media = review.listBusinessReviewMedia || [];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -144,28 +139,25 @@ const ReviewDetailScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <View>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </View>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chi tiết đánh giá</Text>
       </View>
       
       <ScrollView style={styles.scrollView}>
         <View style={styles.facilityInfoSection}>
-          <Text style={styles.facilityName}>{review.facilityName}</Text>
-          <View style={styles.facilityTypeContainer}>
-            <Ionicons 
-              name={review.facilityType === 'Nhà hàng' ? 'restaurant' : 
-                   review.facilityType === 'Khách sạn' ? 'bed' : 'cart'} 
-              size={16} 
-              color="#085924" 
-            />
-            <Text style={styles.facilityType}>{review.facilityType}</Text>
-          </View>
+          <Text style={styles.facilityName}>{review.branchName || review.organizationName || 'Không có tên'}</Text>
           
-          <View style={styles.addressContainer}>
-            <Ionicons name="location" size={16} color="#666" />
-            <Text style={styles.address}>{review.address}</Text>
-          </View>
+          {review.address && (
+            <View style={styles.addressContainer}>
+              <View>
+                <Ionicons name="location" size={16} color="#666" />
+              </View>
+              <Text style={styles.address}>{review.address}</Text>
+            </View>
+          )}
         </View>
         
         <View style={styles.divider} />
@@ -173,40 +165,51 @@ const ReviewDetailScreen = () => {
         <View style={styles.reviewInfoSection}>
           <View style={styles.reviewerContainer}>
             <Text style={styles.reviewerLabel}>Người đánh giá:</Text>
-            <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+            <Text style={styles.reviewerName}>{review.reviewerName || 'Ẩn danh'}</Text>
           </View>
           
           <View style={styles.dateContainer}>
             <Text style={styles.reviewerLabel}>Ngày đánh giá:</Text>
-            <Text style={styles.date}>{review.date}</Text>
+            <Text style={styles.date}>{formatDate(review.reviewDate || review.createdDate)}</Text>
           </View>
 
           <View style={styles.statusContainer}>
             <View style={[
               styles.statusBadge,
-              review.status === 'approved' && styles.approvedBadge,
-              review.status === 'pending' && styles.pendingBadge,
-              review.status === 'rejected' && styles.rejectedBadge,
+              { backgroundColor: statusStyle.bg }
             ]}>
               <Text style={[
                 styles.statusText,
-                review.status === 'approved' && styles.approvedText,
-                review.status === 'pending' && styles.pendingText,
-                review.status === 'rejected' && styles.rejectedText,
+                { color: statusStyle.text }
               ]}>
-                {review.status === 'approved' ? 'Đã duyệt' :
-                 review.status === 'pending' ? 'Chờ duyệt' : 'Từ chối'}
+                {getStatusText(review.status)}
               </Text>
             </View>
           </View>
           
-          {renderStars(review.rating)}
+          {renderStars(review.rating || 0)}
+          
+          {review.title && (
+            <Text style={styles.reviewTitle}>{review.title}</Text>
+          )}
           
           <Text style={styles.contentLabel}>Nội dung đánh giá:</Text>
-          <Text style={styles.content}>{review.content}</Text>
+          <Text style={styles.content}>{review.content || 'Không có nội dung'}</Text>
+          
+          {review.response && (
+            <View style={styles.responseSection}>
+              <Text style={styles.responseLabel}>Phản hồi từ doanh nghiệp:</Text>
+              <Text style={styles.responseText}>{review.response}</Text>
+              {review.responseDate && (
+                <Text style={styles.responseDate}>
+                  Ngày phản hồi: {formatDate(review.responseDate)}
+                </Text>
+              )}
+            </View>
+          )}
         </View>
         
-        {review.photoUrls && review.photoUrls.length > 0 && (
+        {media.length > 0 && (
           <View style={styles.photosSection}>
             <Text style={styles.photosLabel}>Hình ảnh đính kèm:</Text>
             <ScrollView 
@@ -214,10 +217,10 @@ const ReviewDetailScreen = () => {
               showsHorizontalScrollIndicator={false}
               style={styles.photoScrollView}
             >
-              {review.photoUrls.map((url, index) => (
+              {media.map((item, index) => (
                 <Image 
                   key={index} 
-                  source={{uri: url}} 
+                  source={{uri: item.mediaUrl}} 
                   style={styles.photo} 
                   resizeMode="cover"
                 />
@@ -227,18 +230,53 @@ const ReviewDetailScreen = () => {
         )}
         
         <View style={styles.actionsSection}>
-          {review.status !== 'approved' && (
-            <TouchableOpacity style={styles.editButton}>
-              <Ionicons name="create-outline" size={20} color="#fff" />
+          {review.status === 'P' && (
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={() => navigation.navigate('EditReviewScreen', { review })}
+            >
+              <View>
+                <Ionicons name="create-outline" size={20} color="#fff" />
+              </View>
               <Text style={styles.editButtonText}>Chỉnh sửa</Text>
             </TouchableOpacity>
           )}
           
-          <TouchableOpacity style={[
-            styles.deleteButton,
-            review.status === 'approved' && styles.fullWidthButton
-          ]}>
-            <Ionicons name="trash-outline" size={20} color="#fff" />
+          <TouchableOpacity 
+            style={[
+              styles.deleteButton,
+              review.status !== 'P' && styles.fullWidthButton
+            ]}
+            onPress={() => {
+              Alert.alert(
+                'Xác nhận xóa',
+                'Bạn có chắc chắn muốn xóa đánh giá này không?',
+                [
+                  { text: 'Hủy', style: 'cancel' },
+                  { 
+                    text: 'Xóa', 
+                    style: 'destructive',
+                    onPress: async () => {
+                      try {
+                        setLoading(true);
+                        await BusinessReviewService.delete(review.id);
+                        Alert.alert('Thành công', 'Đã xóa đánh giá');
+                        navigation.goBack();
+                      } catch (error) {
+                        console.error('Error deleting review:', error);
+                        Alert.alert('Lỗi', 'Không thể xóa đánh giá. Vui lòng thử lại sau.');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }
+                  }
+                ]
+              );
+            }}
+          >
+            <View>
+              <Ionicons name="trash-outline" size={20} color="#fff" />
+            </View>
             <Text style={styles.deleteButtonText}>Xóa</Text>
           </TouchableOpacity>
         </View>
@@ -303,17 +341,6 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
   },
-  facilityTypeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  facilityType: {
-    fontSize: 16,
-    color: '#085924',
-    marginLeft: 6,
-    fontWeight: '500',
-  },
   addressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -371,6 +398,12 @@ const styles = StyleSheet.create({
     color: '#333',
     marginLeft: 8,
   },
+  reviewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+  },
   contentLabel: {
     fontSize: 16,
     fontWeight: '500',
@@ -381,6 +414,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#444',
     lineHeight: 22,
+  },
+  responseSection: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#085924',
+  },
+  responseLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 6,
+  },
+  responseText: {
+    fontSize: 14,
+    color: '#444',
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  responseDate: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
   },
   photosSection: {
     backgroundColor: '#fff',
@@ -449,27 +507,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
-  approvedBadge: {
-    backgroundColor: '#e8f5e9',
-  },
-  pendingBadge: {
-    backgroundColor: '#fff3e0',
-  },
-  rejectedBadge: {
-    backgroundColor: '#ffebee',
-  },
   statusText: {
     fontSize: 14,
     fontWeight: '500',
-  },
-  approvedText: {
-    color: '#2e7d32',
-  },
-  pendingText: {
-    color: '#f57c00',
-  },
-  rejectedText: {
-    color: '#c62828',
   },
   fullWidthButton: {
     flex: 1,

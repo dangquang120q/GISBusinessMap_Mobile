@@ -18,9 +18,10 @@ const ReviewHistoryScreen = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [reviews, setReviews] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'approved', 'pending'
+  const [filter, setFilter] = useState('all'); // 'all', 'A' (approved), 'P' (pending), 'R' (rejected)
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
     fetchReviews();
@@ -31,32 +32,21 @@ const ReviewHistoryScreen = () => {
       setLoading(true);
       setError(null);
       
-      // Get all reviews for the current user
-      // Since API automatically filters for the current authenticated user
-      // We're using the getAll method with appropriate pagination
-      const response = await BusinessReviewService.getAll({
+      // Get all reviews for the current user using the new API format
+      const response = await BusinessReviewService.getAllByUser({
         maxResultCount: 50, // Adjust as needed
         skipCount: 0,
         isGetTotalCount: true,
-        sorting: 'creationTime DESC' // Sort by newest first
+        sorting: 'reviewDate DESC' // Sort by newest first
       });
       
-      if (response && Array.isArray(response.items)) {
-        // Map the API response to our review format
-        const mappedReviews = response.items.map(item => ({
-          id: item.id,
-          facilityName: item.businessName || 'Không có tên',
-          facilityType: item.businessTypeName || 'Không phân loại',
-          rating: item.rating || 0,
-          content: item.content || '',
-          date: formatDate(item.creationTime),
-          status: item.isApproved ? 'approved' : 'pending',
-        }));
-        
-        setReviews(mappedReviews);
+      if (response && response.items && Array.isArray(response.items)) {
+        setReviews(response.items);
+        setTotalCount(response.totalCount || 0);
       } else {
         // Fallback to empty array if response format is unexpected
         setReviews([]);
+        setTotalCount(0);
       }
     } catch (error) {
       console.error('Error fetching reviews:', error);
@@ -98,6 +88,7 @@ const ReviewHistoryScreen = () => {
       
       // Update the local state after successful deletion
       setReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
+      setTotalCount(prev => Math.max(0, prev - 1));
       
       // Show success message
       Alert.alert('Thành công', 'Đã xóa đánh giá thành công');
@@ -126,21 +117,48 @@ const ReviewHistoryScreen = () => {
     }
   };
 
+  const getStatusText = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'A':
+        return 'Đã duyệt';
+      case 'P':
+        return 'Chờ duyệt';
+      case 'R':
+        return 'Từ chối';
+      default:
+        return 'Không xác định';
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'A':
+        return styles.statusApproved;
+      case 'P':
+        return styles.statusPending;
+      case 'R':
+        return styles.statusRejected;
+      default:
+        return {};
+    }
+  };
+
   const filteredReviews = reviews.filter(review => {
     if (filter === 'all') return true;
-    return review.status === filter;
+    return review.status?.toUpperCase() === filter;
   });
 
   const renderStars = (rating) => {
     return (
       <View style={styles.starContainer}>
         {[...Array(5)].map((_, i) => (
-          <Ionicons
-            key={i}
-            name={i < rating ? 'star' : 'star-outline'}
-            size={16}
-            color="#FFD700"
-          />
+          <View key={i}>
+            <Ionicons
+              name={i < rating ? 'star' : 'star-outline'}
+              size={16}
+              color="#FFD700"
+            />
+          </View>
         ))}
       </View>
     );
@@ -162,19 +180,27 @@ const ReviewHistoryScreen = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'approved' && styles.filterButtonActive]}
-          onPress={() => setFilter('approved')}
+          style={[styles.filterButton, filter === 'A' && styles.filterButtonActive]}
+          onPress={() => setFilter('A')}
         >
-          <Text style={[styles.filterButtonText, filter === 'approved' && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, filter === 'A' && styles.filterButtonTextActive]}>
             Đã duyệt
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'pending' && styles.filterButtonActive]}
-          onPress={() => setFilter('pending')}
+          style={[styles.filterButton, filter === 'P' && styles.filterButtonActive]}
+          onPress={() => setFilter('P')}
         >
-          <Text style={[styles.filterButtonText, filter === 'pending' && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, filter === 'P' && styles.filterButtonTextActive]}>
             Chờ duyệt
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'R' && styles.filterButtonActive]}
+          onPress={() => setFilter('R')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'R' && styles.filterButtonTextActive]}>
+            Từ chối
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -190,32 +216,53 @@ const ReviewHistoryScreen = () => {
         }}
       >
         <View style={styles.reviewHeader}>
-          <Text style={styles.facilityName}>{item.facilityName}</Text>
+          <Text style={styles.facilityName}>{item.branchName || item.organizationName || 'Không có tên'}</Text>
           <View style={styles.headerRight}>
             <View style={[
               styles.statusBadge,
-              item.status === 'approved' ? styles.statusApproved : styles.statusPending
+              getStatusStyle(item.status)
             ]}>
               <Text style={styles.statusText}>
-                {item.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
+                {getStatusText(item.status)}
               </Text>
             </View>
           </View>
         </View>
-        <Text style={styles.facilityType}>{item.facilityType}</Text>
-        <Text style={styles.date}>{item.date}</Text>
-        <Text>{renderStars(item.rating)}</Text>
-        <Text style={styles.content}>{item.content}</Text>
+        
+        <Text style={styles.date}>{formatDate(item.reviewDate || item.createdDate)}</Text>
+        <Text>{renderStars(item.rating || 0)}</Text>
+        
+        {item.title && (
+          <Text style={styles.reviewTitle}>{item.title}</Text>
+        )}
+        
+        <Text style={styles.content} numberOfLines={3}>
+          {item.content || 'Không có nội dung'}
+        </Text>
+        
+        {/* Show media indicator if there are images */}
+        {item.listBusinessReviewMedia && item.listBusinessReviewMedia.length > 0 && (
+          <View style={styles.mediaIndicator}>
+            <View>
+              <Ionicons name="images-outline" size={16} color="#666" />
+            </View>
+            <Text style={styles.mediaText}>
+              {item.listBusinessReviewMedia.length} hình ảnh
+            </Text>
+          </View>
+        )}
       </TouchableOpacity>
       
       <View style={styles.reviewActions}>
         {/* Only allow editing of pending reviews */}
-        {item.status === 'pending' && (
+        {item.status === 'P' && (
           <TouchableOpacity 
             style={styles.editButton}
             onPress={() => navigation.navigate('EditReview', { reviewId: item.id })}
           >
-            <Ionicons name="create-outline" size={18} color="#085924" />
+            <View>
+              <Ionicons name="create-outline" size={18} color="#085924" />
+            </View>
             <Text style={styles.editButtonText}>Sửa</Text>
           </TouchableOpacity>
         )}
@@ -224,7 +271,9 @@ const ReviewHistoryScreen = () => {
           style={styles.deleteButton}
           onPress={() => handleDeleteReview(item.id)}
         >
-          <Ionicons name="trash-outline" size={18} color="#e74c3c" />
+          <View>
+            <Ionicons name="trash-outline" size={18} color="#e74c3c" />
+          </View>
           <Text style={styles.deleteButtonText}>Xóa</Text>
         </TouchableOpacity>
       </View>
@@ -242,9 +291,13 @@ const ReviewHistoryScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color="#333" />
+          <View>
+            <Ionicons name="arrow-back" size={24} color="#333" />
+          </View>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Lịch sử đánh giá</Text>
+        <Text style={styles.headerTitle}>
+          Lịch sử đánh giá {totalCount > 0 ? `(${totalCount})` : ''}
+        </Text>
       </View>
 
       {renderFilterButtons()}
@@ -256,7 +309,9 @@ const ReviewHistoryScreen = () => {
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
+          <View>
+            <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
+          </View>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Thử lại</Text>
@@ -273,8 +328,14 @@ const ReviewHistoryScreen = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Ionicons name="document-text-outline" size={80} color="#ccc" />
-          <Text style={styles.emptyText}>Không có đánh giá nào</Text>
+          <View>
+            <Ionicons name="document-text-outline" size={80} color="#ccc" />
+          </View>
+          <Text style={styles.emptyText}>
+            {filter === 'all' 
+              ? 'Bạn chưa có đánh giá nào' 
+              : `Không có đánh giá nào ${filter === 'A' ? 'đã duyệt' : filter === 'P' ? 'đang chờ duyệt' : 'bị từ chối'}`}
+          </Text>
         </View>
       )}
     </SafeAreaView>
@@ -406,11 +467,13 @@ const styles = StyleSheet.create({
   date: {
     fontSize: 12,
     color: '#888',
-  },
-  facilityType: {
-    fontSize: 14,
-    color: '#666',
     marginBottom: 4,
+  },
+  reviewTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#444',
+    marginVertical: 4,
   },
   starContainer: {
     flexDirection: 'row',
@@ -419,6 +482,17 @@ const styles = StyleSheet.create({
   content: {
     fontSize: 16,
     color: '#444',
+    marginBottom: 8,
+  },
+  mediaIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  mediaText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
   },
   reviewActions: {
     flexDirection: 'row',
@@ -470,6 +544,9 @@ const styles = StyleSheet.create({
   },
   statusPending: {
     backgroundColor: '#fff3e0',
+  },
+  statusRejected: {
+    backgroundColor: '#ffebee',
   },
   statusText: {
     fontSize: 12,
