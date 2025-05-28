@@ -27,7 +27,7 @@ import {launchImageLibrary} from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MultiSelectDropdown, REPORT_TYPE_OPTIONS } from '../../components/MultiSelectDropdown';
 import BusinessBranchService from '../../services/BusinessBranchService';
-
+import BusinessTypeCatalogService from '../../services/BusinessTypeCatalogService';
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
 
@@ -39,75 +39,6 @@ import BusinessBranchService from '../../services/BusinessBranchService';
 // };
 
 // Add helper functions for business type mapping
-const mapBusinessTypeToDisplayType = (type) => {
-  switch (type) {
-    case 'restaurant':
-      return 'Nhà hàng';
-    case 'hotel':
-      return 'Khách sạn';
-    case 'shop':
-      return 'Cửa hàng';
-    default:
-      return 'Không xác định';
-  }
-};
-
-const mapBusinessTypeToIconName = (type) => {
-  switch (type) {
-    case 'restaurant':
-      return 'restaurant';
-    case 'hotel':
-      return 'bed';
-    case 'shop':
-      return 'cart';
-    default:
-      return 'business';
-  }
-};
-
-const mapBusinessTypeToColor = (type) => {
-  switch (type) {
-    case 'restaurant':
-      return '#FF5252';
-    case 'hotel':
-      return '#2979FF';
-    case 'shop':
-      return '#00C853';
-    default:
-      return '#9C27B0';
-  }
-};
-
-// Add function to map API business types to our format
-const mapApiBusinessType = (typeName) => {
-  const typeLower = typeName.toLowerCase();
-  
-  if (typeLower.includes('nhà hàng') || typeLower.includes('restaurant')) {
-    return {
-      rawType: 'restaurant',
-      iconName: 'restaurant',
-      color: '#FF5252'
-    };
-  } else if (typeLower.includes('khách sạn') || typeLower.includes('hotel')) {
-    return {
-      rawType: 'hotel',
-      iconName: 'bed',
-      color: '#2979FF'
-    };
-  } else if (typeLower.includes('cửa hàng') || typeLower.includes('shop') || typeLower.includes('store')) {
-    return {
-      rawType: 'shop',
-      iconName: 'cart',
-      color: '#00C853'
-    };
-  } else {
-    return {
-      rawType: 'other',
-      iconName: 'business',
-      color: '#9C27B0'
-    };
-  }
-};
 
 export default function HomeScreen() {
   const navigation = useNavigation();
@@ -138,11 +69,7 @@ export default function HomeScreen() {
   const [isMapTypeModalVisible, setIsMapTypeModalVisible] = useState(false);
   
   // States for filters
-  const [filters, setFilters] = useState({
-    restaurant: true,
-    hotel: true,
-    shop: true,
-  });
+  const [filters, setFilters] = useState({});
   
   // State for reviews
   const [reviews, setReviews] = useState([]);
@@ -181,14 +108,6 @@ export default function HomeScreen() {
   // Add new state for review tab
   const [reviewTab, setReviewTab] = useState('all'); // 'all' or 'my'
   
-  // Use individual loading states instead of a single global loading state
-  const [loadingState, setLoadingState] = useState({
-    restaurant: false,
-    hotel: false, 
-    shop: false,
-    global: false
-  });
-  
   // Cleanup khi component unmount
   useEffect(() => {
     return () => {
@@ -196,36 +115,85 @@ export default function HomeScreen() {
     };
   }, []);
   
+  // Add state for business types
+  const [businessTypes, setBusinessTypes] = useState([]);
+  
   // Fetch all facilities once when component mounts
   useEffect(() => {
     let isMounted = true;
     const controller = new AbortController();
+    
+    const fetchBusinessTypes = async () => {
+      try {
+        if (!isMounted) return;
+        
+        const response = await BusinessTypeCatalogService.getList(controller.signal);
+        
+        if (!isMounted) return;
+        
+        let typesArray = [];
+        if (response && response.result && Array.isArray(response.result)) {
+          typesArray = response.result;
+        } else if (response && Array.isArray(response)) {
+          // In case the API returns an array directly
+          typesArray = response;
+        } else {
+          console.warn('Business types API returned unexpected format');
+        }
+        
+        // Update business types
+        setBusinessTypes(typesArray);        
+        // Initialize filters with all business types active
+        const initialFilters = {};
+        if (typesArray.length > 0) {
+          typesArray.forEach(type => {
+            // Store as number ids to ensure consistent type checking
+            initialFilters[type.id] = true;
+          });
+        } else {
+          // Fallback to default filters if no business types are returned
+          initialFilters[1] = true; // Default ID for restaurant
+          initialFilters[2] = true; // Default ID for hotel
+          initialFilters[3] = true; // Default ID for shop
+        }
+        setFilters(initialFilters);
+        
+      } catch (error) {
+        console.error('Error fetching business types:', error);
+        // Fallback to default filters if error
+        setFilters({
+          1: true, // Default ID for restaurant
+          2: true, // Default ID for hotel
+          3: true, // Default ID for shop
+        });
+      }
+    };
     
     const fetchAllData = async () => {
       try {
         if (!isMounted) return;
         setIsLoading(true);
         
-        const response = await BusinessBranchService.getAll({
-          
-        }, controller.signal);
+        // First fetch business types
+        await fetchBusinessTypes();
+        
+        const response = await BusinessBranchService.getAll({}, controller.signal);
         
         if (!isMounted) return;
         
         if (response && Array.isArray(response)) {
-          
           // Map API response to our facility format based on actual API structure
           const mappedFacilities = response.map(item => {
+            // Find matching business type
             // Determine business type for icon and display
-            const businessType = mapApiBusinessType(item.businessTypeName || 'Không xác định');
-            
             return {
               id: item.id,
               name: item.branchName || 'Không có tên',
               type: item.businessTypeName || 'Không xác định',
-              rawType: businessType.rawType,
-              iconName: businessType.iconName,
-              iconColor: businessType.color,
+              rawType: item.businessTypeName,
+              iconName: item.businessTypeIcon,
+              iconColor: item.color,
+              businessTypeId: item.businessTypeId,
               address: item.addressDetail || 'Không có địa chỉ',
               latitude: item.latitude || 0,
               longitude: item.longitude || 0,
@@ -234,42 +202,10 @@ export default function HomeScreen() {
               facebook: item.socialMediaUrl || '',
               website: item.website || '',
               openHours: '',
-              description: `${item.organizationName || ''} - ${item.representativeName || ''}`,
+              description: `${item.organizationName || ''} ${item.organizationName && item.representativeName ? '-' : ''} ${item.representativeName || ''}`,
+              status: item.status || '',
             };
           });
-          console.log(mappedFacilities);
-          // Store all facilities
-          if (isMounted) {
-            setAllFacilities(mappedFacilities);
-            // The useEffect will handle applying filters
-          }
-        } else if (response && Array.isArray(response.items)) {
-          // Handle the case where response might have an items array
-          console.log(`Received ${response.items.length} total facilities from API (items array)`);
-          
-          const mappedFacilities = response.items.map(item => {
-            // Determine business type for icon and display
-            const businessType = mapApiBusinessType(item.businessTypeName || item.type || 'Không xác định');
-            
-            return {
-              id: item.id,
-              name: item.branchName || item.name || 'Không có tên',
-              type: item.businessTypeName || item.type || 'Không xác định',
-              rawType: businessType.rawType,
-              iconName: businessType.iconName,
-              iconColor: businessType.color,
-              address: item.addressDetail || item.address || 'Không có địa chỉ',
-              latitude: item.latitude || 0,
-              longitude: item.longitude || 0,
-              phone: item.phoneNumber || item.phone || '',
-              email: item.email || '',
-              facebook: item.socialMediaUrl || item.facebook || '',
-              website: item.website || '',
-              openHours: '', // May not be provided in API
-              description: item.description || `${item.organizationName || ''} - ${item.representativeName || ''}`,
-            };
-          });
-          
           if (isMounted) {
             setAllFacilities(mappedFacilities);
           }
@@ -299,22 +235,22 @@ export default function HomeScreen() {
     };
   }, []);
 
+
   // Function to apply filters to the data
   const applyFilters = (data, currentFilters) => {
     if (!isMountedRef.current) return;
-    
     // Apply type filters
     const filteredData = data.filter(facility => {
-      // Check if the facility type matches any of the active filters
-      if (facility.rawType === 'restaurant' && currentFilters.restaurant) return true;
-      if (facility.rawType === 'hotel' && currentFilters.hotel) return true;
-      if (facility.rawType === 'shop' && currentFilters.shop) return true;
-      return false;
+      // Convert businessTypeId to number for consistent comparison
+      const typeId = typeof facility.businessTypeId === 'string' ? 
+        parseInt(facility.businessTypeId, 10) : facility.businessTypeId;
+      // Check if this business type is active in filters
+      return currentFilters[typeId] === true;
     });
     
     if (isMountedRef.current) {
       setFacilities(filteredData);
-      console.log(`Applied filters, showing ${filteredData.length} facilities`);
+      console.log('filteredData', filteredData);
     }
   };
 
@@ -358,59 +294,7 @@ export default function HomeScreen() {
 
   // Use a simplified fallback for demo data
   const useFallbackData = () => {
-    const mockFacilities = [
-      {
-        id: 1,
-        name: 'Nhà hàng ABC',
-        type: 'Nhà hàng',
-        rawType: 'restaurant',
-        iconName: 'restaurant',
-        iconColor: '#FF5252',
-        address: '123 Đường ABC, Thái Bình',
-        latitude: 20.44879,
-        longitude: 106.34259,
-        phone: '0987654321',
-        email: 'nhahangabc@example.com',
-        facebook: 'https://facebook.com/nhahangabc',
-        website: 'https://nhahangabc.com',
-        openHours: '8:00 - 22:00',
-        description: 'Nhà hàng ABC là một trong những nhà hàng nổi tiếng tại Thái Bình với các món ăn đặc sản địa phương.',
-      },
-      {
-        id: 2,
-        name: 'Khách sạn XYZ',
-        type: 'Khách sạn',
-        rawType: 'hotel',
-        iconName: 'hotel',
-        iconColor: '#2979FF',
-        address: '456 Đường XYZ, Thái Bình',
-        latitude: 20.45000,
-        longitude: 106.34400,
-        phone: '0123456789',
-        email: 'hotel@xyz.com',
-        facebook: 'https://facebook.com/hotel.xyz',
-        website: 'https://hotelxyz.com',
-        openHours: '24/7',
-        description: 'Khách sạn XYZ là khách sạn 4 sao với 100 phòng nghỉ tiện nghi.',
-      },
-      {
-        id: 3,
-        name: 'Cửa hàng 123',
-        type: 'Cửa hàng',
-        rawType: 'shop',
-        iconName: 'store',
-        iconColor: '#00C853',
-        address: '789 Đường 123, Thái Bình',
-        latitude: 20.44700,
-        longitude: 106.34100,
-        phone: '0345678912',
-        email: 'shop@123.com',
-        facebook: 'https://facebook.com/shop.123',
-        website: 'https://shop123.com',
-        openHours: '7:30 - 21:30',
-        description: 'Cửa hàng 123 chuyên kinh doanh các sản phẩm địa phương chất lượng cao.',
-      },
-    ];
+    const mockFacilities = [];
       
     setAllFacilities(mockFacilities);
     // The useEffect will handle applying filters
@@ -419,29 +303,53 @@ export default function HomeScreen() {
   const updateMapMarkers = () => {
     if (!webViewRef.current) return;
     
+    console.log('Updating map markers with facilities:', facilities);
+    
     // Convert data to ensure all values are proper types before stringifying
-    const safeMarkers = facilities.map(facility => ({
-      ...facility,
-      id: String(facility.id),
-      latitude: Number(facility.latitude),
-      longitude: Number(facility.longitude)
-    }));
+    const safeMarkers = facilities.map(facility => {
+      // Get business type info directly here
+      const typeId = typeof facility.businessTypeId === 'string' ? 
+        parseInt(facility.businessTypeId, 10) : facility.businessTypeId;
+      
+      const businessType = businessTypes.find(type => type.id === typeId) || {};
+      
+      return {
+        ...facility,
+        id: String(facility.id),
+        latitude: Number(facility.latitude),
+        longitude: Number(facility.longitude),
+        // Use values from businessType for icon if facility doesn't have them
+        iconName: facility.iconName || businessType.businessTypeIcon || 'business',
+        iconColor: facility.iconColor || businessType.color || businessType.businessTypeColor || '#9C27B0',
+        // Also include the type name
+        type: facility.type || businessType.businessTypeName || 'Không xác định'
+      };
+    });
+    
+    console.log('Safe markers prepared for map:', safeMarkers);
     
     // Pass filtered facilities to WebView
     webViewRef.current.injectJavaScript(`
-      window.addMarkers('${JSON.stringify(safeMarkers)}');
-      true;
+      try {
+        window.addMarkers('${JSON.stringify(safeMarkers)}');
+        true;
+      } catch(e) {
+        console.error('Error adding markers:', e);
+        true;
+      }
     `);
   };
 
-  // Simplified filter change handler without API calls
-  const handleFilterChange = (filterType, value) => {
-    console.log(`Filter ${filterType} clicked, setting to ${value}`);
+  // Simplified filter change handler
+  const handleFilterChange = (businessTypeId) => {
+    // Ensure businessTypeId is a number for consistency
+    const typeId = typeof businessTypeId === 'string' ? 
+      parseInt(businessTypeId, 10) : businessTypeId;
     
     // Update the filter
     setFilters(prev => ({
       ...prev,
-      [filterType]: value,
+      [typeId]: !prev[typeId],
     }));
     
     // Filters will be applied in the useEffect
@@ -840,28 +748,9 @@ export default function HomeScreen() {
         });
         
         // Create custom icons based on zoom level
-        const createIcon = (type, zoom, isSelected = false) => {
-          let iconName;
-          let iconColor;
-          
-          // Determine icon and color based on facility type
-          switch(type) {
-            case 'Nhà hàng':
-              iconName = 'restaurant';
-              iconColor = '#FF5252';
-              break;
-            case 'Khách sạn':
-              iconName = 'hotel';
-              iconColor = '#2979FF';
-              break;
-            case 'Cửa hàng':
-              iconName = 'store';
-              iconColor = '#00C853';
-              break;
-            default:
-              iconName = 'business';
-              iconColor = '#9C27B0';
-          }
+        const createIcon = (businessTypeId, zoom, isSelected = false, iconName = 'business', status = '', iconColor = '#9C27B0') => {
+          // Use the provided iconName and iconColor directly (we already resolved them in the React Native code)
+          const icon = iconName || 'business';
           
           // Determine size based on zoom level
           let iconSize;
@@ -887,7 +776,7 @@ export default function HomeScreen() {
                     '<path d="M20 2C11 2 4 9.16 4 18.08c0 7.13 7.13 15.13 14.13 19.13a2.5 2.5 0 0 0 3.74 0C28.87 33.21 36 25.21 36 18.08 36 9.16 29 2 20 2z" fill="#FF5252"/>' +
                     '<circle cx="20" cy="18" r="6" fill="#fff"/>' +
                   '</svg>' +
-                  '<span class="material-icons" style="color:#FF5252; font-size:' + (iconSize-6) + 'px;z-index:1;position:relative;">' + iconName + '</span>' +
+                  '<span class="material-icons" style="color:#FF5252; font-size:' + (iconSize-6) + 'px;z-index:1;position:relative;">' + icon + '</span>' +
                 '</div>',
               iconSize: [iconSize + 8, iconSize + 8],
               iconAnchor: [(iconSize + 8)/2, iconSize + 2], // anchor at the tip
@@ -895,10 +784,17 @@ export default function HomeScreen() {
             });
           }
           
+          // Add status indicator
+          const statusBadge = status ? 
+            '<div style="position:absolute; top:-3px; right:-3px; width:10px; height:10px; border-radius:50%; background-color:' + 
+            (status === 'A' ? '#085924' : '#f39c12') + 
+            '; border: 1px solid white;"></div>' : '';
+          
           return L.divIcon({
             className: 'custom-marker',
             html: '<div class="facility-marker" style="width: ' + (iconSize + 8) + 'px; height: ' + (iconSize + 8) + 'px;">' +
-                  '<span class="material-icons" style="color: ' + iconColor + '; font-size: ' + iconSize + 'px;">' + iconName + '</span>' +
+                  '<span class="material-icons" style="color: ' + iconColor + '; font-size: ' + iconSize + 'px;">' + icon + '</span>' +
+                  statusBadge +
                   '</div>',
             iconSize: [iconSize + 8, iconSize + 8],
             iconAnchor: [(iconSize + 8)/2, (iconSize + 8)/2],
@@ -931,25 +827,13 @@ export default function HomeScreen() {
             const isSelected = window.selectedFacilityId === marker.id;
             const leafletMarker = L.marker(
               [marker.latitude, marker.longitude],
-              { icon: createIcon(marker.type, currentZoom, isSelected) }
+              { icon: createIcon(marker.businessTypeId, currentZoom, isSelected, marker.iconName, marker.status, marker.iconColor) }
             ).addTo(window.markersLayer);
             
             // Add tooltips for showing business names when zoom level is >= 20
             if (currentZoom >= 16) {
-              let iconColor;
-              switch(marker.type) {
-                case 'Nhà hàng':
-                  iconColor = '#FF5252';
-                  break;
-                case 'Khách sạn':
-                  iconColor = '#2979FF';
-                  break;
-                case 'Cửa hàng':
-                  iconColor = '#00C853';
-                  break;
-                default:
-                  iconColor = '#9C27B0';
-              }
+              // Use the marker's iconColor directly
+              const iconColor = marker.iconColor || '#9C27B0';
               
               const tooltipOptions = { 
                 permanent: true, 
@@ -1200,23 +1084,6 @@ export default function HomeScreen() {
     setFilteredFacilities([]);
   };
 
-  const shouldShowFacility = (facility) => {
-    const facilityType = facility.type.toLowerCase();
-    
-    if (facilityType.includes('nhà hàng') || facilityType === 'restaurant') {
-      return filters.restaurant;
-    }
-    
-    if (facilityType.includes('khách sạn') || facilityType === 'hotel') {
-      return filters.hotel;
-    }
-    
-    if (facilityType.includes('cửa hàng') || facilityType === 'shop') {
-      return filters.shop;
-    }
-    
-    return false;
-  };
 
   // Render the star rating
   const renderStars = (rating) => {
@@ -1323,6 +1190,23 @@ export default function HomeScreen() {
             style={styles.infoIcon} 
           />
           <Text style={styles.infoText}>{selectedFacility.type || 'Chưa phân loại'}</Text>
+        </View>
+        
+        {/* Add status indicator */}
+        <Text style={[styles.infoTitle, {fontSize: 18, fontWeight: 'bold'}]}>Trạng thái</Text>
+        <View style={styles.infoRow}>
+          <Ionicons 
+            name={selectedFacility.status === 'A' ? 'checkmark-circle-outline' : 'time-outline'} 
+            size={20} 
+            color={selectedFacility.status === 'A' ? "#085924" : "#f39c12"} 
+            style={styles.infoIcon} 
+          />
+          <Text style={[
+            styles.infoText, 
+            {color: selectedFacility.status === 'A' ? "#085924" : "#f39c12"}
+          ]}>
+            {selectedFacility.status === 'A' ? 'Đã duyệt' : 'Chờ duyệt'}
+          </Text>
         </View>
         
         {selectedFacility.phone && (
@@ -2225,6 +2109,16 @@ export default function HomeScreen() {
     checkAndRequestFirstTime();
   }, []);
 
+  // Update map markers when business types change or when facilities change
+  useEffect(() => {
+    if (!isMountedRef.current) return;
+    
+    if (mapLoaded && facilities.length > 0 && businessTypes.length > 0) {
+      console.log('Refreshing map due to business types or facilities update');
+      updateMapMarkers();
+    }
+  }, [businessTypes, facilities, mapLoaded]);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}
@@ -2397,81 +2291,38 @@ export default function HomeScreen() {
           )}
         </View>
         
-        {/* Filter Controls - Google Maps Style */}
+        {/* Filter Controls - Dynamic based on businessTypes */}
         <ScrollView 
           horizontal 
           showsHorizontalScrollIndicator={false}
           style={styles.filterScrollView}
           contentContainerStyle={styles.filterScrollContent}
         >
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filters.restaurant && styles.filterButtonActive,
-            ]}
-            onPress={() => handleFilterChange('restaurant', !filters.restaurant)}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={filters.restaurant ? "#fff" : "#666"} style={styles.filterButtonIcon} />
-            ) : (
-              <Ionicons 
-                name="restaurant" 
-                size={18} 
-                color={filters.restaurant ? "#fff" : "#666"} 
-                style={styles.filterButtonIcon}
-              />
-            )}
-            <Text style={[
-              styles.filterButtonText,
-              filters.restaurant && styles.filterButtonTextActive,
-            ]}>Nhà hàng</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filters.hotel && styles.filterButtonActive,
-            ]}
-            onPress={() => handleFilterChange('hotel', !filters.hotel)}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={filters.hotel ? "#fff" : "#666"} style={styles.filterButtonIcon} />
-            ) : (
-              <Ionicons 
-                name="bed" 
-                size={18} 
-                color={filters.hotel ? "#fff" : "#666"}
-                style={styles.filterButtonIcon}
-              />
-            )}
-            <Text style={[
-              styles.filterButtonText,
-              filters.hotel && styles.filterButtonTextActive,
-            ]}>Khách sạn</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[
-              styles.filterButton,
-              filters.shop && styles.filterButtonActive,
-            ]}
-            onPress={() => handleFilterChange('shop', !filters.shop)}
-          >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={filters.shop ? "#fff" : "#666"} style={styles.filterButtonIcon} />
-            ) : (
-              <Ionicons 
-                name="cart" 
-                size={18} 
-                color={filters.shop ? "#fff" : "#666"}
-                style={styles.filterButtonIcon}
-              />
-            )}
-            <Text style={[
-              styles.filterButtonText,
-              filters.shop && styles.filterButtonTextActive,
-            ]}>Cửa hàng</Text>
-          </TouchableOpacity>
+          {businessTypes.map(type => (
+            <TouchableOpacity
+              key={type.id}
+              style={[
+                styles.filterButton,
+                filters[type.id] && styles.filterButtonActive,
+              ]}
+              onPress={() => handleFilterChange(type.id)}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color={filters[type.id] ? "#fff" : "#666"} style={styles.filterButtonIcon} />
+              ) : (
+                <Ionicons 
+                  name={type.businessTypeIcon || 'business'} 
+                  size={18} 
+                  color={filters[type.id] ? "#fff" : "#666"} 
+                  style={styles.filterButtonIcon}
+                />
+              )}
+              <Text style={[
+                styles.filterButtonText,
+                filters[type.id] && styles.filterButtonTextActive,
+              ]}>{type.businessTypeName || 'Không xác định'}</Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
         
         {/* Search Results */}
@@ -2480,27 +2331,44 @@ export default function HomeScreen() {
             <FlatList
               data={filteredFacilities}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={({item}) => (
-                <TouchableOpacity
-                  style={styles.searchResultItem}
-                  onPress={() => focusFacility(item)}>
-                  <View style={styles.searchResultIconContainer}>
-                    <Ionicons 
-                      name={
-                        item.type === 'Nhà hàng' ? "restaurant" : 
-                        item.type === 'Khách sạn' ? "bed" : "cart"
-                      } 
-                      size={16} 
-                      color="#fff" 
-                    />
-                  </View>
-                  <View style={styles.searchResultTextContainer}>
-                    <Text style={styles.searchResultName}>{item.name}</Text>
-                    <Text style={styles.searchResultAddress}>{item.address}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color="#085924" />
-                </TouchableOpacity>
-              )}
+              renderItem={({item}) => {
+                // Convert businessTypeId to number for proper comparison
+                const typeId = typeof item.businessTypeId === 'string' ? 
+                  parseInt(item.businessTypeId, 10) : item.businessTypeId;
+                
+                // Find matching business type
+                const businessType = businessTypes.find(type => type.id === typeId) || {};
+                
+                return (
+                  <TouchableOpacity
+                    style={styles.searchResultItem}
+                    onPress={() => focusFacility(item)}>
+                    <View style={styles.searchResultIconContainer}>
+                      <Ionicons 
+                        name={businessType.businessTypeIcon || 'business'} 
+                        size={16} 
+                        color="#fff" 
+                      />
+                    </View>
+                    <View style={styles.searchResultTextContainer}>
+                      <Text style={styles.searchResultName}>
+                        {item.name}
+                        {item.status && (
+                          <Text style={{
+                            fontSize: 12,
+                            color: item.status === 'A' ? '#085924' : '#f39c12',
+                            marginLeft: 5
+                          }}>
+                            {' '}{item.status === 'A' ? '✓' : '⏱️'}
+                          </Text>
+                        )}
+                      </Text>
+                      <Text style={styles.searchResultAddress}>{item.address}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#085924" />
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
         )}

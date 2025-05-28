@@ -12,7 +12,7 @@ class BusinessTypeCatalogService {
   async getList() {
     try {
       const response = await api.get('/api/services/app/BusinessTypeCatalog/GetList');
-      return response.result;
+      return response;
     } catch (error) {
       console.error('Error fetching business type catalog list:', error);
       throw error;

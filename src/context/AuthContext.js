@@ -9,7 +9,7 @@ export const AuthProvider = ({children}) => {
     const [userToken, setUserToken] = useState(null);
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [userRole, setUserRole] = useState(null);
+    const [userRole, setUserRole] = useState(undefined);
     
     const login = async (userNameOrEmailAddress, password, rememberClient = false) => {
         try {
@@ -19,8 +19,8 @@ export const AuthProvider = ({children}) => {
             .then(response => {
                 setUserToken(response.data.result.accessToken);
                 AsyncStorage.setItem('userToken', response.data.result.accessToken);
-                // const role = userNameOrEmailAddress.includes('business') ? 'business' : 'citizen';
-                const role = response.data.result.role ?? 1;
+                console.log(response.data.result);
+                const role = response.data.result.userType ?? 1;
                 setUserRole(role);
                 AsyncStorage.setItem('userRole', role);
                 

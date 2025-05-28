@@ -52,6 +52,30 @@ class BusinessReviewService {
       throw error;
     }
   }
+    /**
+   * Lấy danh sách tất cả đánh giá với các bộ lọc
+   * 
+   * @param {Object} params Các tham số lọc và phân trang
+   * @param {string} params.keyword Từ khóa tìm kiếm
+   * @param {string} params.sorting Cách sắp xếp
+   * @param {number} params.id ID đánh giá
+   * @param {number} params.branchId ID chi nhánh
+   * @param {string} params.organizationName Tên tổ chức
+   * @param {string} params.reviewerName Tên người đánh giá
+   * @param {number} params.rating Số sao đánh giá
+   * @param {number} params.skipCount Số bản ghi bỏ qua
+   * @param {number} params.maxResultCount Số bản ghi tối đa
+   * @returns {Promise} Promise với kết quả danh sách đánh giá
+   */
+    async getList(params = {}) {
+      try {
+        const response = await api.get('/api/services/app/BusinessReviews/GetList', params);
+        return response.result;
+      } catch (error) {
+        console.error('Error fetching business reviews:', error);
+        throw error;
+      }
+    }
   /**
    * Lấy thông tin một đánh giá theo ID
    * 
