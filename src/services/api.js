@@ -1,6 +1,34 @@
 import axios from 'axios';
 import { API_URL } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CommonActions } from '@react-navigation/native';
+
+// Navigation reference to use outside of React components
+let navigationRef = null;
+
+// Function to set navigation reference from App.js or navigation container
+export const setNavigationRef = (ref) => {
+  navigationRef = ref;
+};
+
+// Function to navigate when token expires
+const navigateToAuth = () => {
+  if (navigationRef) {
+    navigationRef.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          { 
+            name: 'Main',
+          },
+          {
+            name: 'LoginScreen',
+          }
+        ],
+      })
+    );
+  }
+};
 
 // Tạo instance của axios với URL gốc
 const apiClient = axios.create({
@@ -48,12 +76,14 @@ apiClient.interceptors.response.use(
       
       // Xử lý token hết hạn (401)
       if (status === 401) {
-        // Thực hiện logout hoặc refresh token tại đây
         console.log('Token expired or invalid');
         
-        // Ví dụ: Xóa token và thông tin người dùng
+        // Xóa token và thông tin người dùng
         await AsyncStorage.removeItem('userToken');
-        // TODO: Redirect đến màn hình login
+        await AsyncStorage.removeItem('userData');
+        
+        // Redirect đến màn hình login
+        navigateToAuth();
       }
       
       // Xử lý lỗi không có quyền (403)

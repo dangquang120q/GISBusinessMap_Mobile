@@ -1,4 +1,4 @@
-import React, {useContext} from 'react';
+import React, {useContext, useRef, useEffect} from 'react';
 import {View, ActivityIndicator} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import AppNavigator from './AppStack';
 import TabNavigator from './TabNavigator';
 
 import {AuthContext} from '../context/AuthContext';
+import {setNavigationRef} from '../services/api';
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +18,14 @@ const AppScreen = () => <AppNavigator />;
 
 const AppNav = () => {
     const {isLoading, isAuthenticated} = useContext(AuthContext);
+    const navigationRef = useRef(null);
+
+    useEffect(() => {
+        // Set navigation reference for API service to use
+        if (navigationRef.current) {
+            setNavigationRef(navigationRef.current);
+        }
+    }, [navigationRef.current]);
 
     if (isLoading) {
         return (
@@ -27,7 +36,7 @@ const AppNav = () => {
     }
 
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navigationRef}>
             <Stack.Navigator screenOptions={{headerShown: false}}>
                 <Stack.Screen name="Main" component={TabNavigator} />
                 {!isAuthenticated && (
