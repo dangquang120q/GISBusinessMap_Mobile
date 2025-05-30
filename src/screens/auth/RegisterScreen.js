@@ -43,53 +43,83 @@ const RegisterScreen = ({navigation}) => {
   
   // Form validation
   const validateForm = () => {
-    if (!name.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên');
-      return false;
+    const errors = {};
+    let isValid = true;
+
+    if (!name || !name.trim()) {
+      errors.name = 'Vui lòng nhập tên';
+      isValid = false;
     }
     
-    if (!surname.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập họ');
-      return false;
+    if (!surname || !surname.trim()) {
+      errors.surname = 'Vui lòng nhập họ';
+      isValid = false;
     }
     
-    if (!phoneNumber.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
-      return false;
+    if (!phoneNumber || !phoneNumber.trim()) {
+      errors.phoneNumber = 'Vui lòng nhập số điện thoại';
+      isValid = false;
+    } else if (!/^(0|\+84)([0-9]{9,10})$/.test(phoneNumber.replace(/\s/g, ''))) {
+      errors.phoneNumber = 'Số điện thoại không hợp lệ (Vui lòng nhập số điện thoại Việt Nam)';
+      isValid = false;
     }
     
-    if (!email.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ email');
-      return false;
+    if (!email || !email.trim()) {
+      errors.email = 'Vui lòng nhập địa chỉ email';
+      isValid = false;
     } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        Alert.alert('Lỗi', 'Địa chỉ email không hợp lệ');
-        return false;
+      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+      if (!emailRegex.test(email.trim())) {
+        errors.email = 'Địa chỉ email không hợp lệ';
+        isValid = false;
       }
     }
     
-    if (!username.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên đăng nhập');
-      return false;
+    if (!username || !username.trim()) {
+      errors.username = 'Vui lòng nhập tên đăng nhập';
+      isValid = false;
+    } else if (username.trim().length < 4) {
+      errors.username = 'Tên đăng nhập phải có ít nhất 4 ký tự';
+      isValid = false;
     }
     
     if (!password) {
-      Alert.alert('Lỗi', 'Vui lòng nhập mật khẩu');
-      return false;
-    }
-    
-    if (password.length < 6) {
-      Alert.alert('Lỗi', 'Mật khẩu phải có ít nhất 6 ký tự');
-      return false;
+      errors.password = 'Vui lòng nhập mật khẩu';
+      isValid = false;
+    } else if (password.length < 6) {
+      errors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+      isValid = false;
     }
     
     if (password !== confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu và xác nhận mật khẩu không khớp');
-      return false;
+      errors.confirmPassword = 'Mật khẩu và xác nhận mật khẩu không khớp';
+      isValid = false;
     }
     
-    return true;
+    // Kiểm tra ngày sinh
+    if (dateOfBirth) {
+      const today = new Date();
+      if (dateOfBirth > today) {
+        errors.dateOfBirth = 'Ngày sinh không thể là ngày trong tương lai';
+        isValid = false;
+      }
+      
+      // Kiểm tra tuổi (ví dụ: trên 18 tuổi)
+      const eighteenYearsAgo = new Date();
+      eighteenYearsAgo.setFullYear(today.getFullYear() - 18);
+      if (dateOfBirth > eighteenYearsAgo) {
+        errors.dateOfBirth = 'Bạn phải trên 18 tuổi để đăng ký';
+        isValid = false;
+      }
+    }
+    
+    if (!isValid) {
+      // Hiển thị lỗi đầu tiên
+      const firstError = Object.values(errors)[0];
+      Alert.alert('Lỗi', firstError);
+    }
+    
+    return isValid;
   };
   
   // Handle registration
@@ -101,6 +131,7 @@ const RegisterScreen = ({navigation}) => {
       
       // Format date as YYYY-MM-DD (with hyphens)
       const formatDateForApi = (date) => {
+        if (!date) return null;
         const year = date.getFullYear();
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const day = date.getDate().toString().padStart(2, '0');
@@ -108,13 +139,13 @@ const RegisterScreen = ({navigation}) => {
       };
       
       const registerData = {
-        name,
-        surname,
+        name: name.trim(),
+        surname: surname.trim(),
         gender,
-        phoneNumber,
+        phoneNumber: phoneNumber.trim(),
         dateOfBirth: formatDateForApi(dateOfBirth),
-        userName: username,
-        emailAddress: email,
+        userName: username.trim(),
+        emailAddress: email.trim(),
         password,
         confirmPassword,
       };
@@ -142,17 +173,30 @@ const RegisterScreen = ({navigation}) => {
           'Tài khoản của bạn đã được tạo, nhưng cần được xác nhận trước khi đăng nhập.'
         );
       }
-    } catch (error) {
+    } catch (err) {
       setIsLoading(false);
+      console.error('Registration error:', err);
       
-      console.error('Registration error detail:', error.response?.data);  // Log detailed error
+      let errorMessage = 'Đăng ký thất bại. Vui lòng thử lại sau.';
       
-      const errorMessage =
-        error.response?.data?.error?.message ||
-        'Có lỗi xảy ra trong quá trình đăng ký. Vui lòng thử lại sau.';
+      if (err.response && err.response.data) {
+        if (err.response.data.error && err.response.data.error.message) {
+          errorMessage = err.response.data.error.message;
+        } else if (typeof err.response.data === 'string') {
+          errorMessage = err.response.data;
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Kiểm tra một số lỗi cụ thể
+      if (errorMessage.includes('email') || errorMessage.toLowerCase().includes('email')) {
+        errorMessage = 'Email đã được sử dụng. Vui lòng sử dụng email khác.';
+      } else if (errorMessage.includes('username') || errorMessage.toLowerCase().includes('tên đăng nhập')) {
+        errorMessage = 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên đăng nhập khác.';
+      }
       
       Alert.alert('Lỗi đăng ký', errorMessage);
-      console.error('Registration error:', error);
     }
   };
   

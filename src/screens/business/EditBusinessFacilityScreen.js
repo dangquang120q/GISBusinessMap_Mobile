@@ -46,10 +46,25 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
   const parseDateForApi = (dateString) => {
     if (!dateString || !dateString.trim()) return null;
     
-    const parts = dateString.split('/');
-    if (parts.length !== 3) return null;
-    
-    return `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
+    try {
+      const parts = dateString.split('/');
+      if (parts.length !== 3) return null;
+      
+      // Validate parts are numbers
+      const day = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      const year = parseInt(parts[2]);
+      
+      if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+      
+      // Check date validity
+      if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+      
+      return `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -107,61 +122,108 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
     const newErrors = {};
 
     // Validate name
-    if (!formData.branchName.trim()) {
+    if (!formData.branchName || !formData.branchName.trim()) {
       newErrors.branchName = 'Vui lòng nhập tên cơ sở';
       isValid = false;
     }
 
     // Validate address
-    if (!formData.addressDetail.trim()) {
+    if (!formData.addressDetail || !formData.addressDetail.trim()) {
       newErrors.addressDetail = 'Vui lòng nhập địa chỉ';
       isValid = false;
     }
 
     // Validate business code
-    if (!formData.businessCode.trim()) {
+    if (!formData.businessCode || !formData.businessCode.trim()) {
       newErrors.businessCode = 'Vui lòng nhập số giấy phép';
       isValid = false;
     }
 
     // Validate business type
-    if (!formData.businessTypeName.trim()) {
+    if (!formData.businessTypeName || !formData.businessTypeName.trim()) {
       newErrors.businessTypeName = 'Vui lòng nhập loại hình kinh doanh';
       isValid = false;
     }
 
     // Validate owner
-    if (!formData.representativeName.trim()) {
+    if (!formData.representativeName || !formData.representativeName.trim()) {
       newErrors.representativeName = 'Vui lòng nhập tên chủ sở hữu';
       isValid = false;
     }
 
-    // Validate phone (simple validation)
-    if (!formData.phoneNumber.trim()) {
+    // Validate phone (more comprehensive validation)
+    if (!formData.phoneNumber || !formData.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Vui lòng nhập số điện thoại';
       isValid = false;
-    } else if (!/^\d{10,11}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
-      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
+    } else if (!/^(0|\+84)([0-9]{9,10})$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+      newErrors.phoneNumber = 'Số điện thoại không hợp lệ (Vui lòng nhập số điện thoại Việt Nam)';
       isValid = false;
     }
 
-    // Validate email (simple validation)
-    if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Địa chỉ email không hợp lệ';
-      isValid = false;
+    // Validate email (more comprehensive validation)
+    if (formData.email && formData.email.trim()) {
+      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'Địa chỉ email không hợp lệ';
+        isValid = false;
+      }
     }
 
-    // Validate dates (simple format validation)
+    // Validate dates (more comprehensive format validation)
     const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
     
-    if (formData.establishedDate.trim() && !dateRegex.test(formData.establishedDate)) {
-      newErrors.establishedDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
+    if (formData.establishedDate && formData.establishedDate.trim()) {
+      if (!dateRegex.test(formData.establishedDate)) {
+        newErrors.establishedDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+        isValid = false;
+      } else {
+        // Validate if date is valid
+        const [day, month, year] = formData.establishedDate.split('/');
+        const date = new Date(year, month - 1, day);
+        if (date.getDate() !== parseInt(day) || 
+            date.getMonth() !== parseInt(month) - 1 || 
+            date.getFullYear() !== parseInt(year)) {
+          newErrors.establishedDate = 'Ngày không hợp lệ';
+          isValid = false;
+        }
+      }
     }
     
-    if (formData.deactivationDate.trim() && !dateRegex.test(formData.deactivationDate)) {
-      newErrors.deactivationDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
+    if (formData.deactivationDate && formData.deactivationDate.trim()) {
+      if (!dateRegex.test(formData.deactivationDate)) {
+        newErrors.deactivationDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+        isValid = false;
+      } else {
+        // Validate if date is valid
+        const [day, month, year] = formData.deactivationDate.split('/');
+        const date = new Date(year, month - 1, day);
+        if (date.getDate() !== parseInt(day) || 
+            date.getMonth() !== parseInt(month) - 1 || 
+            date.getFullYear() !== parseInt(year)) {
+          newErrors.deactivationDate = 'Ngày không hợp lệ';
+          isValid = false;
+        }
+        
+        // Check if deactivation date is after established date
+        if (formData.establishedDate && formData.establishedDate.trim() && dateRegex.test(formData.establishedDate)) {
+          const [estDay, estMonth, estYear] = formData.establishedDate.split('/');
+          const estDate = new Date(estYear, estMonth - 1, estDay);
+          
+          if (date < estDate) {
+            newErrors.deactivationDate = 'Ngày hết hạn phải sau ngày hoạt động';
+            isValid = false;
+          }
+        }
+      }
+    }
+
+    // Validate website format if provided
+    if (formData.website && formData.website.trim()) {
+      const websiteRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
+      if (!websiteRegex.test(formData.website.trim())) {
+        newErrors.website = 'URL website không hợp lệ';
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -173,20 +235,25 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
       try {
         setLoading(true);
         
+        // Validate ID exists
+        if (!formData.id) {
+          throw new Error('Không tìm thấy ID cơ sở kinh doanh');
+        }
+        
         // Prepare data for API
         const branchData = {
           id: formData.id,
-          branchName: formData.branchName,
-          addressDetail: formData.addressDetail,
-          businessCode: formData.businessCode,
+          branchName: formData.branchName.trim(),
+          addressDetail: formData.addressDetail.trim(),
+          businessCode: formData.businessCode.trim(),
           businessTypeId: formData.businessTypeId || null,
-          businessTypeName: formData.businessTypeName,
+          businessTypeName: formData.businessTypeName.trim(),
           establishedDate: parseDateForApi(formData.establishedDate),
           deactivationDate: parseDateForApi(formData.deactivationDate),
-          representativeName: formData.representativeName,
-          phoneNumber: formData.phoneNumber,
-          email: formData.email,
-          website: formData.website,
+          representativeName: formData.representativeName.trim(),
+          phoneNumber: formData.phoneNumber.trim(),
+          email: formData.email ? formData.email.trim() : null,
+          website: formData.website ? formData.website.trim() : null,
           isActive: formData.isActive,
           status: formData.isActive ? 'Hoạt động' : 'Không hoạt động',
         };
@@ -213,10 +280,30 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
       } catch (err) {
         console.error('Error updating business facility:', err);
         setLoading(false);
-        Alert.alert('Lỗi', 'Không thể cập nhật thông tin cơ sở kinh doanh. Vui lòng thử lại sau.');
+        
+        // Show more specific error message if available
+        let errorMessage = 'Không thể cập nhật thông tin cơ sở kinh doanh. Vui lòng thử lại sau.';
+        
+        if (err.response && err.response.data) {
+          if (err.response.data.error && err.response.data.error.message) {
+            errorMessage = err.response.data.error.message;
+          } else if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        Alert.alert('Lỗi', errorMessage);
       }
     } else {
-      Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
+      // Scroll to the first error
+      const firstErrorKey = Object.keys(errors)[0];
+      if (firstErrorKey) {
+        Alert.alert('Lỗi', `Vui lòng kiểm tra lại thông tin: ${errors[firstErrorKey]}`);
+      } else {
+        Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
+      }
     }
   };
 

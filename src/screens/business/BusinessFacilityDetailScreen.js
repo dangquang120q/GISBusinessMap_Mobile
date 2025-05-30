@@ -34,7 +34,7 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
         if (result) {
           // Transform API data to facility format
           const facilityData = {
-            id: result.id.toString(),
+            id: result.id ? result.id.toString() : '',
             name: result.branchName || 'Chưa có tên',
             address: formatAddress(result),
             status: result.isActive ? 'Hoạt động' : result.status === 'Chờ phê duyệt' ? 'Chờ phê duyệt' : 'Không hoạt động',
@@ -48,9 +48,9 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
             area: '',
             employees: 0,
             // Thêm các thông tin khác từ API
-            website: result.website,
-            socialMediaUrl: result.socialMediaUrl,
-            rating: result.rating,
+            website: result.website || '',
+            socialMediaUrl: result.socialMediaUrl || '',
+            rating: result.rating || 0,
             rawData: result, // Lưu dữ liệu gốc để sử dụng khi cần
           };
           
@@ -60,10 +60,22 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
         }
       } catch (err) {
         console.error('Error fetching facility details:', err);
-        setError(err.message || 'Không thể tải thông tin chi tiết');
+        let errorMessage = 'Không thể tải thông tin chi tiết';
+        
+        if (err.response && err.response.data) {
+          if (err.response.data.error && err.response.data.error.message) {
+            errorMessage = err.response.data.error.message;
+          } else if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        setError(errorMessage);
         Alert.alert(
           'Lỗi',
-          'Không thể tải thông tin chi tiết cơ sở kinh doanh. Vui lòng thử lại sau.',
+          `Không thể tải thông tin chi tiết cơ sở kinh doanh: ${errorMessage}`,
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
       } finally {
@@ -76,6 +88,8 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
 
   // Định dạng địa chỉ từ dữ liệu API
   const formatAddress = (item) => {
+    if (!item) return 'Chưa có địa chỉ';
+    
     const parts = [];
     if (item.addressDetail) parts.push(item.addressDetail);
     if (item.wardName) parts.push(item.wardName);
@@ -87,8 +101,14 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
   // Định dạng ngày tháng
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return ''; // Check if date is valid
+      return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return '';
+    }
   };
 
   const handleEditFacility = () => {

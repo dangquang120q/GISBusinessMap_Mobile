@@ -177,7 +177,7 @@ export default function HomeScreen() {
         // First fetch business types
         await fetchBusinessTypes();
         
-        const response = await BusinessBranchService.getAll({}, controller.signal);
+        const response = await BusinessBranchService.getInBounds(null, controller.signal);
         
         if (!isMounted) return;
         

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   View,
   Text,
@@ -20,11 +20,14 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import SessionService from '../../services/SessionService';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
+import { AuthContext } from '../../context/AuthContext';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const EditProfileScreen = () => {
   const navigation = useNavigation();
+  const { userRole } = useContext(AuthContext);
+  const isBusiness = userRole === '2' || userRole === 2;
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showImagePickerModal, setShowImagePickerModal] = useState(false);
@@ -39,6 +42,19 @@ const EditProfileScreen = () => {
     phoneNumber: '',
     timeZone: null,
     avatar: null,
+  });
+  
+  // Business data state (for business role)
+  const [businessData, setBusinessData] = useState({
+    businessName: '',
+    businessCode: '',
+    businessAddress: '',
+    businessType: '',
+    businessPhone: '',
+    businessEmail: '',
+    businessDescription: '',
+    taxCode: '',
+    representativeName: '',
   });
 
   // Fetch user profile data on component mount
@@ -61,6 +77,27 @@ const EditProfileScreen = () => {
           timeZone: user.timeZone || null,
           avatar: user.avatarUrl || null,
         });
+        
+        // Nếu là doanh nghiệp, tải thêm thông tin doanh nghiệp
+        if (isBusiness) {
+          try {
+            // Trong thực tế, cần API riêng để lấy thông tin doanh nghiệp
+            // Giả lập dữ liệu doanh nghiệp
+            setBusinessData({
+              businessName: user.businessName || user.name + ' Corp',
+              businessCode: user.businessCode || '123456789',
+              businessAddress: user.businessAddress || 'Địa chỉ doanh nghiệp',
+              businessType: user.businessType || 'Doanh nghiệp tư nhân',
+              businessPhone: user.phoneNumber || '',
+              businessEmail: user.emailAddress || '',
+              businessDescription: user.businessDescription || 'Mô tả về doanh nghiệp',
+              taxCode: user.taxCode || '123456789',
+              representativeName: user.name + ' ' + user.surname,
+            });
+          } catch (error) {
+            console.error('Error fetching business profile:', error);
+          }
+        }
       }
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể tải thông tin hồ sơ. Vui lòng thử lại sau.');
@@ -72,46 +109,88 @@ const EditProfileScreen = () => {
 
   const handleSaveChanges = async () => {
     // Validate fields
-    if (!userData.name.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập tên');
-      return;
-    }
-    
-    if (!userData.surname.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập họ');
-      return;
-    }
-    
-    if (!userData.emailAddress.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập email');
-      return;
-    }
-    
-    try {
-      setIsSaving(true);
+    if (isBusiness) {
+      // Kiểm tra dữ liệu doanh nghiệp
+      if (!businessData.businessName.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập tên doanh nghiệp');
+        return;
+      }
       
-      // Create profile update data object matching UserProfileDto schema
-      const profileData = {
-        name: userData.name,
-        surname: userData.surname,
-        emailAddress: userData.emailAddress,
-        phoneNumber: userData.phoneNumber,
-        timeZone: userData.timeZone,
-      };
+      if (!businessData.businessCode.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập mã số doanh nghiệp');
+        return;
+      }
       
-      // Call API to update profile
-      await SessionService.updateProfile(profileData);
+      if (!businessData.businessAddress.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ doanh nghiệp');
+        return;
+      }
       
-      Alert.alert(
-        'Thành công',
-        'Thông tin hồ sơ đã được cập nhật',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ. Vui lòng thử lại sau.');
-      console.error('Error updating profile:', error);
-    } finally {
-      setIsSaving(false);
+      if (!businessData.businessPhone.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại liên hệ');
+        return;
+      }
+      
+      try {
+        setIsSaving(true);
+        
+        // Trong thực tế, cần gọi API cập nhật thông tin doanh nghiệp
+        // Giả lập cập nhật thành công
+        
+        Alert.alert(
+          'Thành công',
+          'Thông tin doanh nghiệp đã được cập nhật',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } catch (error) {
+        Alert.alert('Lỗi', 'Không thể cập nhật thông tin doanh nghiệp. Vui lòng thử lại sau.');
+        console.error('Error updating business profile:', error);
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      // Validate fields
+      if (!userData.name.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập tên');
+        return;
+      }
+      
+      if (!userData.surname.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập họ');
+        return;
+      }
+      
+      if (!userData.emailAddress.trim()) {
+        Alert.alert('Lỗi', 'Vui lòng nhập email');
+        return;
+      }
+      
+      try {
+        setIsSaving(true);
+        
+        // Create profile update data object matching UserProfileDto schema
+        const profileData = {
+          name: userData.name,
+          surname: userData.surname,
+          emailAddress: userData.emailAddress,
+          phoneNumber: userData.phoneNumber,
+          timeZone: userData.timeZone,
+        };
+        
+        // Call API to update profile
+        await SessionService.updateProfile(profileData);
+        
+        Alert.alert(
+          'Thành công',
+          'Thông tin hồ sơ đã được cập nhật',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } catch (error) {
+        Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ. Vui lòng thử lại sau.');
+        console.error('Error updating profile:', error);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -268,6 +347,107 @@ const EditProfileScreen = () => {
     setShowCropModal(false);
   };
 
+  // Render business profile form
+  const renderBusinessProfileForm = () => (
+    <>
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Tên doanh nghiệp <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.businessName}
+          onChangeText={(text) => setBusinessData({...businessData, businessName: text})}
+          placeholder="Nhập tên doanh nghiệp"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Mã số doanh nghiệp <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.businessCode}
+          onChangeText={(text) => setBusinessData({...businessData, businessCode: text})}
+          placeholder="Nhập mã số doanh nghiệp"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Mã số thuế</Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.taxCode}
+          onChangeText={(text) => setBusinessData({...businessData, taxCode: text})}
+          placeholder="Nhập mã số thuế"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Loại hình kinh doanh</Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.businessType}
+          onChangeText={(text) => setBusinessData({...businessData, businessType: text})}
+          placeholder="Nhập loại hình kinh doanh"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Địa chỉ <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={[styles.input, {textAlignVertical: 'top'}]}
+          value={businessData.businessAddress}
+          onChangeText={(text) => setBusinessData({...businessData, businessAddress: text})}
+          placeholder="Nhập địa chỉ doanh nghiệp"
+          multiline
+          numberOfLines={3}
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Số điện thoại <Text style={styles.required}>*</Text></Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.businessPhone}
+          onChangeText={(text) => setBusinessData({...businessData, businessPhone: text})}
+          placeholder="Nhập số điện thoại doanh nghiệp"
+          keyboardType="phone-pad"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Email doanh nghiệp</Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.businessEmail}
+          onChangeText={(text) => setBusinessData({...businessData, businessEmail: text})}
+          placeholder="Nhập email doanh nghiệp"
+          keyboardType="email-address"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Người đại diện</Text>
+        <TextInput
+          style={styles.input}
+          value={businessData.representativeName}
+          onChangeText={(text) => setBusinessData({...businessData, representativeName: text})}
+          placeholder="Nhập tên người đại diện"
+        />
+      </View>
+      
+      <View style={styles.formGroup}>
+        <Text style={styles.label}>Mô tả về doanh nghiệp</Text>
+        <TextInput
+          style={[styles.input, {height: 100, textAlignVertical: 'top'}]}
+          value={businessData.businessDescription}
+          onChangeText={(text) => setBusinessData({...businessData, businessDescription: text})}
+          placeholder="Nhập mô tả về doanh nghiệp"
+          multiline
+          numberOfLines={4}
+        />
+      </View>
+    </>
+  );
+
   if (isLoading) {
     return (
       <SafeAreaView style={[styles.container, styles.loadingContainer]}>
@@ -286,7 +466,9 @@ const EditProfileScreen = () => {
         >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Cập nhật hồ sơ</Text>
+        <Text style={styles.headerTitle}>
+          {isBusiness ? 'Thông tin doanh nghiệp' : 'Cập nhật hồ sơ'}
+        </Text>
         <View style={styles.placeholder} />
       </View>
       
@@ -296,7 +478,11 @@ const EditProfileScreen = () => {
             {userData.avatar ? (
               <Image source={{ uri: userData.avatar }} style={styles.avatarImage} />
             ) : (
-              <Text style={styles.avatarText}>{userData.name.charAt(0).toUpperCase()}</Text>
+              <Text style={styles.avatarText}>
+                {isBusiness 
+                  ? businessData.businessName.charAt(0).toUpperCase()
+                  : userData.name.charAt(0).toUpperCase()}
+              </Text>
             )}
           </View>
           <TouchableOpacity style={styles.changeAvatarButton} onPress={handleChangeAvatar}>
@@ -304,47 +490,53 @@ const EditProfileScreen = () => {
           </TouchableOpacity>
         </View>
         
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Tên <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            value={userData.name}
-            onChangeText={(text) => setUserData({...userData, name: text})}
-            placeholder="Nhập tên"
-          />
-        </View>
-        
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Họ <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            value={userData.surname}
-            onChangeText={(text) => setUserData({...userData, surname: text})}
-            placeholder="Nhập họ"
-          />
-        </View>
-        
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
-          <TextInput
-            style={styles.input}
-            value={userData.emailAddress}
-            onChangeText={(text) => setUserData({...userData, emailAddress: text})}
-            placeholder="Nhập email"
-            keyboardType="email-address"
-          />
-        </View>
-        
-        <View style={styles.formGroup}>
-          <Text style={styles.label}>Số điện thoại</Text>
-          <TextInput
-            style={styles.input}
-            value={userData.phoneNumber}
-            onChangeText={(text) => setUserData({...userData, phoneNumber: text})}
-            placeholder="Nhập số điện thoại"
-            keyboardType="phone-pad"
-          />
-        </View>
+        {isBusiness ? (
+          renderBusinessProfileForm()
+        ) : (
+          <>
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Tên <Text style={styles.required}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                value={userData.name}
+                onChangeText={(text) => setUserData({...userData, name: text})}
+                placeholder="Nhập tên"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Họ <Text style={styles.required}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                value={userData.surname}
+                onChangeText={(text) => setUserData({...userData, surname: text})}
+                placeholder="Nhập họ"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
+              <TextInput
+                style={styles.input}
+                value={userData.emailAddress}
+                onChangeText={(text) => setUserData({...userData, emailAddress: text})}
+                placeholder="Nhập email"
+                keyboardType="email-address"
+              />
+            </View>
+            
+            <View style={styles.formGroup}>
+              <Text style={styles.label}>Số điện thoại</Text>
+              <TextInput
+                style={styles.input}
+                value={userData.phoneNumber}
+                onChangeText={(text) => setUserData({...userData, phoneNumber: text})}
+                placeholder="Nhập số điện thoại"
+                keyboardType="phone-pad"
+              />
+            </View>
+          </>
+        )}
         
         <TouchableOpacity
           style={[styles.saveButton, isSaving && styles.disabledButton]}

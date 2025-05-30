@@ -66,15 +66,15 @@ const BusinessFacilityScreen = ({navigation}) => {
         }));
         
         setFacilities(transformedData);
+      } else {
+        // Trường hợp API trả về kết quả nhưng không có items
+        setFacilities([]);
       }
     } catch (err) {
       console.error('Error fetching business facilities:', err);
       setError('Không thể tải danh sách cơ sở kinh doanh');
-      Alert.alert(
-        'Lỗi',
-        'Không thể tải danh sách cơ sở kinh doanh. Vui lòng thử lại sau.',
-        [{ text: 'OK' }]
-      );
+      // Không hiển thị lỗi alert mỗi lần gọi API thất bại
+      setFacilities([]);
     } finally {
       setLoading(false);
     }

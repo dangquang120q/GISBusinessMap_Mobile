@@ -14,7 +14,8 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
 
 const SettingsScreen = () => {
-  const {logout} = useContext(AuthContext);
+  const {logout, userRole} = useContext(AuthContext);
+  const isBusiness = userRole === '2' || userRole === 2;
   const navigation = useNavigation();
   
   // Trạng thái cài đặt
@@ -126,8 +127,8 @@ const SettingsScreen = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Tài khoản và bảo mật</Text>
         {renderSettingItem(
-          'person-outline',
-          'Thông tin tài khoản',
+          isBusiness ? 'business-outline' : 'person-outline',
+          isBusiness ? 'Thông tin doanh nghiệp' : 'Thông tin tài khoản',
           <Ionicons name="chevron-forward" size={24} color="#666" />,
           goToEditProfile
         )}

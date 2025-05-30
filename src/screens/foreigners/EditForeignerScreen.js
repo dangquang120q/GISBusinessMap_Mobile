@@ -126,66 +126,93 @@ const EditForeignerScreen = ({ route, navigation }) => {
     const newErrors = {};
 
     // Validate fullName
-    if (!formData.fullName.trim()) {
+    if (!formData.fullName || !formData.fullName.trim()) {
       newErrors.fullName = 'Vui lòng nhập tên người nước ngoài';
       isValid = false;
     }
 
     // Validate passportNumber
-    if (!formData.passportNumber.trim()) {
+    if (!formData.passportNumber || !formData.passportNumber.trim()) {
       newErrors.passportNumber = 'Vui lòng nhập số hộ chiếu';
       isValid = false;
     }
 
     // Validate countryName
-    if (!formData.countryName.trim()) {
+    if (!formData.countryName || !formData.countryName.trim()) {
       newErrors.countryName = 'Vui lòng nhập quốc tịch';
       isValid = false;
     }
 
-    // Validate phoneNumber (simple validation)
-    if (formData.phoneNumber.trim() && !/^\d{10,11}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
-      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
-      isValid = false;
+    // Validate phoneNumber (improved validation)
+    if (formData.phoneNumber && formData.phoneNumber.trim()) {
+      if (!/^(0|\+84)([0-9]{9,10})$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+        newErrors.phoneNumber = 'Số điện thoại không hợp lệ (Vui lòng nhập số điện thoại Việt Nam)';
+        isValid = false;
+      }
     }
 
-    // Validate email (simple validation)
-    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ';
-      isValid = false;
+    // Validate email (more comprehensive validation)
+    if (formData.email && formData.email.trim()) {
+      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        newErrors.email = 'Email không hợp lệ';
+        isValid = false;
+      }
     }
 
-    // Validate dates (simple format validation)
+    // Validate dates (more comprehensive format validation)
     const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
     
-    if (formData.entryDate.trim() && !dateRegex.test(formData.entryDate)) {
-      newErrors.entryDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
-    }
+    // Helper function to validate date
+    const validateDate = (dateField, errorMessage) => {
+      if (formData[dateField] && formData[dateField].trim()) {
+        if (!dateRegex.test(formData[dateField])) {
+          newErrors[dateField] = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+          isValid = false;
+        } else {
+          // Validate if date is valid
+          const [day, month, year] = formData[dateField].split('/');
+          const date = new Date(year, month - 1, day);
+          if (date.getDate() !== parseInt(day) || 
+              date.getMonth() !== parseInt(month) - 1 || 
+              date.getFullYear() !== parseInt(year)) {
+            newErrors[dateField] = 'Ngày không hợp lệ';
+            isValid = false;
+          }
+          
+          // Additional validation based on field
+          if (dateField === 'dateOfBirth') {
+            const today = new Date();
+            if (date > today) {
+              newErrors[dateField] = 'Ngày sinh không thể sau ngày hiện tại';
+              isValid = false;
+            }
+          }
+        }
+      }
+    };
     
-    if (formData.visaExpiryDate.trim() && !dateRegex.test(formData.visaExpiryDate)) {
-      newErrors.visaExpiryDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
-    }
+    // Validate all date fields
+    validateDate('entryDate', 'Định dạng ngày nhập cảnh không hợp lệ');
+    validateDate('visaExpiryDate', 'Định dạng ngày hết hạn visa không hợp lệ');
+    validateDate('dateOfBirth', 'Định dạng ngày sinh không hợp lệ');
+    validateDate('visaIssuedDate', 'Định dạng ngày cấp visa không hợp lệ');
+    validateDate('workPermitExpiryDate', 'Định dạng ngày hết hạn giấy phép lao động không hợp lệ');
+    validateDate('residenceCardExpiry', 'Định dạng ngày hết hạn thẻ tạm trú không hợp lệ');
     
-    if (formData.dateOfBirth.trim() && !dateRegex.test(formData.dateOfBirth)) {
-      newErrors.dateOfBirth = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
-    }
-
-    if (formData.visaIssuedDate.trim() && !dateRegex.test(formData.visaIssuedDate)) {
-      newErrors.visaIssuedDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
-    }
-
-    if (formData.workPermitExpiryDate.trim() && !dateRegex.test(formData.workPermitExpiryDate)) {
-      newErrors.workPermitExpiryDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
-    }
-
-    if (formData.residenceCardExpiry.trim() && !dateRegex.test(formData.residenceCardExpiry)) {
-      newErrors.residenceCardExpiry = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
-      isValid = false;
+    // Validate relationships between dates
+    if (!newErrors.visaIssuedDate && !newErrors.visaExpiryDate && 
+        formData.visaIssuedDate && formData.visaExpiryDate) {
+      const issuedParts = formData.visaIssuedDate.split('/');
+      const expiryParts = formData.visaExpiryDate.split('/');
+      
+      const issuedDate = new Date(issuedParts[2], issuedParts[1] - 1, issuedParts[0]);
+      const expiryDate = new Date(expiryParts[2], expiryParts[1] - 1, expiryParts[0]);
+      
+      if (issuedDate >= expiryDate) {
+        newErrors.visaExpiryDate = 'Ngày hết hạn visa phải sau ngày cấp';
+        isValid = false;
+      }
     }
 
     setErrors(newErrors);
@@ -197,48 +224,53 @@ const EditForeignerScreen = ({ route, navigation }) => {
       try {
         setLoading(true);
         
-        // Prepare data for API
+        // Đảm bảo có ID trước khi cập nhật
+        if (!formData.id) {
+          throw new Error('Không tìm thấy ID người nước ngoài');
+        }
+        
+        // Chuẩn bị dữ liệu cho API
         const foreignerData = {
           id: formData.id,
-          fullName: formData.fullName,
-          passportNumber: formData.passportNumber,
+          fullName: formData.fullName.trim(),
+          passportNumber: formData.passportNumber.trim(),
           gender: formData.gender,
           dateOfBirth: parseDateForApi(formData.dateOfBirth),
-          countryName: formData.countryName,
-          visaNumber: formData.visaNumber,
-          visaType: formData.visaType,
+          countryName: formData.countryName.trim(),
+          visaNumber: formData.visaNumber ? formData.visaNumber.trim() : null,
+          visaType: formData.visaType ? formData.visaType.trim() : null,
           visaIssuedDate: parseDateForApi(formData.visaIssuedDate),
           visaExpiryDate: parseDateForApi(formData.visaExpiryDate),
           entryDate: parseDateForApi(formData.entryDate),
-          entryPort: formData.entryPort,
-          stayAddress: formData.stayAddress,
-          phoneNumber: formData.phoneNumber,
-          email: formData.email,
-          workplace: formData.workplace,
-          jobTitle: formData.jobTitle,
-          workPermitNumber: formData.workPermitNumber,
+          entryPort: formData.entryPort ? formData.entryPort.trim() : null,
+          stayAddress: formData.stayAddress ? formData.stayAddress.trim() : null,
+          phoneNumber: formData.phoneNumber ? formData.phoneNumber.trim() : null,
+          email: formData.email ? formData.email.trim() : null,
+          workplace: formData.workplace ? formData.workplace.trim() : null,
+          jobTitle: formData.jobTitle ? formData.jobTitle.trim() : null,
+          workPermitNumber: formData.workPermitNumber ? formData.workPermitNumber.trim() : null,
           workPermitExpiryDate: parseDateForApi(formData.workPermitExpiryDate),
-          residenceCardNumber: formData.residenceCardNumber,
+          residenceCardNumber: formData.residenceCardNumber ? formData.residenceCardNumber.trim() : null,
           residenceCardExpiry: parseDateForApi(formData.residenceCardExpiry),
-          notes: formData.notes,
+          notes: formData.notes ? formData.notes.trim() : null,
           status: formData.status,
         };
         
-        // Call API to update
+        // Gọi API để cập nhật
         await ForeignersService.update(foreignerData);
         
         setLoading(false);
         
-        // Show success message
+        // Hiển thị thông báo thành công
         Alert.alert(
           'Thành công',
-          'Đã cập nhật thông tin thành công',
+          'Đã cập nhật thông tin người nước ngoài thành công',
           [
             {
               text: 'OK',
               onPress: () => navigation.navigate('ForeignerDetail', { 
                 foreignerId: formData.id,
-                foreigner: null, // Force reload from API
+                refresh: true 
               }),
             },
           ]
@@ -246,10 +278,30 @@ const EditForeignerScreen = ({ route, navigation }) => {
       } catch (err) {
         console.error('Error updating foreigner:', err);
         setLoading(false);
-        Alert.alert('Lỗi', 'Không thể cập nhật thông tin. Vui lòng thử lại sau.');
+        
+        // Hiển thị thông báo lỗi chi tiết hơn
+        let errorMessage = 'Không thể cập nhật thông tin người nước ngoài. Vui lòng thử lại sau.';
+        
+        if (err.response && err.response.data) {
+          if (err.response.data.error && err.response.data.error.message) {
+            errorMessage = err.response.data.error.message;
+          } else if (typeof err.response.data === 'string') {
+            errorMessage = err.response.data;
+          }
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        Alert.alert('Lỗi', errorMessage);
       }
     } else {
-      Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
+      // Hiển thị lỗi đầu tiên gặp phải
+      const firstErrorKey = Object.keys(errors)[0];
+      if (firstErrorKey) {
+        Alert.alert('Lỗi', `Vui lòng kiểm tra lại thông tin: ${errors[firstErrorKey]}`);
+      } else {
+        Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
+      }
     }
   };
 

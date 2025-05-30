@@ -55,12 +55,12 @@ const LoginScreen = ({navigation}) => {
     //   setEmailError('Vui lòng nhập email');
     //   return false;
     // }
-    // const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
     // if (!emailRegex.test(text)) {
     //   setEmailError('Email không hợp lệ');
     //   return false;
     // }
-    // setEmailError('');
+    setEmailError('');
     return true;
   };
 
