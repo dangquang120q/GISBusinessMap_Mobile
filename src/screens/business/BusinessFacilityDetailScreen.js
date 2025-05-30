@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,29 +7,119 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import BusinessBranchService from '../../services/BusinessBranchService';
 
 const BusinessFacilityDetailScreen = ({route, navigation}) => {
-  const { facility } = route.params || {
-    id: '1',
-    name: 'Cơ sở kinh doanh 1',
-    address: '123 Đường Nguyễn Huệ',
-    status: 'Hoạt động',
-    licenseNumber: 'BL-2023-001',
-    operationDate: '01/01/2023',
-    expiryDate: '31/12/2025',
-    owner: 'Nguyễn Văn A',
-    contactPhone: '0123456789',
-    contactEmail: 'nguyenvana@example.com',
-    businessType: 'Nhà hàng',
-    area: '120m²',
-    employees: 15,
+  const { facilityId } = route.params || {};
+  const [facility, setFacility] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch facility details on component mount
+  useEffect(() => {
+    const fetchFacilityDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        if (!facilityId) {
+          throw new Error('Không có ID cơ sở kinh doanh');
+        }
+        
+        const result = await BusinessBranchService.get(facilityId);
+        if (result) {
+          // Transform API data to facility format
+          const facilityData = {
+            id: result.id.toString(),
+            name: result.branchName || 'Chưa có tên',
+            address: formatAddress(result),
+            status: result.isActive ? 'Hoạt động' : result.status === 'Chờ phê duyệt' ? 'Chờ phê duyệt' : 'Không hoạt động',
+            licenseNumber: result.businessCode || 'Chưa có mã',
+            operationDate: formatDate(result.establishedDate),
+            expiryDate: formatDate(result.deactivationDate),
+            owner: result.representativeName || 'Chưa có',
+            contactPhone: result.phoneNumber || 'Chưa có',
+            contactEmail: result.email || 'Chưa có',
+            businessType: result.businessTypeName || 'Khác',
+            area: '',
+            employees: 0,
+            // Thêm các thông tin khác từ API
+            website: result.website,
+            socialMediaUrl: result.socialMediaUrl,
+            rating: result.rating,
+            rawData: result, // Lưu dữ liệu gốc để sử dụng khi cần
+          };
+          
+          setFacility(facilityData);
+        } else {
+          throw new Error('Không tìm thấy thông tin cơ sở kinh doanh');
+        }
+      } catch (err) {
+        console.error('Error fetching facility details:', err);
+        setError(err.message || 'Không thể tải thông tin chi tiết');
+        Alert.alert(
+          'Lỗi',
+          'Không thể tải thông tin chi tiết cơ sở kinh doanh. Vui lòng thử lại sau.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFacilityDetails();
+  }, [facilityId]);
+
+  // Định dạng địa chỉ từ dữ liệu API
+  const formatAddress = (item) => {
+    const parts = [];
+    if (item.addressDetail) parts.push(item.addressDetail);
+    if (item.wardName) parts.push(item.wardName);
+    if (item.districtName) parts.push(item.districtName);
+    
+    return parts.join(', ') || 'Chưa có địa chỉ';
+  };
+  
+  // Định dạng ngày tháng
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
   };
 
   const handleEditFacility = () => {
-    navigation.navigate('EditBusinessFacility', { facility });
+    navigation.navigate('EditBusinessFacility', { facilityId: facility.id, facility });
   };
+
+  // Hiển thị trạng thái loading
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#085924" />
+        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Hiển thị thông báo lỗi
+  if (error || !facility) {
+    return (
+      <SafeAreaView style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={50} color="#dc3545" />
+        <Text style={styles.errorText}>{error || 'Không tìm thấy thông tin cơ sở kinh doanh'}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Quay lại</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -108,6 +198,12 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
             <Text style={styles.infoLabel}>Email:</Text>
             <Text style={styles.infoValue}>{facility.contactEmail}</Text>
           </View>
+          {facility.website && (
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Website:</Text>
+              <Text style={styles.infoValue}>{facility.website}</Text>
+            </View>
+          )}
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Số nhân viên:</Text>
             <Text style={styles.infoValue}>{facility.employees}</Text>
@@ -189,6 +285,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   header: {
     backgroundColor: '#085924',

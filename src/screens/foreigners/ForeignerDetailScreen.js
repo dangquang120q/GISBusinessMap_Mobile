@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,59 +8,159 @@ import {
   TouchableOpacity,
   Alert,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ForeignersService from '../../services/ForeignersService';
 
 const ForeignerDetailScreen = ({route, navigation}) => {
-  const { foreigner } = route.params || {
-    id: '1',
-    name: 'John Smith',
-    passport: 'AB123456',
-    nationality: 'Mỹ',
-    status: 'Đang hoạt động',
-    entryDate: '15/03/2023',
-    expiryDate: '15/03/2024',
-    phone: '0901234567',
-    address: '123 Nguyễn Huệ, Quận 1, TP.HCM',
-    workPosition: 'Giám đốc kỹ thuật',
-    gender: 'Nam',
-    birthDate: '15/05/1985',
-    purpose: 'Công tác',
-    notes: 'Đã được xác minh thông tin cá nhân.',
-  };
-
+  const { foreignerId } = route.params || {};
+  const [foreigner, setForeigner] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // Status constants
+  const STATUS_ACTIVE = 'Đang hoạt động';
+  const STATUS_PENDING = 'Chờ xác nhận';
+  const STATUS_EXPIRED = 'Hết hạn';
+
+  // Function to format date from API
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  };
+
+  // Check if visa or residence card is expired
+  const checkIfExpired = (expiryDate) => {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    return expiry < today;
+  };
+
+  // Get status display based on data
+  const getStatusDisplay = (foreigner) => {
+    if (foreigner.status) return foreigner.status;
+    
+    // Fallback logic if status is not set
+    if (checkIfExpired(foreigner.visaExpiryDate) || 
+        checkIfExpired(foreigner.workPermitExpiryDate) || 
+        checkIfExpired(foreigner.residenceCardExpiry)) {
+      return STATUS_EXPIRED;
+    }
+    
+    return STATUS_ACTIVE;
+  };
+
+  // Get status style
+  const getStatusStyle = (status) => {
+    switch(status) {
+      case STATUS_ACTIVE:
+        return styles.activeStatus;
+      case STATUS_PENDING:
+        return styles.pendingStatus;
+      case STATUS_EXPIRED:
+        return styles.expiredStatus;
+      default:
+        return styles.activeStatus;
+    }
+  };
+
+  // Load foreigner details on screen load
+  useEffect(() => {
+    const fetchForeignerDetails = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // If we have an ID, fetch from API
+        if (foreignerId) {
+          const response = await ForeignersService.get(foreignerId);
+          setForeigner(response);
+        } else if (route.params?.foreigner) {
+          // Fallback to the passed foreigner object if no ID
+          setForeigner(route.params.foreigner);
+        } else {
+          throw new Error('Không có thông tin người nước ngoài');
+        }
+      } catch (err) {
+        console.error('Error fetching foreigner details:', err);
+        setError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+        Alert.alert('Lỗi', 'Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchForeignerDetails();
+  }, [foreignerId, route.params]);
+
   const handleEditForeigner = () => {
-    navigation.navigate('EditForeigner', { foreigner });
+    navigation.navigate('EditForeigner', { foreigner, foreignerId: foreigner.id });
   };
   
   const handleDeleteForeigner = () => {
     setShowDeleteModal(true);
   };
 
-  const confirmDelete = () => {
-    // Here you would typically call your API to delete the foreigner
-    
-    // Close the modal
-    setShowDeleteModal(false);
-    
-    // Show success message
-    Alert.alert(
-      'Thành công',
-      'Đã xóa người nước ngoài khỏi danh sách',
-      [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate('ForeignerManagement'),
-        },
-      ]
-    );
+  const confirmDelete = async () => {
+    try {
+      setLoading(true);
+      await ForeignersService.delete(foreigner.id);
+      
+      // Close the modal
+      setShowDeleteModal(false);
+      setLoading(false);
+      
+      // Show success message
+      Alert.alert(
+        'Thành công',
+        'Đã xóa người nước ngoài khỏi danh sách',
+        [
+          {
+            text: 'OK',
+            onPress: () => navigation.navigate('ForeignerManagement'),
+          },
+        ]
+      );
+    } catch (err) {
+      console.error('Error deleting foreigner:', err);
+      setLoading(false);
+      Alert.alert('Lỗi', 'Không thể xóa người nước ngoài. Vui lòng thử lại sau.');
+    }
   };
 
   const cancelDelete = () => {
     setShowDeleteModal(false);
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#085924" />
+        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !foreigner) {
+    return (
+      <SafeAreaView style={styles.errorContainer}>
+        <Ionicons name="alert-circle-outline" size={50} color="#dc3545" />
+        <Text style={styles.errorText}>{error || 'Không tìm thấy thông tin người nước ngoài'}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Quay lại</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
+  const status = getStatusDisplay(foreigner);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -79,13 +179,9 @@ const ForeignerDetailScreen = ({route, navigation}) => {
           <View style={styles.avatarContainer}>
             <Ionicons name="person" size={40} color="#085924" />
           </View>
-          <Text style={styles.personName}>{foreigner.name}</Text>
-          <View style={[styles.statusBadge, 
-            foreigner.status === 'Đang hoạt động' ? styles.activeStatus : 
-            foreigner.status === 'Chờ xác nhận' ? styles.pendingStatus : 
-            styles.expiredStatus
-          ]}>
-            <Text style={styles.statusText}>{foreigner.status}</Text>
+          <Text style={styles.personName}>{foreigner.fullName}</Text>
+          <View style={[styles.statusBadge, getStatusStyle(status)]}>
+            <Text style={styles.statusText}>{status}</Text>
           </View>
         </View>
         
@@ -93,48 +189,82 @@ const ForeignerDetailScreen = ({route, navigation}) => {
           <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Hộ chiếu:</Text>
-            <Text style={styles.infoValue}>{foreigner.passport}</Text>
+            <Text style={styles.infoValue}>{foreigner.passportNumber}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Quốc tịch:</Text>
-            <Text style={styles.infoValue}>{foreigner.nationality}</Text>
+            <Text style={styles.infoValue}>{foreigner.countryName}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Giới tính:</Text>
-            <Text style={styles.infoValue}>{foreigner.gender || 'Nam'}</Text>
+            <Text style={styles.infoValue}>{foreigner.gender || '-'}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Ngày sinh:</Text>
-            <Text style={styles.infoValue}>{foreigner.birthDate || '15/05/1985'}</Text>
+            <Text style={styles.infoValue}>{foreigner.dateOfBirth ? formatDate(foreigner.dateOfBirth) : '-'}</Text>
           </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Mục đích:</Text>
-            <Text style={styles.infoValue}>{foreigner.purpose || 'Công tác'}</Text>
-          </View>
+          {foreigner.jobTitle && (
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Vị trí công việc:</Text>
+              <Text style={styles.infoValue}>{foreigner.jobTitle}</Text>
+            </View>
+          )}
+          {foreigner.workplace && (
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Nơi làm việc:</Text>
+              <Text style={styles.infoValue}>{foreigner.workplace}</Text>
+            </View>
+          )}
         </View>
         
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thời gian lưu trú</Text>
+          <Text style={styles.sectionTitle}>Thông tin thị thực</Text>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Ngày đến:</Text>
-            <Text style={styles.infoValue}>{foreigner.entryDate}</Text>
+            <Text style={styles.infoLabel}>Số visa:</Text>
+            <Text style={styles.infoValue}>{foreigner.visaNumber || '-'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Loại visa:</Text>
+            <Text style={styles.infoValue}>{foreigner.visaType || '-'}</Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Ngày cấp:</Text>
+            <Text style={styles.infoValue}>
+              {foreigner.visaIssuedDate ? formatDate(foreigner.visaIssuedDate) : '-'}
+            </Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Ngày hết hạn:</Text>
-            <Text style={styles.infoValue}>{foreigner.expiryDate}</Text>
+            <Text style={styles.infoValue}>
+              {foreigner.visaExpiryDate ? formatDate(foreigner.visaExpiryDate) : '-'}
+            </Text>
           </View>
           <View style={styles.warningContainer}>
-            {new Date(foreigner.expiryDate.split('/').reverse().join('-')) < new Date() ? (
+            {foreigner.visaExpiryDate && checkIfExpired(foreigner.visaExpiryDate) ? (
               <>
                 <Ionicons name="warning" size={20} color="#dc3545" />
-                <Text style={styles.warningText}>Đã hết hạn lưu trú</Text>
+                <Text style={styles.warningText}>Thị thực đã hết hạn</Text>
               </>
             ) : (
               <>
                 <Ionicons name="checkmark-circle" size={20} color="#28a745" />
-                <Text style={styles.validText}>Đang trong thời gian lưu trú hợp lệ</Text>
+                <Text style={styles.validText}>Thị thực còn hiệu lực</Text>
               </>
             )}
+          </View>
+        </View>
+        
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Thông tin nhập cảnh</Text>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Ngày nhập cảnh:</Text>
+            <Text style={styles.infoValue}>
+              {foreigner.entryDate ? formatDate(foreigner.entryDate) : '-'}
+            </Text>
+          </View>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Cửa khẩu:</Text>
+            <Text style={styles.infoValue}>{foreigner.entryPort || '-'}</Text>
           </View>
         </View>
         
@@ -142,46 +272,95 @@ const ForeignerDetailScreen = ({route, navigation}) => {
           <Text style={styles.sectionTitle}>Thông tin liên hệ</Text>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Điện thoại:</Text>
-            <Text style={styles.infoValue}>{foreigner.phone}</Text>
+            <Text style={styles.infoValue}>{foreigner.phoneNumber || '-'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Địa chỉ:</Text>
-            <Text style={styles.infoValue}>{foreigner.address}</Text>
+            <Text style={styles.infoLabel}>Email:</Text>
+            <Text style={styles.infoValue}>{foreigner.email || '-'}</Text>
           </View>
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Vị trí công việc:</Text>
-            <Text style={styles.infoValue}>{foreigner.workPosition}</Text>
+            <Text style={styles.infoLabel}>Địa chỉ lưu trú:</Text>
+            <Text style={styles.infoValue}>{foreigner.stayAddress || '-'}</Text>
           </View>
         </View>
         
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ghi chú</Text>
-          <Text style={styles.notesText}>
-            {foreigner.notes || 'Đã được xác minh thông tin cá nhân.'}
-          </Text>
-        </View>
+        {foreigner.workPermitNumber && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Giấy phép lao động</Text>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Số giấy phép:</Text>
+              <Text style={styles.infoValue}>{foreigner.workPermitNumber}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Ngày hết hạn:</Text>
+              <Text style={styles.infoValue}>
+                {foreigner.workPermitExpiryDate ? formatDate(foreigner.workPermitExpiryDate) : '-'}
+              </Text>
+            </View>
+            <View style={styles.warningContainer}>
+              {foreigner.workPermitExpiryDate && checkIfExpired(foreigner.workPermitExpiryDate) ? (
+                <>
+                  <Ionicons name="warning" size={20} color="#dc3545" />
+                  <Text style={styles.warningText}>Giấy phép lao động đã hết hạn</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#28a745" />
+                  <Text style={styles.validText}>Giấy phép lao động còn hiệu lực</Text>
+                </>
+              )}
+            </View>
+          </View>
+        )}
+        
+        {foreigner.residenceCardNumber && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Thẻ tạm trú</Text>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Số thẻ:</Text>
+              <Text style={styles.infoValue}>{foreigner.residenceCardNumber}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Ngày hết hạn:</Text>
+              <Text style={styles.infoValue}>
+                {foreigner.residenceCardExpiry ? formatDate(foreigner.residenceCardExpiry) : '-'}
+              </Text>
+            </View>
+            <View style={styles.warningContainer}>
+              {foreigner.residenceCardExpiry && checkIfExpired(foreigner.residenceCardExpiry) ? (
+                <>
+                  <Ionicons name="warning" size={20} color="#dc3545" />
+                  <Text style={styles.warningText}>Thẻ tạm trú đã hết hạn</Text>
+                </>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={20} color="#28a745" />
+                  <Text style={styles.validText}>Thẻ tạm trú còn hiệu lực</Text>
+                </>
+              )}
+            </View>
+          </View>
+        )}
+        
+        {foreigner.notes && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Ghi chú</Text>
+            <Text style={styles.notesText}>{foreigner.notes}</Text>
+          </View>
+        )}
         
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lịch sử đăng ký</Text>
-          <View style={styles.historyItem}>
-            <View style={styles.historyHeader}>
-              <Text style={styles.historyDate}>15/03/2023</Text>
-              <View style={styles.historyStatus}>
-                <Text style={styles.historyStatusText}>Đăng ký mới</Text>
-              </View>
-            </View>
-            <Text style={styles.historyDesc}>Đăng ký lần đầu với cơ sở kinh doanh</Text>
+          <Text style={styles.sectionTitle}>Thông tin đăng ký</Text>
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Ngày tạo:</Text>
+            <Text style={styles.infoValue}>{formatDate(foreigner.createdDate)}</Text>
           </View>
-          
-          <View style={styles.historyItem}>
-            <View style={styles.historyHeader}>
-              <Text style={styles.historyDate}>20/06/2023</Text>
-              <View style={styles.historyStatus}>
-                <Text style={styles.historyStatusText}>Gia hạn</Text>
-              </View>
+          {foreigner.updatedDate && (
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Cập nhật lần cuối:</Text>
+              <Text style={styles.infoValue}>{formatDate(foreigner.updatedDate)}</Text>
             </View>
-            <Text style={styles.historyDesc}>Gia hạn thêm 9 tháng lưu trú và làm việc</Text>
-          </View>
+          )}
         </View>
         
         <View style={styles.buttonsContainer}>
@@ -218,7 +397,7 @@ const ForeignerDetailScreen = ({route, navigation}) => {
             </View>
             
             <Text style={styles.modalMessage}>
-              Bạn có chắc chắn muốn xóa {foreigner.name} khỏi danh sách? Thao tác này không thể hoàn tác.
+              Bạn có chắc chắn muốn xóa {foreigner.fullName} khỏi danh sách? Thao tác này không thể hoàn tác.
             </Text>
             
             <View style={styles.modalButtons}>
@@ -232,8 +411,13 @@ const ForeignerDetailScreen = ({route, navigation}) => {
               <TouchableOpacity 
                 style={styles.modalDeleteButton}
                 onPress={confirmDelete}
+                disabled={loading}
               >
-                <Text style={styles.modalDeleteButtonText}>Xóa</Text>
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.modalDeleteButtonText}>Xóa</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -247,6 +431,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  errorText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   header: {
     backgroundColor: '#085924',
@@ -366,37 +585,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#333',
     lineHeight: 22,
-  },
-  historyItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 12,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  historyDate: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#666',
-  },
-  historyStatus: {
-    backgroundColor: '#e0f2e9',
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-  },
-  historyStatusText: {
-    fontSize: 12,
-    color: '#085924',
-    fontWeight: '500',
-  },
-  historyDesc: {
-    fontSize: 14,
-    color: '#333',
   },
   buttonsContainer: {
     marginBottom: 30,

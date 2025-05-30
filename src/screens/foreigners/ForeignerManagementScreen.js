@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,12 @@ import {
   TextInput,
   Modal,
   FlatList,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ForeignersService from '../../services/ForeignersService';
 
 const ForeignerManagementScreen = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -19,123 +23,176 @@ const ForeignerManagementScreen = ({navigation}) => {
   const [advancedSearch, setAdvancedSearch] = useState(false);
   const [nationalitySearch, setNationalitySearch] = useState('');
   
-  // Dummy data for foreigners
-  const foreigners = [
-    {
-      id: '1',
-      name: 'John Smith',
-      passport: 'AB123456',
-      nationality: 'Mỹ',
-      status: 'Đang hoạt động',
-      entryDate: '15/03/2023',
-      expiryDate: '15/03/2024',
-      phone: '0901234567',
-      address: '123 Nguyễn Huệ, Quận 1, TP.HCM',
-      workPosition: 'Giám đốc kỹ thuật',
-    },
-    {
-      id: '2',
-      name: 'Maria Garcia',
-      passport: 'XY789012',
-      nationality: 'Tây Ban Nha',
-      status: 'Chờ xác nhận',
-      entryDate: '20/04/2023',
-      expiryDate: '20/04/2024',
-      phone: '0909876543',
-      address: '456 Lê Lợi, Quận 1, TP.HCM',
-      workPosition: 'Quản lý dự án',
-    },
-    {
-      id: '3',
-      name: 'Tanaka Yuki',
-      passport: 'JP567890',
-      nationality: 'Nhật Bản',
-      status: 'Hết hạn',
-      entryDate: '10/01/2023',
-      expiryDate: '10/01/2024',
-      phone: '0905555555',
-      address: '789 Hàm Nghi, Quận 1, TP.HCM',
-      workPosition: 'Chuyên gia tư vấn',
-    },
-    {
-      id: '4',
-      name: 'Kim Min-jun',
-      passport: 'KR123789',
-      nationality: 'Hàn Quốc',
-      status: 'Đang hoạt động',
-      entryDate: '05/02/2023',
-      expiryDate: '05/02/2024',
-      phone: '0902223333',
-      address: '101 Lý Tự Trọng, Quận 1, TP.HCM',
-      workPosition: 'Kỹ sư phần mềm',
-    },
-    {
-      id: '5',
-      name: 'Wang Li',
-      passport: 'CN456123',
-      nationality: 'Trung Quốc',
-      status: 'Chờ xác nhận',
-      entryDate: '12/05/2023',
-      expiryDate: '12/05/2024',
-      phone: '0904444555',
-      address: '222 Phạm Ngũ Lão, Quận 1, TP.HCM',
-      workPosition: 'Chuyên gia kinh tế',
-    },
-  ];
-  
-  // Filter foreigners based on search and status
-  const filteredForeigners = foreigners.filter(foreigner => {
-    // Match search query
-    const matchesSearch = 
-      foreigner.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      foreigner.passport.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      foreigner.workPosition.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Match status filter
-    const matchesStatus = statusFilter === 'all' || foreigner.status === statusFilter;
-    
-    // Match nationality if specified
-    const matchesNationality = 
-      !nationalitySearch || 
-      foreigner.nationality.toLowerCase().includes(nationalitySearch.toLowerCase());
-    
-    return matchesSearch && matchesStatus && matchesNationality;
+  // API integration states
+  const [foreigners, setForeigners] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(null);
+  const [pagination, setPagination] = useState({
+    skipCount: 0,
+    maxResultCount: 20,
+    totalCount: 0,
   });
+
+  // Status constants
+  const STATUS_ACTIVE = 'Đang hoạt động';
+  const STATUS_PENDING = 'Chờ xác nhận';
+  const STATUS_EXPIRED = 'Hết hạn';
+  
+  // Function to format date from API
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+  };
+  
+  // Function to fetch foreigners data from API
+  const fetchForeigners = useCallback(async (refresh = false) => {
+    try {
+      const newSkipCount = refresh ? 0 : pagination.skipCount;
+      
+      if (refresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      
+      setError(null);
+      
+      // Prepare API parameters
+      const params = {
+        skipCount: newSkipCount,
+        maxResultCount: pagination.maxResultCount,
+        keyword: searchQuery,
+      };
+      
+      // Add additional filter parameters if needed
+      if (nationalitySearch) {
+        params.countryName = nationalitySearch;
+      }
+      
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+      
+      // Call the API
+      const response = await ForeignersService.getAllByBusiness(params);
+      
+      // Update state with API response
+      if (refresh) {
+        setForeigners(response.items || []);
+      } else {
+        setForeigners(prev => [...prev, ...(response.items || [])]);
+      }
+      
+      setPagination({
+        skipCount: newSkipCount + (response.items?.length || 0),
+        maxResultCount: pagination.maxResultCount,
+        totalCount: response.totalCount || 0,
+      });
+    } catch (err) {
+      setError('Không thể tải danh sách người nước ngoài. Vui lòng thử lại sau.');
+      console.error('Error fetching foreigners:', err);
+      Alert.alert('Lỗi', 'Không thể tải danh sách người nước ngoài. Vui lòng thử lại sau.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [pagination.skipCount, pagination.maxResultCount, searchQuery, nationalitySearch, statusFilter]);
+  
+  // Load data when component mounts or filters change
+  useEffect(() => {
+    fetchForeigners(true);
+  }, [fetchForeigners]);
+  
+  // Function to handle refreshing
+  const onRefresh = useCallback(() => {
+    fetchForeigners(true);
+  }, [fetchForeigners]);
+  
+  // Function to load more data when scrolling to bottom
+  const handleLoadMore = () => {
+    if (!loading && pagination.skipCount < pagination.totalCount) {
+      fetchForeigners();
+    }
+  };
+  
+  // Check if visa or residence card is expired
+  const checkIfExpired = (expiryDate) => {
+    if (!expiryDate) return false;
+    const today = new Date();
+    const expiry = new Date(expiryDate);
+    return expiry < today;
+  };
+  
+  // Calculate statistics counts from API data
+  const getStatusCount = (status) => {
+    return foreigners.filter(f => f.status === status).length;
+  };
   
   const handleViewDetails = (foreigner) => {
-    navigation.navigate('ForeignerDetail', { foreigner });
+    navigation.navigate('ForeignerDetail', { foreigner, foreignerId: foreigner.id });
   };
   
   const handleAddForeigner = () => {
     navigation.navigate('AddForeigner');
   };
   
-  const renderForeignerItem = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => handleViewDetails(item)}
-    >
-      <View style={styles.cardContent}>
-        <View style={styles.avatarContainer}>
-          <Ionicons name="person" size={32} color="#085924" />
-        </View>
-        <View style={styles.cardTextContainer}>
-          <Text style={styles.cardTitle}>{item.name}</Text>
-          <Text style={styles.cardSubtitle}>Hộ chiếu: {item.passport}</Text>
-          <Text style={styles.cardSubtitle}>Quốc tịch: {item.nationality}</Text>
-          <View style={[
-            styles.statusBadge, 
-            item.status === 'Đang hoạt động' ? styles.activeStatus : 
-            item.status === 'Chờ xác nhận' ? styles.pendingStatus : 
-            styles.expiredStatus
-          ]}>
-            <Text style={styles.statusText}>{item.status}</Text>
+  // Get status display based on data
+  const getStatusDisplay = (foreigner) => {
+    if (foreigner.status) return foreigner.status;
+    
+    // Fallback logic if status is not set
+    if (checkIfExpired(foreigner.visaExpiryDate) || 
+        checkIfExpired(foreigner.workPermitExpiryDate) || 
+        checkIfExpired(foreigner.residenceCardExpiry)) {
+      return STATUS_EXPIRED;
+    }
+    
+    return STATUS_ACTIVE;
+  };
+  
+  const getStatusStyle = (status) => {
+    switch(status) {
+      case STATUS_ACTIVE:
+        return styles.activeStatus;
+      case STATUS_PENDING:
+        return styles.pendingStatus;
+      case STATUS_EXPIRED:
+        return styles.expiredStatus;
+      default:
+        return styles.activeStatus;
+    }
+  };
+  
+  const renderForeignerItem = ({ item }) => {
+    const status = getStatusDisplay(item);
+    
+    return (
+      <TouchableOpacity 
+        style={styles.card}
+        onPress={() => handleViewDetails(item)}
+      >
+        <View style={styles.cardContent}>
+          <View style={styles.avatarContainer}>
+            <Ionicons name="person" size={32} color="#085924" />
+          </View>
+          <View style={styles.cardTextContainer}>
+            <Text style={styles.cardTitle}>{item.fullName}</Text>
+            <Text style={styles.cardSubtitle}>Hộ chiếu: {item.passportNumber}</Text>
+            <Text style={styles.cardSubtitle}>Quốc tịch: {item.countryName}</Text>
+            {item.jobTitle && (
+              <Text style={styles.cardSubtitle}>Vị trí: {item.jobTitle}</Text>
+            )}
+            <View style={[styles.statusBadge, getStatusStyle(status)]}>
+              <Text style={styles.statusText}>{status}</Text>
+            </View>
           </View>
         </View>
-      </View>
-      <Ionicons name="chevron-forward" size={24} color="#085924" />
-    </TouchableOpacity>
-  );
+        <Ionicons name="chevron-forward" size={24} color="#085924" />
+      </TouchableOpacity>
+    );
+  };
   
   const resetFilters = () => {
     setStatusFilter('all');
@@ -146,6 +203,20 @@ const ForeignerManagementScreen = ({navigation}) => {
   
   const applyFilters = () => {
     setShowFilterModal(false);
+    // Fetching will be triggered by useEffect when the filters change
+    fetchForeigners(true);
+  };
+  
+  // Render footer for FlatList with loading indicator
+  const renderFooter = () => {
+    if (!loading) return null;
+    
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#085924" />
+        <Text style={styles.footerText}>Đang tải thêm...</Text>
+      </View>
+    );
   };
   
   return (
@@ -165,9 +236,14 @@ const ForeignerManagementScreen = ({navigation}) => {
             placeholder="Tìm kiếm theo tên, hộ chiếu..."
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmitEditing={() => fetchForeigners(true)}
+            returnKeyType="search"
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              setSearchQuery('');
+              fetchForeigners(true);
+            }}>
               <Ionicons name="close-circle" size={20} color="#666" />
             </TouchableOpacity>
           ) : null}
@@ -206,28 +282,28 @@ const ForeignerManagementScreen = ({navigation}) => {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.statusChip, statusFilter === 'Đang hoạt động' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('Đang hoạt động')}
+                style={[styles.statusChip, statusFilter === STATUS_ACTIVE && styles.activeStatusChip]}
+                onPress={() => setStatusFilter(STATUS_ACTIVE)}
               >
-                <Text style={[styles.statusChipText, statusFilter === 'Đang hoạt động' && styles.activeStatusChipText]}>
+                <Text style={[styles.statusChipText, statusFilter === STATUS_ACTIVE && styles.activeStatusChipText]}>
                   Đang hoạt động
                 </Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.statusChip, statusFilter === 'Chờ xác nhận' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('Chờ xác nhận')}
+                style={[styles.statusChip, statusFilter === STATUS_PENDING && styles.activeStatusChip]}
+                onPress={() => setStatusFilter(STATUS_PENDING)}
               >
-                <Text style={[styles.statusChipText, statusFilter === 'Chờ xác nhận' && styles.activeStatusChipText]}>
+                <Text style={[styles.statusChipText, statusFilter === STATUS_PENDING && styles.activeStatusChipText]}>
                   Chờ xác nhận
                 </Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[styles.statusChip, statusFilter === 'Hết hạn' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('Hết hạn')}
+                style={[styles.statusChip, statusFilter === STATUS_EXPIRED && styles.activeStatusChip]}
+                onPress={() => setStatusFilter(STATUS_EXPIRED)}
               >
-                <Text style={[styles.statusChipText, statusFilter === 'Hết hạn' && styles.activeStatusChipText]}>
+                <Text style={[styles.statusChipText, statusFilter === STATUS_EXPIRED && styles.activeStatusChipText]}>
                   Hết hạn
                 </Text>
               </TouchableOpacity>
@@ -245,25 +321,25 @@ const ForeignerManagementScreen = ({navigation}) => {
       
       <View style={styles.statsContainer}>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{foreigners.filter(f => f.status === 'Đang hoạt động').length}</Text>
+          <Text style={styles.statNumber}>{getStatusCount(STATUS_ACTIVE)}</Text>
           <Text style={styles.statLabel}>Hoạt động</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{foreigners.filter(f => f.status === 'Chờ xác nhận').length}</Text>
+          <Text style={styles.statNumber}>{getStatusCount(STATUS_PENDING)}</Text>
           <Text style={styles.statLabel}>Chờ duyệt</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{foreigners.filter(f => f.status === 'Hết hạn').length}</Text>
+          <Text style={styles.statNumber}>{getStatusCount(STATUS_EXPIRED)}</Text>
           <Text style={styles.statLabel}>Hết hạn</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statNumber}>{foreigners.length}</Text>
+          <Text style={styles.statNumber}>{pagination.totalCount || foreigners.length}</Text>
           <Text style={styles.statLabel}>Tổng số</Text>
         </View>
       </View>
       
       <View style={styles.resultsContainer}>
-        <Text style={styles.resultsText}>Đã tìm thấy {filteredForeigners.length} người</Text>
+        <Text style={styles.resultsText}>Đã tìm thấy {pagination.totalCount || foreigners.length} người</Text>
         
         {statusFilter !== 'all' && (
           <View style={styles.activeFilterContainer}>
@@ -278,18 +354,48 @@ const ForeignerManagementScreen = ({navigation}) => {
         )}
       </View>
       
-      <FlatList
-        data={filteredForeigners}
-        renderItem={renderForeignerItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="alert-circle-outline" size={50} color="#085924" />
-            <Text style={styles.emptyText}>Không tìm thấy người nước ngoài</Text>
-          </View>
-        }
-      />
+      {error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={40} color="#d9534f" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity 
+            style={styles.retryButton}
+            onPress={() => fetchForeigners(true)}
+          >
+            <Text style={styles.retryButtonText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={foreigners}
+          renderItem={renderForeignerItem}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl 
+              refreshing={refreshing} 
+              onRefresh={onRefresh}
+              colors={['#085924']}
+            />
+          }
+          ListFooterComponent={renderFooter}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.3}
+          ListEmptyComponent={
+            loading && !refreshing ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#085924" />
+                <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="alert-circle-outline" size={50} color="#085924" />
+                <Text style={styles.emptyText}>Không tìm thấy người nước ngoài</Text>
+              </View>
+            )
+          }
+        />
+      )}
       
       <TouchableOpacity 
         style={styles.addButton}
@@ -333,37 +439,37 @@ const ForeignerManagementScreen = ({navigation}) => {
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.filterOption, statusFilter === 'Đang hoạt động' && styles.selectedFilter]}
-              onPress={() => setStatusFilter('Đang hoạt động')}
+              style={[styles.filterOption, statusFilter === STATUS_ACTIVE && styles.selectedFilter]}
+              onPress={() => setStatusFilter(STATUS_ACTIVE)}
             >
-              <Text style={[styles.filterOptionText, statusFilter === 'Đang hoạt động' && styles.selectedFilterText]}>
+              <Text style={[styles.filterOptionText, statusFilter === STATUS_ACTIVE && styles.selectedFilterText]}>
                 Đang hoạt động
               </Text>
-              {statusFilter === 'Đang hoạt động' && (
+              {statusFilter === STATUS_ACTIVE && (
                 <Ionicons name="checkmark" size={20} color="#fff" />
               )}
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.filterOption, statusFilter === 'Chờ xác nhận' && styles.selectedFilter]}
-              onPress={() => setStatusFilter('Chờ xác nhận')}
+              style={[styles.filterOption, statusFilter === STATUS_PENDING && styles.selectedFilter]}
+              onPress={() => setStatusFilter(STATUS_PENDING)}
             >
-              <Text style={[styles.filterOptionText, statusFilter === 'Chờ xác nhận' && styles.selectedFilterText]}>
+              <Text style={[styles.filterOptionText, statusFilter === STATUS_PENDING && styles.selectedFilterText]}>
                 Chờ xác nhận
               </Text>
-              {statusFilter === 'Chờ xác nhận' && (
+              {statusFilter === STATUS_PENDING && (
                 <Ionicons name="checkmark" size={20} color="#fff" />
               )}
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.filterOption, statusFilter === 'Hết hạn' && styles.selectedFilter]}
-              onPress={() => setStatusFilter('Hết hạn')}
+              style={[styles.filterOption, statusFilter === STATUS_EXPIRED && styles.selectedFilter]}
+              onPress={() => setStatusFilter(STATUS_EXPIRED)}
             >
-              <Text style={[styles.filterOptionText, statusFilter === 'Hết hạn' && styles.selectedFilterText]}>
+              <Text style={[styles.filterOptionText, statusFilter === STATUS_EXPIRED && styles.selectedFilterText]}>
                 Hết hạn
               </Text>
-              {statusFilter === 'Hết hạn' && (
+              {statusFilter === STATUS_EXPIRED && (
                 <Ionicons name="checkmark" size={20} color="#fff" />
               )}
             </TouchableOpacity>
@@ -650,6 +756,49 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 10,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 10,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  footerLoader: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
+  },
+  footerText: {
+    marginLeft: 10,
+    color: '#666',
   },
   addButton: {
     backgroundColor: '#085924',

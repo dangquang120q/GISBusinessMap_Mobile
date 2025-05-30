@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,11 @@ import {
   TextInput,
   Modal,
   FlatList,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import BusinessBranchService from '../../services/BusinessBranchService';
 
 const BusinessFacilityScreen = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -17,76 +20,108 @@ const BusinessFacilityScreen = ({navigation}) => {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [advancedSearch, setAdvancedSearch] = useState(false);
   const [businessTypeSearch, setBusinessTypeSearch] = useState('');
+  const [facilities, setFacilities] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
-  const [facilities, setFacilities] = useState([
-    {
-      id: '1',
-      name: 'Cơ sở kinh doanh 1',
-      address: '123 Đường Nguyễn Huệ',
-      status: 'Hoạt động',
-      licenseNumber: 'BL-2023-001',
-      operationDate: '01/01/2023',
-      expiryDate: '31/12/2025',
-      owner: 'Nguyễn Văn A',
-      contactPhone: '0123456789',
-      contactEmail: 'nguyenvana@example.com',
-      businessType: 'Nhà hàng',
-      area: '120m²',
-      employees: 15,
-    },
-    {
-      id: '2',
-      name: 'Cơ sở kinh doanh 2',
-      address: '456 Đường Lê Lợi',
-      status: 'Chờ phê duyệt',
-      licenseNumber: 'BL-2023-002',
-      operationDate: '15/03/2023',
-      expiryDate: '14/03/2026',
-      owner: 'Trần Thị B',
-      contactPhone: '0987654321',
-      contactEmail: 'tranthib@example.com',
-      businessType: 'Cửa hàng bán lẻ',
-      area: '80m²',
-      employees: 8,
-    },
-    {
-      id: '3',
-      name: 'Cơ sở kinh doanh 3',
-      address: '789 Đường Hàm Nghi',
-      status: 'Không hoạt động',
-      licenseNumber: 'BL-2022-015',
-      operationDate: '10/07/2022',
-      expiryDate: '09/07/2025',
-      owner: 'Lê Văn C',
-      contactPhone: '0123789456',
-      contactEmail: 'levanc@example.com',
-      businessType: 'Khách sạn',
-      area: '500m²',
-      employees: 25,
+  // Hàm lấy danh sách cơ sở kinh doanh từ API
+  const fetchBusinessFacilities = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = {
+        maxResultCount: 100,
+        skipCount: 0,
+        keyword: searchQuery || undefined,
+        // Chỉ đưa filter vào khi chọn trạng thái cụ thể
+        isActive: statusFilter === 'Hoạt động' ? true : 
+                 statusFilter === 'Không hoạt động' ? false : undefined,
+      };
+      
+      // Thêm filter theo businessTypeId nếu có
+      if (businessTypeSearch) {
+        // Giả sử có mapping từ tên loại hình kinh doanh sang ID, hoặc search trực tiếp bằng tên
+        params.businessTypeName = businessTypeSearch;
+      }
+      
+      const result = await BusinessBranchService.getList(params);
+      
+      if (result && result.items) {
+        // Chuyển đổi dữ liệu API sang định dạng dùng trong UI
+        const transformedData = result.items.map(item => ({
+          id: item.id.toString(),
+          name: item.branchName || 'Chưa có tên',
+          address: formatAddress(item),
+          status: item.isActive ? 'Hoạt động' : item.status === 'Chờ phê duyệt' ? 'Chờ phê duyệt' : 'Không hoạt động',
+          licenseNumber: item.businessCode || 'Chưa có mã',
+          operationDate: formatDate(item.establishedDate),
+          expiryDate: formatDate(item.deactivationDate),
+          owner: item.representativeName || 'Chưa có',
+          contactPhone: item.phoneNumber || 'Chưa có',
+          contactEmail: item.email || 'Chưa có',
+          businessType: item.businessTypeName || 'Khác',
+          area: '',
+          employees: 0,
+        }));
+        
+        setFacilities(transformedData);
+      }
+    } catch (err) {
+      console.error('Error fetching business facilities:', err);
+      setError('Không thể tải danh sách cơ sở kinh doanh');
+      Alert.alert(
+        'Lỗi',
+        'Không thể tải danh sách cơ sở kinh doanh. Vui lòng thử lại sau.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+  
+  // Hàm định dạng địa chỉ từ dữ liệu API
+  const formatAddress = (item) => {
+    const parts = [];
+    if (item.addressDetail) parts.push(item.addressDetail);
+    if (item.wardName) parts.push(item.wardName);
+    if (item.districtName) parts.push(item.districtName);
+    
+    return parts.join(', ') || 'Chưa có địa chỉ';
+  };
+  
+  // Hàm định dạng ngày tháng
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+  };
+  
+  // Tải danh sách khi component mount và khi search/filter thay đổi
+  useEffect(() => {
+    fetchBusinessFacilities();
+  }, []);
+  
+  // Áp dụng tìm kiếm
+  const handleSearch = () => {
+    fetchBusinessFacilities();
+  };
 
   // Filter facilities based on search and status
   const filteredFacilities = facilities.filter(facility => {
-    // Match search query
-    const matchesSearch = 
-      facility.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      facility.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      facility.licenseNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    // Match status filter
-    const matchesStatus = statusFilter === 'all' || facility.status === statusFilter;
-    
     // Match business type if specified
     const matchesBusinessType = 
       !businessTypeSearch || 
       facility.businessType.toLowerCase().includes(businessTypeSearch.toLowerCase());
     
-    return matchesSearch && matchesStatus && matchesBusinessType;
+    // Match status filter
+    const matchesStatus = statusFilter === 'all' || facility.status === statusFilter;
+    
+    return matchesBusinessType && matchesStatus;
   });
 
   const handleViewDetails = (facility) => {
-    navigation.navigate('BusinessFacilityDetail', { facility });
+    navigation.navigate('BusinessFacilityDetail', { facilityId: facility.id });
   };
 
   const handleAddFacility = () => {
@@ -98,10 +133,12 @@ const BusinessFacilityScreen = ({navigation}) => {
     setSearchQuery('');
     setBusinessTypeSearch('');
     setShowFilterModal(false);
+    fetchBusinessFacilities();
   };
   
   const applyFilters = () => {
     setShowFilterModal(false);
+    fetchBusinessFacilities();
   };
 
   const renderFacilityItem = ({ item }) => (
@@ -152,9 +189,14 @@ const BusinessFacilityScreen = ({navigation}) => {
             placeholder="Tìm kiếm theo tên, địa chỉ..."
             value={searchQuery}
             onChangeText={setSearchQuery}
+            onSubmitEditing={handleSearch}
+            returnKeyType="search"
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
+            <TouchableOpacity onPress={() => {
+              setSearchQuery('');
+              fetchBusinessFacilities();
+            }}>
               <Ionicons name="close-circle" size={20} color="#666" />
             </TouchableOpacity>
           ) : null}
@@ -177,6 +219,7 @@ const BusinessFacilityScreen = ({navigation}) => {
               placeholder="Nhập loại hình kinh doanh..."
               value={businessTypeSearch}
               onChangeText={setBusinessTypeSearch}
+              onSubmitEditing={handleSearch}
             />
           </View>
           
@@ -185,7 +228,10 @@ const BusinessFacilityScreen = ({navigation}) => {
             <View style={styles.statusChips}>
               <TouchableOpacity 
                 style={[styles.statusChip, statusFilter === 'all' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('all')}
+                onPress={() => {
+                  setStatusFilter('all');
+                  fetchBusinessFacilities();
+                }}
               >
                 <Text style={[styles.statusChipText, statusFilter === 'all' && styles.activeStatusChipText]}>
                   Tất cả
@@ -194,7 +240,10 @@ const BusinessFacilityScreen = ({navigation}) => {
               
               <TouchableOpacity 
                 style={[styles.statusChip, statusFilter === 'Hoạt động' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('Hoạt động')}
+                onPress={() => {
+                  setStatusFilter('Hoạt động');
+                  fetchBusinessFacilities();
+                }}
               >
                 <Text style={[styles.statusChipText, statusFilter === 'Hoạt động' && styles.activeStatusChipText]}>
                   Hoạt động
@@ -203,7 +252,10 @@ const BusinessFacilityScreen = ({navigation}) => {
               
               <TouchableOpacity 
                 style={[styles.statusChip, statusFilter === 'Chờ phê duyệt' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('Chờ phê duyệt')}
+                onPress={() => {
+                  setStatusFilter('Chờ phê duyệt');
+                  fetchBusinessFacilities();
+                }}
               >
                 <Text style={[styles.statusChipText, statusFilter === 'Chờ phê duyệt' && styles.activeStatusChipText]}>
                   Chờ phê duyệt
@@ -212,7 +264,10 @@ const BusinessFacilityScreen = ({navigation}) => {
               
               <TouchableOpacity 
                 style={[styles.statusChip, statusFilter === 'Không hoạt động' && styles.activeStatusChip]}
-                onPress={() => setStatusFilter('Không hoạt động')}
+                onPress={() => {
+                  setStatusFilter('Không hoạt động');
+                  fetchBusinessFacilities();
+                }}
               >
                 <Text style={[styles.statusChipText, statusFilter === 'Không hoạt động' && styles.activeStatusChipText]}>
                   Không hoạt động
@@ -257,7 +312,10 @@ const BusinessFacilityScreen = ({navigation}) => {
             <Text style={styles.activeFilterLabel}>Lọc theo: </Text>
             <View style={styles.activeFilterBadge}>
               <Text style={styles.activeFilterText}>{statusFilter}</Text>
-              <TouchableOpacity onPress={() => setStatusFilter('all')}>
+              <TouchableOpacity onPress={() => {
+                setStatusFilter('all');
+                fetchBusinessFacilities();
+              }}>
                 <Ionicons name="close-circle" size={16} color="#085924" />
               </TouchableOpacity>
             </View>
@@ -265,18 +323,25 @@ const BusinessFacilityScreen = ({navigation}) => {
         )}
       </View>
       
-      <FlatList
-        data={filteredFacilities}
-        renderItem={renderFacilityItem}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Ionicons name="business-outline" size={50} color="#085924" />
-            <Text style={styles.emptyText}>Không tìm thấy cơ sở kinh doanh nào</Text>
-          </View>
-        }
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#085924" />
+          <Text style={styles.loadingText}>Đang tải danh sách...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredFacilities}
+          renderItem={renderFacilityItem}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="business-outline" size={50} color="#085924" />
+              <Text style={styles.emptyText}>Không tìm thấy cơ sở kinh doanh nào</Text>
+            </View>
+          }
+        />
+      )}
       
       <TouchableOpacity 
         style={styles.addButton}
@@ -626,6 +691,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
     color: '#333',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   emptyContainer: {
     alignItems: 'center',

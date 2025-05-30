@@ -8,53 +8,85 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import ForeignersService from '../../services/ForeignersService';
 
 const AddForeignerScreen = ({ navigation }) => {
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  
+  // Status constants
+  const STATUS_ACTIVE = 'Đang hoạt động';
+  const STATUS_PENDING = 'Chờ xác nhận';
+  
   const [formData, setFormData] = useState({
-    name: '',
-    passport: '',
-    nationality: '',
+    fullName: '',
+    passportNumber: '',
+    countryName: '',
     gender: '',
-    birthDate: '',
-    purpose: '',
+    dateOfBirth: '',
     entryDate: '',
-    expiryDate: '',
-    phone: '',
-    address: '',
-    workPosition: '',
+    visaExpiryDate: '',
+    phoneNumber: '',
+    stayAddress: '',
+    jobTitle: '',
+    workplace: '',
+    visaNumber: '',
+    visaType: '',
+    visaIssuedDate: '',
+    entryPort: '',
+    email: '',
+    workPermitNumber: '',
+    workPermitExpiryDate: '',
+    residenceCardNumber: '',
+    residenceCardExpiry: '',
     notes: '',
-    status: 'Chờ xác nhận',
+    status: STATUS_PENDING,
   });
 
-  const [errors, setErrors] = useState({});
+  // Function to parse DD/MM/YYYY to API format YYYY-MM-DD
+  const parseDateForApi = (dateString) => {
+    if (!dateString || !dateString.trim()) return null;
+    
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return null;
+    
+    return `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
+  };
 
   const validateForm = () => {
     let isValid = true;
     const newErrors = {};
 
-    // Validate name
-    if (!formData.name.trim()) {
-      newErrors.name = 'Vui lòng nhập tên người nước ngoài';
+    // Validate fullName
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = 'Vui lòng nhập tên người nước ngoài';
       isValid = false;
     }
 
-    // Validate passport
-    if (!formData.passport.trim()) {
-      newErrors.passport = 'Vui lòng nhập số hộ chiếu';
+    // Validate passportNumber
+    if (!formData.passportNumber.trim()) {
+      newErrors.passportNumber = 'Vui lòng nhập số hộ chiếu';
       isValid = false;
     }
 
-    // Validate nationality
-    if (!formData.nationality.trim()) {
-      newErrors.nationality = 'Vui lòng nhập quốc tịch';
+    // Validate countryName
+    if (!formData.countryName.trim()) {
+      newErrors.countryName = 'Vui lòng nhập quốc tịch';
       isValid = false;
     }
 
-    // Validate phone (simple validation)
-    if (formData.phone.trim() && !/^\d{10,11}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Số điện thoại không hợp lệ';
+    // Validate phoneNumber (simple validation)
+    if (formData.phoneNumber.trim() && !/^\d{10,11}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
+      isValid = false;
+    }
+
+    // Validate email (simple validation)
+    if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Email không hợp lệ';
       isValid = false;
     }
 
@@ -66,13 +98,28 @@ const AddForeignerScreen = ({ navigation }) => {
       isValid = false;
     }
     
-    if (formData.expiryDate.trim() && !dateRegex.test(formData.expiryDate)) {
-      newErrors.expiryDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+    if (formData.visaExpiryDate.trim() && !dateRegex.test(formData.visaExpiryDate)) {
+      newErrors.visaExpiryDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
       isValid = false;
     }
     
-    if (formData.birthDate.trim() && !dateRegex.test(formData.birthDate)) {
-      newErrors.birthDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+    if (formData.dateOfBirth.trim() && !dateRegex.test(formData.dateOfBirth)) {
+      newErrors.dateOfBirth = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+      isValid = false;
+    }
+
+    if (formData.visaIssuedDate.trim() && !dateRegex.test(formData.visaIssuedDate)) {
+      newErrors.visaIssuedDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+      isValid = false;
+    }
+
+    if (formData.workPermitExpiryDate.trim() && !dateRegex.test(formData.workPermitExpiryDate)) {
+      newErrors.workPermitExpiryDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+      isValid = false;
+    }
+
+    if (formData.residenceCardExpiry.trim() && !dateRegex.test(formData.residenceCardExpiry)) {
+      newErrors.residenceCardExpiry = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
       isValid = false;
     }
 
@@ -80,19 +127,65 @@ const AddForeignerScreen = ({ navigation }) => {
     return isValid;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      // Here you would typically send the data to your API
-      Alert.alert(
-        'Thành công',
-        'Đã đăng ký người nước ngoài thành công',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      try {
+        setLoading(true);
+        
+        // Prepare data for API
+        const foreignerData = {
+          fullName: formData.fullName,
+          passportNumber: formData.passportNumber,
+          gender: formData.gender,
+          dateOfBirth: parseDateForApi(formData.dateOfBirth),
+          countryName: formData.countryName,
+          visaNumber: formData.visaNumber,
+          visaType: formData.visaType,
+          visaIssuedDate: parseDateForApi(formData.visaIssuedDate),
+          visaExpiryDate: parseDateForApi(formData.visaExpiryDate),
+          entryDate: parseDateForApi(formData.entryDate),
+          entryPort: formData.entryPort,
+          stayAddress: formData.stayAddress,
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          workplace: formData.workplace,
+          jobTitle: formData.jobTitle,
+          workPermitNumber: formData.workPermitNumber,
+          workPermitExpiryDate: parseDateForApi(formData.workPermitExpiryDate),
+          residenceCardNumber: formData.residenceCardNumber,
+          residenceCardExpiry: parseDateForApi(formData.residenceCardExpiry),
+          notes: formData.notes,
+          status: formData.status,
+        };
+        
+        // Call API to create
+        const result = await ForeignersService.create(foreignerData);
+        
+        setLoading(false);
+        
+        // Show success message
+        Alert.alert(
+          'Thành công',
+          'Đã đăng ký người nước ngoài thành công',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Navigate to detail page if the foreigner was created successfully
+                if (result && result.id) {
+                  navigation.navigate('ForeignerDetail', { foreignerId: result.id });
+                } else {
+                  navigation.goBack();
+                }
+              },
+            },
+          ]
+        );
+      } catch (err) {
+        console.error('Error creating foreigner:', err);
+        setLoading(false);
+        Alert.alert('Lỗi', 'Không thể đăng ký người nước ngoài. Vui lòng thử lại sau.');
+      }
     } else {
       Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
     }
@@ -133,34 +226,34 @@ const AddForeignerScreen = ({ navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Họ tên*</Text>
             <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
+              style={[styles.input, errors.fullName && styles.inputError]}
               placeholder="Nhập tên người nước ngoài"
-              value={formData.name}
-              onChangeText={(text) => handleInputChange('name', text)}
+              value={formData.fullName}
+              onChangeText={(text) => handleInputChange('fullName', text)}
             />
-            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+            {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Số hộ chiếu*</Text>
             <TextInput
-              style={[styles.input, errors.passport && styles.inputError]}
+              style={[styles.input, errors.passportNumber && styles.inputError]}
               placeholder="Nhập số hộ chiếu"
-              value={formData.passport}
-              onChangeText={(text) => handleInputChange('passport', text)}
+              value={formData.passportNumber}
+              onChangeText={(text) => handleInputChange('passportNumber', text)}
             />
-            {errors.passport && <Text style={styles.errorText}>{errors.passport}</Text>}
+            {errors.passportNumber && <Text style={styles.errorText}>{errors.passportNumber}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Quốc tịch*</Text>
             <TextInput
-              style={[styles.input, errors.nationality && styles.inputError]}
+              style={[styles.input, errors.countryName && styles.inputError]}
               placeholder="Nhập quốc tịch"
-              value={formData.nationality}
-              onChangeText={(text) => handleInputChange('nationality', text)}
+              value={formData.countryName}
+              onChangeText={(text) => handleInputChange('countryName', text)}
             />
-            {errors.nationality && <Text style={styles.errorText}>{errors.nationality}</Text>}
+            {errors.countryName && <Text style={styles.errorText}>{errors.countryName}</Text>}
           </View>
           
           <View style={styles.row}>
@@ -201,51 +294,156 @@ const AddForeignerScreen = ({ navigation }) => {
             <View style={[styles.inputContainer, styles.halfInput]}>
               <Text style={styles.inputLabel}>Ngày sinh</Text>
               <TextInput
-                style={[styles.input, errors.birthDate && styles.inputError]}
+                style={[styles.input, errors.dateOfBirth && styles.inputError]}
                 placeholder="DD/MM/YYYY"
-                value={formData.birthDate}
-                onChangeText={(text) => handleInputChange('birthDate', text)}
+                value={formData.dateOfBirth}
+                onChangeText={(text) => handleInputChange('dateOfBirth', text)}
               />
-              {errors.birthDate && <Text style={styles.errorText}>{errors.birthDate}</Text>}
+              {errors.dateOfBirth && <Text style={styles.errorText}>{errors.dateOfBirth}</Text>}
             </View>
-          </View>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Mục đích lưu trú</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập mục đích lưu trú"
-              value={formData.purpose}
-              onChangeText={(text) => handleInputChange('purpose', text)}
-            />
           </View>
         </View>
         
         <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Thời gian lưu trú</Text>
+          <Text style={styles.sectionTitle}>Thông tin thị thực</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Số thị thực</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập số thị thực"
+              value={formData.visaNumber}
+              onChangeText={(text) => handleInputChange('visaNumber', text)}
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Loại thị thực</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập loại thị thực"
+              value={formData.visaType}
+              onChangeText={(text) => handleInputChange('visaType', text)}
+            />
+          </View>
           
           <View style={styles.row}>
             <View style={[styles.inputContainer, styles.halfInput]}>
-              <Text style={styles.inputLabel}>Ngày đến</Text>
+              <Text style={styles.inputLabel}>Ngày cấp</Text>
               <TextInput
-                style={[styles.input, errors.entryDate && styles.inputError]}
+                style={[styles.input, errors.visaIssuedDate && styles.inputError]}
                 placeholder="DD/MM/YYYY"
-                value={formData.entryDate}
-                onChangeText={(text) => handleInputChange('entryDate', text)}
+                value={formData.visaIssuedDate}
+                onChangeText={(text) => handleInputChange('visaIssuedDate', text)}
               />
-              {errors.entryDate && <Text style={styles.errorText}>{errors.entryDate}</Text>}
+              {errors.visaIssuedDate && <Text style={styles.errorText}>{errors.visaIssuedDate}</Text>}
             </View>
             
             <View style={[styles.inputContainer, styles.halfInput]}>
               <Text style={styles.inputLabel}>Ngày hết hạn</Text>
               <TextInput
-                style={[styles.input, errors.expiryDate && styles.inputError]}
+                style={[styles.input, errors.visaExpiryDate && styles.inputError]}
                 placeholder="DD/MM/YYYY"
-                value={formData.expiryDate}
-                onChangeText={(text) => handleInputChange('expiryDate', text)}
+                value={formData.visaExpiryDate}
+                onChangeText={(text) => handleInputChange('visaExpiryDate', text)}
               />
-              {errors.expiryDate && <Text style={styles.errorText}>{errors.expiryDate}</Text>}
+              {errors.visaExpiryDate && <Text style={styles.errorText}>{errors.visaExpiryDate}</Text>}
             </View>
+          </View>
+        </View>
+        
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Thông tin nhập cảnh</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Cửa khẩu nhập cảnh</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập cửa khẩu nhập cảnh"
+              value={formData.entryPort}
+              onChangeText={(text) => handleInputChange('entryPort', text)}
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Ngày nhập cảnh</Text>
+            <TextInput
+              style={[styles.input, errors.entryDate && styles.inputError]}
+              placeholder="DD/MM/YYYY"
+              value={formData.entryDate}
+              onChangeText={(text) => handleInputChange('entryDate', text)}
+            />
+            {errors.entryDate && <Text style={styles.errorText}>{errors.entryDate}</Text>}
+          </View>
+        </View>
+        
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Thông tin làm việc</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Nơi làm việc</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập nơi làm việc"
+              value={formData.workplace}
+              onChangeText={(text) => handleInputChange('workplace', text)}
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Vị trí công việc</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập vị trí công việc"
+              value={formData.jobTitle}
+              onChangeText={(text) => handleInputChange('jobTitle', text)}
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Số giấy phép lao động</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập số giấy phép lao động"
+              value={formData.workPermitNumber}
+              onChangeText={(text) => handleInputChange('workPermitNumber', text)}
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Ngày hết hạn giấy phép</Text>
+            <TextInput
+              style={[styles.input, errors.workPermitExpiryDate && styles.inputError]}
+              placeholder="DD/MM/YYYY"
+              value={formData.workPermitExpiryDate}
+              onChangeText={(text) => handleInputChange('workPermitExpiryDate', text)}
+            />
+            {errors.workPermitExpiryDate && <Text style={styles.errorText}>{errors.workPermitExpiryDate}</Text>}
+          </View>
+        </View>
+        
+        <View style={styles.formSection}>
+          <Text style={styles.sectionTitle}>Thẻ tạm trú</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Số thẻ tạm trú</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập số thẻ tạm trú"
+              value={formData.residenceCardNumber}
+              onChangeText={(text) => handleInputChange('residenceCardNumber', text)}
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Ngày hết hạn thẻ</Text>
+            <TextInput
+              style={[styles.input, errors.residenceCardExpiry && styles.inputError]}
+              placeholder="DD/MM/YYYY"
+              value={formData.residenceCardExpiry}
+              onChangeText={(text) => handleInputChange('residenceCardExpiry', text)}
+            />
+            {errors.residenceCardExpiry && <Text style={styles.errorText}>{errors.residenceCardExpiry}</Text>}
           </View>
         </View>
         
@@ -255,13 +453,25 @@ const AddForeignerScreen = ({ navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Số điện thoại</Text>
             <TextInput
-              style={[styles.input, errors.phone && styles.inputError]}
+              style={[styles.input, errors.phoneNumber && styles.inputError]}
               placeholder="Nhập số điện thoại"
-              value={formData.phone}
-              onChangeText={(text) => handleInputChange('phone', text)}
+              value={formData.phoneNumber}
+              onChangeText={(text) => handleInputChange('phoneNumber', text)}
               keyboardType="phone-pad"
             />
-            {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
+            {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Email</Text>
+            <TextInput
+              style={[styles.input, errors.email && styles.inputError]}
+              placeholder="Nhập email"
+              value={formData.email}
+              onChangeText={(text) => handleInputChange('email', text)}
+              keyboardType="email-address"
+            />
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
@@ -269,19 +479,9 @@ const AddForeignerScreen = ({ navigation }) => {
             <TextInput
               style={styles.input}
               placeholder="Nhập địa chỉ lưu trú"
-              value={formData.address}
-              onChangeText={(text) => handleInputChange('address', text)}
+              value={formData.stayAddress}
+              onChangeText={(text) => handleInputChange('stayAddress', text)}
               multiline
-            />
-          </View>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Vị trí công việc</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập vị trí công việc"
-              value={formData.workPosition}
-              onChangeText={(text) => handleInputChange('workPosition', text)}
             />
           </View>
         </View>
@@ -308,26 +508,26 @@ const AddForeignerScreen = ({ navigation }) => {
             <TouchableOpacity 
               style={[
                 styles.statusButton, 
-                formData.status === 'Đang hoạt động' && styles.activeStatusButton
+                formData.status === STATUS_ACTIVE && styles.activeStatusButton
               ]}
-              onPress={() => handleInputChange('status', 'Đang hoạt động')}
+              onPress={() => handleInputChange('status', STATUS_ACTIVE)}
             >
               <Text style={[
                 styles.statusButtonText,
-                formData.status === 'Đang hoạt động' && styles.activeStatusButtonText
+                formData.status === STATUS_ACTIVE && styles.activeStatusButtonText
               ]}>Đang hoạt động</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
               style={[
                 styles.statusButton, 
-                formData.status === 'Chờ xác nhận' && styles.pendingStatusButton
+                formData.status === STATUS_PENDING && styles.pendingStatusButton
               ]}
-              onPress={() => handleInputChange('status', 'Chờ xác nhận')}
+              onPress={() => handleInputChange('status', STATUS_PENDING)}
             >
               <Text style={[
                 styles.statusButtonText,
-                formData.status === 'Chờ xác nhận' && styles.activeStatusButtonText
+                formData.status === STATUS_PENDING && styles.activeStatusButtonText
               ]}>Chờ xác nhận</Text>
             </TouchableOpacity>
           </View>
@@ -344,6 +544,7 @@ const AddForeignerScreen = ({ navigation }) => {
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
+            disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
           </TouchableOpacity>
@@ -351,8 +552,13 @@ const AddForeignerScreen = ({ navigation }) => {
           <TouchableOpacity 
             style={styles.submitButton}
             onPress={handleSubmit}
+            disabled={loading}
           >
-            <Text style={styles.submitButtonText}>Đăng ký</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Đăng ký</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>

@@ -8,44 +8,97 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import BusinessBranchService from '../../services/BusinessBranchService';
 
 const EditBusinessFacilityScreen = ({ route, navigation }) => {
-  const { facility } = route.params;
+  const { facilityId, facility: initialFacility } = route.params;
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
   
   const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    licenseNumber: '',
-    businessType: '',
-    operationDate: '',
-    expiryDate: '',
-    owner: '',
-    contactPhone: '',
-    contactEmail: '',
+    id: '',
+    branchName: '',
+    addressDetail: '',
+    businessCode: '',
+    businessTypeId: '',
+    businessTypeName: '',
+    establishedDate: '',
+    deactivationDate: '',
+    representativeName: '',
+    phoneNumber: '',
+    email: '',
+    website: '',
     area: '',
-    employees: '',
+    isActive: true,
   });
 
+  // Hàm chuyển đổi ngày từ API (ISO) sang DD/MM/YYYY
+  const formatDateForForm = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
+  };
+
+  // Hàm chuyển đổi ngày từ DD/MM/YYYY sang YYYY-MM-DDT00:00:00
+  const parseDateForApi = (dateString) => {
+    if (!dateString || !dateString.trim()) return null;
+    
+    const parts = dateString.split('/');
+    if (parts.length !== 3) return null;
+    
+    return `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
+  };
+
   useEffect(() => {
-    // Pre-fill form with facility data
-    if (facility) {
-      setFormData({
-        name: facility.name || '',
-        address: facility.address || '',
-        licenseNumber: facility.licenseNumber || '',
-        businessType: facility.businessType || '',
-        operationDate: facility.operationDate || '',
-        expiryDate: facility.expiryDate || '',
-        owner: facility.owner || '',
-        contactPhone: facility.contactPhone || '',
-        contactEmail: facility.contactEmail || '',
-        area: facility.area ? facility.area.replace('m²', '') : '',
-        employees: facility.employees ? facility.employees.toString() : '',
-      });
-    }
-  }, [facility]);
+    const fetchFacilityDetails = async () => {
+      try {
+        if (!facilityId && !initialFacility) return;
+        
+        setInitialLoading(true);
+        
+        let facilityData = initialFacility;
+        
+        // If we have an ID but no facility object, fetch from API
+        if (facilityId && !initialFacility) {
+          const response = await BusinessBranchService.get(facilityId);
+          facilityData = response;
+        }
+        
+        if (facilityData) {
+          // Transform API data to form format
+          setFormData({
+            id: facilityData.id || '',
+            branchName: facilityData.branchName || facilityData.name || '',
+            addressDetail: facilityData.addressDetail || facilityData.address || '',
+            businessCode: facilityData.businessCode || facilityData.licenseNumber || '',
+            businessTypeId: facilityData.businessTypeId || '',
+            businessTypeName: facilityData.businessTypeName || facilityData.businessType || '',
+            establishedDate: facilityData.establishedDate ? formatDateForForm(facilityData.establishedDate) : 
+                           facilityData.operationDate || '',
+            deactivationDate: facilityData.deactivationDate ? formatDateForForm(facilityData.deactivationDate) : 
+                             facilityData.expiryDate || '',
+            representativeName: facilityData.representativeName || facilityData.owner || '',
+            phoneNumber: facilityData.phoneNumber || facilityData.contactPhone || '',
+            email: facilityData.email || facilityData.contactEmail || '',
+            website: facilityData.website || '',
+            area: facilityData.area ? facilityData.area.toString().replace('m²', '') : '',
+            isActive: facilityData.isActive !== undefined ? facilityData.isActive : 
+                     facilityData.status === 'Hoạt động',
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching facility details:', err);
+        Alert.alert('Lỗi', 'Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchFacilityDetails();
+  }, [facilityId, initialFacility]);
 
   const [errors, setErrors] = useState({});
 
@@ -54,47 +107,60 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
     const newErrors = {};
 
     // Validate name
-    if (!formData.name.trim()) {
-      newErrors.name = 'Vui lòng nhập tên cơ sở';
+    if (!formData.branchName.trim()) {
+      newErrors.branchName = 'Vui lòng nhập tên cơ sở';
       isValid = false;
     }
 
     // Validate address
-    if (!formData.address.trim()) {
-      newErrors.address = 'Vui lòng nhập địa chỉ';
+    if (!formData.addressDetail.trim()) {
+      newErrors.addressDetail = 'Vui lòng nhập địa chỉ';
       isValid = false;
     }
 
-    // Validate license number
-    if (!formData.licenseNumber.trim()) {
-      newErrors.licenseNumber = 'Vui lòng nhập số giấy phép';
+    // Validate business code
+    if (!formData.businessCode.trim()) {
+      newErrors.businessCode = 'Vui lòng nhập số giấy phép';
       isValid = false;
     }
 
     // Validate business type
-    if (!formData.businessType.trim()) {
-      newErrors.businessType = 'Vui lòng nhập loại hình kinh doanh';
+    if (!formData.businessTypeName.trim()) {
+      newErrors.businessTypeName = 'Vui lòng nhập loại hình kinh doanh';
       isValid = false;
     }
 
     // Validate owner
-    if (!formData.owner.trim()) {
-      newErrors.owner = 'Vui lòng nhập tên chủ sở hữu';
+    if (!formData.representativeName.trim()) {
+      newErrors.representativeName = 'Vui lòng nhập tên chủ sở hữu';
       isValid = false;
     }
 
     // Validate phone (simple validation)
-    if (!formData.contactPhone.trim()) {
-      newErrors.contactPhone = 'Vui lòng nhập số điện thoại';
+    if (!formData.phoneNumber.trim()) {
+      newErrors.phoneNumber = 'Vui lòng nhập số điện thoại';
       isValid = false;
-    } else if (!/^\d{10,11}$/.test(formData.contactPhone.replace(/\D/g, ''))) {
-      newErrors.contactPhone = 'Số điện thoại không hợp lệ';
+    } else if (!/^\d{10,11}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
       isValid = false;
     }
 
     // Validate email (simple validation)
-    if (formData.contactEmail.trim() && !/\S+@\S+\.\S+/.test(formData.contactEmail)) {
-      newErrors.contactEmail = 'Địa chỉ email không hợp lệ';
+    if (formData.email.trim() && !/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Địa chỉ email không hợp lệ';
+      isValid = false;
+    }
+
+    // Validate dates (simple format validation)
+    const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
+    
+    if (formData.establishedDate.trim() && !dateRegex.test(formData.establishedDate)) {
+      newErrors.establishedDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+      isValid = false;
+    }
+    
+    if (formData.deactivationDate.trim() && !dateRegex.test(formData.deactivationDate)) {
+      newErrors.deactivationDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
       isValid = false;
     }
 
@@ -102,19 +168,53 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
     return isValid;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (validateForm()) {
-      // Here you would typically send the data to your API
-      Alert.alert(
-        'Thành công',
-        'Thông tin cơ sở kinh doanh đã được cập nhật thành công',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      try {
+        setLoading(true);
+        
+        // Prepare data for API
+        const branchData = {
+          id: formData.id,
+          branchName: formData.branchName,
+          addressDetail: formData.addressDetail,
+          businessCode: formData.businessCode,
+          businessTypeId: formData.businessTypeId || null,
+          businessTypeName: formData.businessTypeName,
+          establishedDate: parseDateForApi(formData.establishedDate),
+          deactivationDate: parseDateForApi(formData.deactivationDate),
+          representativeName: formData.representativeName,
+          phoneNumber: formData.phoneNumber,
+          email: formData.email,
+          website: formData.website,
+          isActive: formData.isActive,
+          status: formData.isActive ? 'Hoạt động' : 'Không hoạt động',
+        };
+        
+        // Call API to update
+        await BusinessBranchService.update(branchData);
+        
+        setLoading(false);
+        
+        // Show success message
+        Alert.alert(
+          'Thành công',
+          'Thông tin cơ sở kinh doanh đã được cập nhật thành công',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate('BusinessFacilityDetail', { 
+                facilityId: formData.id,
+                refresh: true 
+              }),
+            },
+          ]
+        );
+      } catch (err) {
+        console.error('Error updating business facility:', err);
+        setLoading(false);
+        Alert.alert('Lỗi', 'Không thể cập nhật thông tin cơ sở kinh doanh. Vui lòng thử lại sau.');
+      }
     } else {
       Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
     }
@@ -134,6 +234,15 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
       });
     }
   };
+
+  if (initialLoading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#085924" />
+        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -155,55 +264,87 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Tên cơ sở*</Text>
             <TextInput
-              style={[styles.input, errors.name && styles.inputError]}
+              style={[styles.input, errors.branchName && styles.inputError]}
               placeholder="Nhập tên cơ sở"
-              value={formData.name}
-              onChangeText={(text) => handleInputChange('name', text)}
+              value={formData.branchName}
+              onChangeText={(text) => handleInputChange('branchName', text)}
             />
-            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+            {errors.branchName && <Text style={styles.errorText}>{errors.branchName}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Số giấy phép*</Text>
             <TextInput
-              style={[styles.input, errors.licenseNumber && styles.inputError]}
+              style={[styles.input, errors.businessCode && styles.inputError]}
               placeholder="Nhập số giấy phép"
-              value={formData.licenseNumber}
-              onChangeText={(text) => handleInputChange('licenseNumber', text)}
+              value={formData.businessCode}
+              onChangeText={(text) => handleInputChange('businessCode', text)}
             />
-            {errors.licenseNumber && <Text style={styles.errorText}>{errors.licenseNumber}</Text>}
+            {errors.businessCode && <Text style={styles.errorText}>{errors.businessCode}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Loại hình kinh doanh*</Text>
             <TextInput
-              style={[styles.input, errors.businessType && styles.inputError]}
+              style={[styles.input, errors.businessTypeName && styles.inputError]}
               placeholder="Nhập loại hình kinh doanh"
-              value={formData.businessType}
-              onChangeText={(text) => handleInputChange('businessType', text)}
+              value={formData.businessTypeName}
+              onChangeText={(text) => handleInputChange('businessTypeName', text)}
             />
-            {errors.businessType && <Text style={styles.errorText}>{errors.businessType}</Text>}
+            {errors.businessTypeName && <Text style={styles.errorText}>{errors.businessTypeName}</Text>}
           </View>
           
           <View style={styles.row}>
             <View style={[styles.inputContainer, styles.halfInput]}>
               <Text style={styles.inputLabel}>Ngày hoạt động</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.establishedDate && styles.inputError]}
                 placeholder="DD/MM/YYYY"
-                value={formData.operationDate}
-                onChangeText={(text) => handleInputChange('operationDate', text)}
+                value={formData.establishedDate}
+                onChangeText={(text) => handleInputChange('establishedDate', text)}
               />
+              {errors.establishedDate && <Text style={styles.errorText}>{errors.establishedDate}</Text>}
             </View>
             
             <View style={[styles.inputContainer, styles.halfInput]}>
               <Text style={styles.inputLabel}>Ngày hết hạn</Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.deactivationDate && styles.inputError]}
                 placeholder="DD/MM/YYYY"
-                value={formData.expiryDate}
-                onChangeText={(text) => handleInputChange('expiryDate', text)}
+                value={formData.deactivationDate}
+                onChangeText={(text) => handleInputChange('deactivationDate', text)}
               />
+              {errors.deactivationDate && <Text style={styles.errorText}>{errors.deactivationDate}</Text>}
+            </View>
+          </View>
+          
+          <View style={styles.statusContainer}>
+            <Text style={styles.inputLabel}>Trạng thái</Text>
+            <View style={styles.statusOptions}>
+              <TouchableOpacity 
+                style={[
+                  styles.statusOption, 
+                  formData.isActive === true && styles.activeStatusOption
+                ]}
+                onPress={() => handleInputChange('isActive', true)}
+              >
+                <Text style={styles.statusOptionText}>Hoạt động</Text>
+                {formData.isActive === true && (
+                  <Ionicons name="checkmark-circle" size={20} color="#085924" />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[
+                  styles.statusOption, 
+                  formData.isActive === false && styles.inactiveStatusOption
+                ]}
+                onPress={() => handleInputChange('isActive', false)}
+              >
+                <Text style={styles.statusOptionText}>Không hoạt động</Text>
+                {formData.isActive === false && (
+                  <Ionicons name="checkmark-circle" size={20} color="#dc3545" />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -214,13 +355,13 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Địa chỉ*</Text>
             <TextInput
-              style={[styles.input, errors.address && styles.inputError]}
+              style={[styles.input, errors.addressDetail && styles.inputError]}
               placeholder="Nhập địa chỉ cơ sở"
-              value={formData.address}
-              onChangeText={(text) => handleInputChange('address', text)}
+              value={formData.addressDetail}
+              onChangeText={(text) => handleInputChange('addressDetail', text)}
               multiline
             />
-            {errors.address && <Text style={styles.errorText}>{errors.address}</Text>}
+            {errors.addressDetail && <Text style={styles.errorText}>{errors.addressDetail}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
@@ -246,91 +387,48 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Tên chủ sở hữu*</Text>
             <TextInput
-              style={[styles.input, errors.owner && styles.inputError]}
+              style={[styles.input, errors.representativeName && styles.inputError]}
               placeholder="Nhập tên chủ sở hữu"
-              value={formData.owner}
-              onChangeText={(text) => handleInputChange('owner', text)}
+              value={formData.representativeName}
+              onChangeText={(text) => handleInputChange('representativeName', text)}
             />
-            {errors.owner && <Text style={styles.errorText}>{errors.owner}</Text>}
+            {errors.representativeName && <Text style={styles.errorText}>{errors.representativeName}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Số điện thoại*</Text>
             <TextInput
-              style={[styles.input, errors.contactPhone && styles.inputError]}
+              style={[styles.input, errors.phoneNumber && styles.inputError]}
               placeholder="Nhập số điện thoại"
-              value={formData.contactPhone}
-              onChangeText={(text) => handleInputChange('contactPhone', text)}
+              value={formData.phoneNumber}
+              onChangeText={(text) => handleInputChange('phoneNumber', text)}
               keyboardType="phone-pad"
             />
-            {errors.contactPhone && <Text style={styles.errorText}>{errors.contactPhone}</Text>}
+            {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Email</Text>
             <TextInput
-              style={[styles.input, errors.contactEmail && styles.inputError]}
+              style={[styles.input, errors.email && styles.inputError]}
               placeholder="Nhập địa chỉ email"
-              value={formData.contactEmail}
-              onChangeText={(text) => handleInputChange('contactEmail', text)}
+              value={formData.email}
+              onChangeText={(text) => handleInputChange('email', text)}
               keyboardType="email-address"
+              autoCapitalize="none"
             />
-            {errors.contactEmail && <Text style={styles.errorText}>{errors.contactEmail}</Text>}
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Số nhân viên</Text>
+            <Text style={styles.inputLabel}>Website</Text>
             <TextInput
               style={styles.input}
-              placeholder="Nhập số lượng nhân viên"
-              value={formData.employees}
-              onChangeText={(text) => handleInputChange('employees', text)}
-              keyboardType="numeric"
+              placeholder="Nhập địa chỉ website"
+              value={formData.website}
+              onChangeText={(text) => handleInputChange('website', text)}
+              autoCapitalize="none"
             />
-          </View>
-        </View>
-        
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Trạng thái cơ sở</Text>
-          <View style={styles.statusButtons}>
-            <TouchableOpacity 
-              style={[
-                styles.statusButton, 
-                formData.status === 'Hoạt động' && styles.activeStatusButton
-              ]}
-              onPress={() => handleInputChange('status', 'Hoạt động')}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                formData.status === 'Hoạt động' && styles.activeStatusButtonText
-              ]}>Hoạt động</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.statusButton, 
-                formData.status === 'Chờ phê duyệt' && styles.pendingStatusButton
-              ]}
-              onPress={() => handleInputChange('status', 'Chờ phê duyệt')}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                formData.status === 'Chờ phê duyệt' && styles.activeStatusButtonText
-              ]}>Chờ phê duyệt</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.statusButton, 
-                formData.status === 'Không hoạt động' && styles.inactiveStatusButton
-              ]}
-              onPress={() => handleInputChange('status', 'Không hoạt động')}
-            >
-              <Text style={[
-                styles.statusButtonText,
-                formData.status === 'Không hoạt động' && styles.activeStatusButtonText
-              ]}>Không hoạt động</Text>
-            </TouchableOpacity>
           </View>
         </View>
         
@@ -338,6 +436,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
+            disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
           </TouchableOpacity>
@@ -345,8 +444,13 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <TouchableOpacity 
             style={styles.submitButton}
             onPress={handleSubmit}
+            disabled={loading}
           >
-            <Text style={styles.submitButtonText}>Lưu thay đổi</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.submitButtonText}>Lưu thay đổi</Text>
+            )}
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -358,6 +462,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#666',
   },
   header: {
     backgroundColor: '#085924',
@@ -438,6 +553,35 @@ const styles = StyleSheet.create({
   halfInput: {
     width: '48%',
   },
+  statusContainer: {
+    marginTop: 8,
+  },
+  statusOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statusOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    flex: 0.48,
+  },
+  activeStatusOption: {
+    borderColor: '#085924',
+    backgroundColor: '#e0f2e9',
+  },
+  inactiveStatusOption: {
+    borderColor: '#dc3545',
+    backgroundColor: '#f8d7da',
+  },
+  statusOptionText: {
+    fontSize: 15,
+    color: '#333',
+  },
   mapButton: {
     backgroundColor: '#085924',
     borderRadius: 8,
@@ -452,40 +596,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 8,
-  },
-  statusButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  statusButton: {
-    borderWidth: 1,
-    borderColor: '#085924',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-  },
-  activeStatusButton: {
-    backgroundColor: '#085924',
-    borderColor: '#085924',
-  },
-  pendingStatusButton: {
-    backgroundColor: '#ffc107',
-    borderColor: '#ffc107',
-  },
-  inactiveStatusButton: {
-    backgroundColor: '#dc3545',
-    borderColor: '#dc3545',
-  },
-  statusButtonText: {
-    color: '#085924',
-    fontWeight: '500',
-  },
-  activeStatusButtonText: {
-    color: '#fff',
   },
   buttonsContainer: {
     flexDirection: 'row',

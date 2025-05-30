@@ -9,14 +9,15 @@ class BusinessBranchService {
    * 
    * @param {Object} params Tham số tìm kiếm
    * @param {string} params.keyword Từ khóa tìm kiếm
-   * @param {string} params.types Loại cơ sở kinh doanh (comma-separated: restaurant,hotel,shop)
+   * @param {string} params.businessTypeId Loại cơ sở kinh doanh
+   * @param {boolean} params.isActive Trạng thái hoạt động
    * @param {number} params.maxResultCount Số lượng kết quả tối đa
    * @param {number} params.skipCount Số lượng kết quả bỏ qua (phân trang)
    * @returns {Promise} Promise với kết quả danh sách cơ sở kinh doanh
    */
   async getList(params = {}) {
     try {
-      const response = await api.get('/api/services/app/BusinessBranch/GetList', { params });
+      const response = await api.get('/api/services/app/BusinessBranches/GetAll', { params });
       return response.result;
     } catch (error) {
       console.error('Error fetching business branches:', error);
@@ -27,12 +28,12 @@ class BusinessBranchService {
   /**
    * Lấy chi tiết cơ sở kinh doanh theo ID
    * 
-   * @param {string} id ID của cơ sở kinh doanh
+   * @param {number} id ID của cơ sở kinh doanh
    * @returns {Promise} Promise với kết quả chi tiết cơ sở kinh doanh
    */
   async get(id) {
     try {
-      const response = await api.get(`/api/services/app/BusinessBranch/Get?id=${id}`);
+      const response = await api.get('/api/services/app/BusinessBranches/Get', { params: { Id: id } });
       return response.result;
     } catch (error) {
       console.error('Error fetching business branch details:', error);
@@ -50,44 +51,23 @@ class BusinessBranchService {
    * @param {Object} bounds.southWest Tọa độ góc tây nam
    * @param {number} bounds.southWest.lat Vĩ độ góc tây nam
    * @param {number} bounds.southWest.lng Kinh độ góc tây nam
-   * @param {string} types Loại cơ sở kinh doanh (comma-separated: restaurant,hotel,shop)
+   * @param {number} businessTypeId Loại cơ sở kinh doanh
    * @returns {Promise} Promise với kết quả danh sách cơ sở kinh doanh trong phạm vi
    */
-  async getInBounds(bounds, types) {
+  async getInBounds(bounds, businessTypeId) {
     try {
       const params = {
-        northEastLat: bounds.northEast.lat,
-        northEastLng: bounds.northEast.lng,
-        southWestLat: bounds.southWest.lat,
-        southWestLng: bounds.southWest.lng,
-        types: types
+        minLat: bounds.southWest.lat,
+        maxLat: bounds.northEast.lat,
+        minLng: bounds.southWest.lng,
+        maxLng: bounds.northEast.lng,
+        businessTypeId: businessTypeId
       };
       
-      const response = await api.get('/api/services/app/BusinessBranch/GetInBounds', { params });
+      const response = await api.get('/api/services/app/BusinessBranches/GetInBounds', { params });
       return response.result;
     } catch (error) {
       console.error('Error fetching business branches in bounds:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Lấy danh sách tất cả chi nhánh kinh doanh với các bộ lọc
-   * 
-   * @param {number} params.minLat Số bản ghi bỏ qua
-   * @param {number} params.maxLat Số bản ghi tối đa
-   * @param {number} params.minLng Số bản ghi bỏ qua
-   * @param {number} params.maxLng Số bản ghi tối đa
-   */
-  async getAll(params = {}, signal) {
-    try {
-      const response = await api.get('/api/services/app/BusinessBranches/GetInBounds', { 
-        params,
-        signal
-      });
-      return response.result;
-    } catch (error) {
-      console.error('Error fetching business branches:', error);
       throw error;
     }
   }
@@ -157,19 +137,20 @@ class BusinessBranchService {
   }
 
   /**
-   * Tính điểm đánh giá trung bình cho một chi nhánh
+   * Kích hoạt/vô hiệu hóa chi nhánh kinh doanh
    * 
-   * @param {number} branchId ID của chi nhánh
-   * @returns {Promise} Promise với kết quả điểm đánh giá trung bình
+   * @param {number} id ID của chi nhánh 
+   * @param {boolean} isActive Trạng thái kích hoạt
+   * @returns {Promise} Promise với kết quả thay đổi trạng thái
    */
-  async calculateAverageRating(branchId) {
+  async changeStatus(id, isActive) {
     try {
-      const response = await api.post('/api/services/app/BusinessBranches/CalculateAverageRating', null, {
-        params: { branchId }
+      const response = await api.post('/api/services/app/BusinessBranches/ChangeStatus', null, {
+        params: { id, isActive }
       });
       return response.result;
     } catch (error) {
-      console.error(`Error calculating average rating for branch id ${branchId}:`, error);
+      console.error(`Error changing status for business branch with id ${id}:`, error);
       throw error;
     }
   }
