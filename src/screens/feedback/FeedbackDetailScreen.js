@@ -18,10 +18,10 @@ import BusinessFeedbackType from '../../services/BusinessFeedbackType';
 const FeedbackDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { feedbackId } = route.params;
+  const { feedbackId, feedback: initialFeedback } = route.params;
   
-  const [loading, setLoading] = useState(true);
-  const [feedback, setFeedback] = useState(null);
+  const [loading, setLoading] = useState(!initialFeedback);
+  const [feedback, setFeedback] = useState(initialFeedback || null);
   
   useEffect(() => {
     const fetchFeedbackDetail = async () => {
@@ -41,8 +41,11 @@ const FeedbackDetailScreen = () => {
       }
     };
 
-    fetchFeedbackDetail();
-  }, [feedbackId]);
+    // Only fetch if feedback wasn't provided in navigation params
+    if (!initialFeedback) {
+      fetchFeedbackDetail();
+    }
+  }, [feedbackId, initialFeedback]);
 
   // Format date string to local date format
   const formatDate = (dateString) => {

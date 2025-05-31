@@ -48,14 +48,14 @@ class BusinessBranchService {
    * @param {number} params.skipCount Số lượng kết quả bỏ qua (phân trang)
    * @returns {Promise} Promise với kết quả danh sách cơ sở kinh doanh
    */
-  async getAll(params = {}) {
+  async getAllByBusiness(params = {}) {
     try {
       // Đảm bảo businessTypeId là chuỗi nếu tồn tại
       if (params.businessTypeId !== undefined && params.businessTypeId !== null) {
         params.businessTypeId = String(params.businessTypeId);
       }
       
-      const response = await api.get('/api/services/app/BusinessBranches/GetAll', { params });
+      const response = await api.get('/api/services/app/BusinessBranches/GetAllByBusiness', { params });
       return response.result || { items: [] }; // Đảm bảo luôn trả về cấu trúc hợp lệ
     } catch (error) {
       throw this.handleApiError(error, 'Lỗi khi lấy danh sách cơ sở kinh doanh');
@@ -69,7 +69,7 @@ class BusinessBranchService {
    * @returns {Promise} Promise với kết quả danh sách
    */
   async getList(params = {}) {
-    return this.getAll(params);
+    return this.getAllByBusiness(params);
   }
 
   /**

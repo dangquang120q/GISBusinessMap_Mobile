@@ -25,9 +25,13 @@ import styles from './HomeScreenStyles';
 import { AuthContext } from '../../context/AuthContext';
 import {launchImageLibrary} from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MultiSelectDropdown, REPORT_TYPE_OPTIONS } from '../../components/MultiSelectDropdown';
+import { MultiSelectDropdown } from '../../components/MultiSelectDropdown';
 import BusinessBranchService from '../../services/BusinessBranchService';
 import BusinessTypeCatalogService from '../../services/BusinessTypeCatalogService';
+import BusinessFeedbackTypeService from '../../services/BusinessFeedbackTypeService';
+import BusinessFeedbackService from '../../services/BusinessFeedbackService';
+import api from '../../services/api';
+import SessionService from '../../services/SessionService';
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
 
@@ -65,7 +69,7 @@ export default function HomeScreen() {
   // States for modals
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
   const [isReviewListVisible, setIsReviewListVisible] = useState(false);
-  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+  const [isFeedbackModalVisible, setIsFeedbackModalVisible] = useState(false);
   const [isMapTypeModalVisible, setIsMapTypeModalVisible] = useState(false);
   
   // States for filters
@@ -81,10 +85,10 @@ export default function HomeScreen() {
   });
 
   // State for reports
-  const [reportData, setReportData] = useState({
+  const [feedbackData, setFeedbackData] = useState({
     reporterName: '',
     phone: '',
-    reportTypes: [], // Array để lưu nhiều loại phản ánh
+    feedbackTypes: [], // Array để lưu nhiều loại phản ánh
     content: '',
     media: [],
   });
@@ -117,6 +121,12 @@ export default function HomeScreen() {
   
   // Add state for business types
   const [businessTypes, setBusinessTypes] = useState([]);
+  
+  // Add state for feedback types
+  const [feedbackTypes, setFeedbackTypes] = useState([]);
+  
+  // Add state for user data
+  const [userData, setUserData] = useState(null);
   
   // Fetch all facilities once when component mounts
   useEffect(() => {
@@ -235,6 +245,28 @@ export default function HomeScreen() {
     };
   }, []);
 
+  // Fetch feedback types when component mounts
+  useEffect(() => {
+    const fetchFeedbackTypes = async () => {
+      try {
+        const response = await BusinessFeedbackTypeService.getList();
+        if (response && Array.isArray(response)) {
+          // Transform the response to the format needed by MultiSelectDropdown
+          const formattedTypes = response.map(type => ({
+            label: type.feedbackTypeName,
+            value: type.id.toString()
+          }));
+          setFeedbackTypes(formattedTypes);
+        } else {
+          console.warn('Feedback types API returned unexpected format');
+        }
+      } catch (error) {
+        console.error('Error fetching feedback types:', error);
+      }
+    };
+    
+    fetchFeedbackTypes();
+  }, []);
 
   // Function to apply filters to the data
   const applyFilters = (data, currentFilters) => {
@@ -1231,8 +1263,56 @@ export default function HomeScreen() {
     );
   };
 
-  // Handle report submission
-  const handleReportSubmit = () => {
+  // Add this helper function to upload files
+  const uploadFile = async (fileUri) => {
+    if (!fileUri) return null;
+    
+    try {
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      
+      // Get the file name and extension from the URI
+      const uriParts = fileUri.split('/');
+      const fileName = uriParts[uriParts.length - 1];
+      
+      // Determine file type based on extension
+      const fileExtension = fileName.split('.').pop().toLowerCase();
+      let fileType = 'image/jpeg'; // Default
+      
+      if (fileExtension === 'png') {
+        fileType = 'image/png';
+      } else if (fileExtension === 'mp4' || fileExtension === 'mov') {
+        fileType = 'video/' + fileExtension;
+      }
+      
+      // Append the file to the form data
+      formData.append('file', {
+        uri: fileUri,
+        name: fileName,
+        type: fileType,
+      });
+      
+      // Call your API to upload the file
+      // This is a placeholder - replace with your actual file upload API
+      const response = await api.post('/api/services/app/File/Upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Return the URL of the uploaded file
+      return response.result;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      return null;
+    }
+  };
+
+  // Add a new state for feedback submission loading
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Update the handleFeedbackSubmit function to handle single selection
+  const handleFeedbackSubmit = async () => {
     if (!isAuthenticated) {
       Alert.alert(
         'Cần đăng nhập',
@@ -1246,42 +1326,88 @@ export default function HomeScreen() {
     }
     if (!selectedFacility) return;
     
-    if (!reportData.phone.trim()) {
+    if (!feedbackData.phone.trim()) {
       Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại');
       return;
     }
     
-    if (!reportData.content.trim()) {
+    if (!feedbackData.content.trim()) {
       Alert.alert('Thông báo', 'Vui lòng nhập nội dung phản ánh');
       return;
     }
+
+    if (feedbackData.feedbackTypes.length === 0) {
+      Alert.alert('Thông báo', 'Vui lòng chọn loại phản ánh');
+      return;
+    }
     
-    // In a real app, make an API call to submit the report
-    console.log('Report submitted:', {
-      facilityId: selectedFacility.id,
-      facilityName: selectedFacility.name,
-      ...reportData,
-    });
+    // Update to show loading
+    setIsSubmitting(true);
     
-    // Close modal and reset form
-    setIsReportModalVisible(false);
-    
-    // Show success message
-    Alert.alert(
-      'Thành công',
-      'Phản ánh của bạn đã được gửi thành công tới cơ quan chức năng',
-      [{ text: 'OK' }]
-    );
-    
-    // Reset form data
-    setReportData({
-      reporterName: '',
-      phone: '',
-      email: '',
-      reportTypes: [], // Array để lưu nhiều loại phản ánh
-      content: '',
-      media: [],
-    });
+    try {
+      // Upload files if any
+      let attachmentUrl = '';
+      if (feedbackData.media.length > 0) {
+        // Upload the first file and get the URL
+        const fileUrl = await uploadFile(feedbackData.media[0].url);
+        if (fileUrl) {
+          attachmentUrl = fileUrl;
+        }
+      }
+      
+      // Prepare the data for API
+      const submitData = {
+        FeedbackTypeId: parseInt(feedbackData.feedbackTypes[0], 10), // Use the first selected type
+        SenderPhone: feedbackData.phone,
+        Content: feedbackData.content,
+        AttachmentUrl: attachmentUrl,
+        Channel: 'mobile',
+        BusinessBranchId: selectedFacility.id
+      };
+      
+      // Add user data if available (from userData state)
+      if (userData) {
+        submitData.SenderName = userData.name || '';
+        submitData.SenderEmail = userData.emailAddress || '';
+      }
+      
+      // Add address from the selected facility
+      if (selectedFacility && selectedFacility.address) {
+        submitData.SenderAddress = selectedFacility.address;
+      }
+
+      // Call the API
+      const response = await BusinessFeedbackService.createByUser(submitData);
+      
+      // Close modal and reset form
+      setIsFeedbackModalVisible(false);
+      
+      // Show success message
+      Alert.alert(
+        'Thành công',
+        'Phản ánh của bạn đã được gửi thành công tới cơ quan chức năng',
+        [{ text: 'OK' }]
+      );
+      
+      // Reset form data
+      setFeedbackData({
+        reporterName: '',
+        phone: '',
+        email: '',
+        feedbackTypes: [], // Array để lưu nhiều loại phản ánh
+        content: '',
+        media: [],
+      });
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      Alert.alert(
+        'Lỗi',
+        'Có lỗi xảy ra khi gửi phản ánh. Vui lòng thử lại sau.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Thêm component cho tab content
@@ -1416,13 +1542,13 @@ export default function HomeScreen() {
           <View style={styles.actionButtonsContainer}>
             <TouchableOpacity 
               style={[styles.actionButton, {backgroundColor: '#e74c3c'}]}
-              onPress={() => setIsReportModalVisible(true)}
+              onPress={() => openFeedbackModal()}
             >
               <View style={{flexDirection: 'row', alignItems: 'center'}}>
                 <View>
                   <Ionicons name="warning-outline" size={20} color="#fff" />
                 </View>
-                <Text style={styles.actionButtonText}>Phản ánh lên cơ quan chức năng</Text>
+                <Text style={styles.actionButtonText}>Gửi phản ánh lên cơ quan chức năng</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -1629,8 +1755,8 @@ export default function HomeScreen() {
   const menuButtonRef = useRef(null);
 
   // Thêm hàm xử lý chọn loại phản ánh
-  const handleReportTypeSelect = (type) => {
-    const currentTypes = [...reportData.reportTypes];
+  const handleFeedbackTypeSelect = (type) => {
+    const currentTypes = [...feedbackData.feedbackTypes];
     const index = currentTypes.indexOf(type);
     
     if (index === -1) {
@@ -1639,9 +1765,9 @@ export default function HomeScreen() {
       currentTypes.splice(index, 1);
     }
     
-    setReportData({
-      ...reportData,
-      reportTypes: currentTypes
+    setFeedbackData({
+      ...feedbackData,
+      feedbackTypes: currentTypes
     });
   };
 
@@ -1653,9 +1779,9 @@ export default function HomeScreen() {
         media: [...newReview.media, media]
       });
     } else {
-      setReportData({
-        ...reportData,
-        media: [...reportData.media, media]
+      setFeedbackData({
+        ...feedbackData,
+        media: [...feedbackData.media, media]
       });
     }
   };
@@ -1670,10 +1796,10 @@ export default function HomeScreen() {
         media: newMedia
       });
     } else {
-      const newMedia = [...reportData.media];
+      const newMedia = [...feedbackData.media];
       newMedia.splice(index, 1);
-      setReportData({
-        ...reportData,
+      setFeedbackData({
+        ...feedbackData,
         media: newMedia
       });
     }
@@ -1794,16 +1920,16 @@ export default function HomeScreen() {
   );
 
   // Cập nhật modal phản ánh
-  const renderReportModal = () => (
+  const renderFeedbackModal = () => (
     <Modal
-      visible={isReportModalVisible}
+      visible={isFeedbackModalVisible}
       transparent={true}
       animationType="slide">
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Phản ánh lên cơ quan chức năng</Text>
-            <TouchableOpacity onPress={() => setIsReportModalVisible(false)}>
+            <Text style={styles.modalTitle}>Gửi phản ánh lên cơ quan chức năng</Text>
+            <TouchableOpacity onPress={() => setIsFeedbackModalVisible(false)}>
               <View>
                 <Ionicons name="close" size={24} color="#085924" />
               </View>
@@ -1822,8 +1948,8 @@ export default function HomeScreen() {
               <Text style={styles.label}>Số điện thoại: <Text style={{color: 'red'}}>*</Text></Text>
               <TextInput
                 style={styles.input}
-                value={reportData.phone}
-                onChangeText={(text) => setReportData({...reportData, phone: text})}
+                value={feedbackData.phone}
+                onChangeText={(text) => setFeedbackData({...feedbackData, phone: text})}
                 placeholder="Nhập số điện thoại"
                 keyboardType="phone-pad"
               />
@@ -1832,8 +1958,10 @@ export default function HomeScreen() {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Loại phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
               <MultiSelectDropdown
-                selectedValues={reportData.reportTypes}
-                onChange={types => setReportData({ ...reportData, reportTypes: types })}
+                options={feedbackTypes.length > 0 ? feedbackTypes : [{ label: 'Đang tải...', value: '0', disabled: true }]}
+                selectedValues={feedbackData.feedbackTypes}
+                onChange={types => setFeedbackData({ ...feedbackData, feedbackTypes: types })}
+                placeholder="Chọn loại phản ánh"
               />
             </View>
             
@@ -1841,8 +1969,8 @@ export default function HomeScreen() {
               <Text style={styles.label}>Nội dung phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
               <TextInput
                 style={[styles.input, styles.textArea]}
-                value={reportData.content}
-                onChangeText={(text) => setReportData({...reportData, content: text})}
+                value={feedbackData.content}
+                onChangeText={(text) => setFeedbackData({...feedbackData, content: text})}
                 placeholder="Nhập nội dung phản ánh chi tiết..."
                 multiline={true}
                 numberOfLines={5}
@@ -1857,7 +1985,7 @@ export default function HomeScreen() {
                   showsHorizontalScrollIndicator={false}
                   style={styles.mediaScrollView}
                 >
-                  {reportData.media.map((media, index) => (
+                  {feedbackData.media.map((media, index) => (
                     <View key={index} style={styles.mediaPreviewContainer}>
                       <Image 
                         source={{uri: media.type === 'video' ? media.thumbnail : media.url}} 
@@ -1888,8 +2016,13 @@ export default function HomeScreen() {
             
             <TouchableOpacity
               style={[styles.submitButton, {backgroundColor: '#e74c3c'}]}
-              onPress={handleReportSubmit}>
-              <Text style={styles.submitButtonText}>Gửi phản ánh</Text>
+              onPress={handleFeedbackSubmit}
+              disabled={isSubmitting}>
+              {isSubmitting ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.submitButtonText}>Gửi phản ánh</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -2111,6 +2244,45 @@ export default function HomeScreen() {
       updateMapMarkers();
     }
   }, [businessTypes, facilities, mapLoaded]);
+
+  // Fetch user data when component mounts and user is authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchUserData();
+    }
+  }, [isAuthenticated]);
+  
+  // Function to fetch user data
+  const fetchUserData = async () => {
+    try {
+      const response = await SessionService.getCurrentLoginInformations();
+      if (response && response.user) {
+        setUserData(response.user);
+        
+        // If feedback modal is open, auto-populate the phone number
+        if (feedbackData) {
+          setFeedbackData(prev => ({
+            ...prev,
+            phone: response.user.phoneNumber || ''
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  // When opening the feedback modal, pre-populate with user data
+  const openFeedbackModal = () => {
+    // Pre-populate with user data if available
+    if (userData) {
+      setFeedbackData(prev => ({
+        ...prev,
+        phone: userData.phoneNumber || prev.phone || ''
+      }));
+    }
+    setIsFeedbackModalVisible(true);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -2478,7 +2650,7 @@ export default function HomeScreen() {
       ) : null}
       
       {renderReviewModal()}
-      {renderReportModal()}
+      {renderFeedbackModal()}
       
       
       {/* Reviews List Modal */}

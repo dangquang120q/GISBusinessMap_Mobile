@@ -36,7 +36,7 @@ const FeedbackHistoryScreen = () => {
         sorting: 'feedbackDate DESC'
       });
       
-      if (result && Array.isArray(result.items)) {
+      if (result && result.items && Array.isArray(result.items)) {
         setFeedback(result.items);
         setTotalCount(result.totalCount || 0);
       } else {
@@ -116,49 +116,81 @@ const FeedbackHistoryScreen = () => {
     </View>
   );
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.feedbackItem}
-      onPress={() => {
-        navigation.navigate('FeedbackDetail', { feedbackId: item.id });
-      }}
-    >
-      <View style={styles.feedbackHeader}>
-        <Text style={styles.facilityName}>{item.branchName || item.organizationName || 'Không có tên'}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: BusinessFeedbackType.getStatusColor(item.status) }]}>
-          <View>
-            <Ionicons 
-              name={BusinessFeedbackType.getStatusIcon(item.status)} 
-              size={14} 
-              color="#fff"
-            />
+  const renderItem = ({ item }) => {
+    // Format date
+    const formatDate = (dateString) => {
+      if (!dateString) return '';
+      try {
+        return new Date(dateString).toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch (e) {
+        return dateString;
+      }
+    };
+
+    // Get the display date
+    const displayDate = formatDate(item.feedbackDate || item.createdDate);
+
+    return (
+      <TouchableOpacity
+        style={styles.feedbackItem}
+        onPress={() => {
+          navigation.navigate('FeedbackDetail', { feedbackId: item.id, feedback: item });
+        }}
+      >
+        <View style={styles.feedbackHeader}>
+          <Text style={styles.facilityName}>
+            {item.branchName || item.organizationName || 'Không có tên'}
+          </Text>
+          <View style={[styles.statusBadge, { backgroundColor: BusinessFeedbackType.getStatusColor(item.status) }]}>
+            <View>
+              <Ionicons 
+                name={BusinessFeedbackType.getStatusIcon(item.status)} 
+                size={14} 
+                color="#fff"
+              />
+            </View>
+            <Text style={styles.statusText}>{BusinessFeedbackType.getStatusText(item.status)}</Text>
           </View>
-          <Text style={styles.statusText}>{BusinessFeedbackType.getStatusText(item.status)}</Text>
         </View>
-      </View>
-      
-      {item.status !== BusinessFeedbackType.PENDING && item.assignedToName && (
-        <View style={styles.handlerInfo}>
-          <Text style={styles.handlerName}>{item.assignedToName}</Text>
-          <Text style={styles.date}>{new Date(item.feedbackDate || item.createdDate).toLocaleDateString()}</Text>
-        </View>
-      )}
-      
-      <Text style={styles.feedbackTitle}>{item.feedbackTypeName || 'Phản ánh'}</Text>
-      <Text style={styles.feedbackContent} numberOfLines={3}>
-        {item.status === BusinessFeedbackType.PENDING ? item.content : (item.responseContent || item.content)}
-      </Text>
-      
-      {item.attachmentUrl && (
-        <View style={styles.mediaIndicator}>
+        
+        <View style={styles.dateRow}>
           <View>
-            <Ionicons name="images-outline" size={16} color="#666" />
+            <Ionicons name="calendar-outline" size={14} color="#666" />
           </View>
-          <Text style={styles.mediaText}>Có hình ảnh đính kèm</Text>
+          <Text style={styles.date}>{displayDate}</Text>
         </View>
-      )}
-    </TouchableOpacity>
-  );
+        
+        {item.status !== BusinessFeedbackType.PENDING && item.assignedToName && (
+          <View style={styles.handlerInfo}>
+            <View style={styles.handlerRow}>
+              <View>
+                <Ionicons name="person-outline" size={14} color="#666" />
+              </View>
+              <Text style={styles.handlerName}>{item.assignedToName}</Text>
+            </View>
+          </View>
+        )}
+        
+        <Text style={styles.feedbackTitle}>{item.feedbackTypeName || 'Phản ánh'}</Text>
+        <Text style={styles.feedbackContent} numberOfLines={3}>
+          {item.status === BusinessFeedbackType.PENDING ? item.content : (item.responseContent || item.content)}
+        </Text>
+        
+        {item.attachmentUrl && (
+          <View style={styles.mediaIndicator}>
+            <View>
+              <Ionicons name="images-outline" size={16} color="#666" />
+            </View>
+            <Text style={styles.mediaText}>Có hình ảnh đính kèm</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -326,10 +358,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#666',
+    marginLeft: 6,
   },
   date: {
     fontSize: 12,
     color: '#888',
+    marginLeft: 6,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  handlerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   feedbackTitle: {
     fontSize: 16,

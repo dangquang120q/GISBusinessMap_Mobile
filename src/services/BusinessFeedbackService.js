@@ -50,9 +50,9 @@ class BusinessFeedbackService {
    * @param {Object} feedbackData Dữ liệu phản hồi cần tạo
    * @returns {Promise} Promise với kết quả phản hồi đã tạo
    */
-  async create(feedbackData) {
+  async createByUser(feedbackData) {
     try {
-      const response = await api.post('/api/services/app/BusinessFeedbacks/Create', feedbackData);
+      const response = await api.post('/api/services/app/BusinessFeedbacks/CreateByUser', feedbackData);
       return response.result;
     } catch (error) {
       console.error('Error creating business feedback:', error);
@@ -66,9 +66,9 @@ class BusinessFeedbackService {
    * @param {Object} feedbackData Dữ liệu phản hồi cần cập nhật
    * @returns {Promise} Promise với kết quả phản hồi đã cập nhật
    */
-  async update(feedbackData) {
+  async updateByUser(feedbackData) {
     try {
-      const response = await api.put('/api/services/app/BusinessFeedbacks/Update', feedbackData);
+      const response = await api.put('/api/services/app/BusinessFeedbacks/UpdateByUser', feedbackData);
       return response.result;
     } catch (error) {
       console.error(`Error updating business feedback with id ${feedbackData.id}:`, error);
@@ -82,9 +82,9 @@ class BusinessFeedbackService {
    * @param {number} id ID của phản hồi cần xóa
    * @returns {Promise} Promise với kết quả xóa
    */
-  async delete(id) {
+  async deleteByUser(id) {
     try {
-      const response = await api.delete('/api/services/app/BusinessFeedbacks/Delete', { params: { Id: id } });
+      const response = await api.delete('/api/services/app/BusinessFeedbacks/DeleteByUser', { params: { Id: id } });
       return response;
     } catch (error) {
       console.error(`Error deleting business feedback with id ${id}:`, error);

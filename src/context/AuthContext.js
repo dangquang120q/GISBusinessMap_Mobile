@@ -22,7 +22,7 @@ export const AuthProvider = ({children}) => {
                 console.log(response.data.result);
                 const role = response.data.result.userType ?? 1;
                 setUserRole(role);
-                AsyncStorage.setItem('userRole', role);
+                AsyncStorage.setItem('userRole', role.toString());
                 
                 setIsAuthenticated(true);
                 setIsLoading(false);
@@ -54,7 +54,7 @@ export const AuthProvider = ({children}) => {
             const storedUserRole = await AsyncStorage.getItem('userRole');
             
             setUserToken(userToken);
-            setUserRole(storedUserRole);
+            setUserRole(storedUserRole ? parseInt(storedUserRole, 10) : null);
             setIsAuthenticated(userToken !== null);
             setIsLoading(false);
         } catch (error) {

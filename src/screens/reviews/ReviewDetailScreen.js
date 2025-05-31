@@ -17,10 +17,10 @@ import BusinessReviewService from '../../services/BusinessReviewService';
 const ReviewDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { reviewId } = route.params;
+  const { reviewId, review: initialReview } = route.params;
   
-  const [loading, setLoading] = useState(true);
-  const [review, setReview] = useState(null);
+  const [loading, setLoading] = useState(!initialReview);
+  const [review, setReview] = useState(initialReview || null);
   
   useEffect(() => {
     const fetchReviewDetail = async () => {
@@ -40,8 +40,11 @@ const ReviewDetailScreen = () => {
       }
     };
 
-    fetchReviewDetail();
-  }, [reviewId]);
+    // Only fetch if review data wasn't provided
+    if (!initialReview) {
+      fetchReviewDetail();
+    }
+  }, [reviewId, initialReview]);
 
   const renderStars = (rating) => {
     return (

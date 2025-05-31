@@ -212,7 +212,7 @@ const ReviewHistoryScreen = () => {
       <TouchableOpacity
         style={styles.reviewContent}
         onPress={() => {
-          navigation.navigate('ReviewDetail', { reviewId: item.id });
+          navigation.navigate('ReviewDetail', { reviewId: item.id, review: item });
         }}
       >
         <View style={styles.reviewHeader}>
@@ -258,7 +258,7 @@ const ReviewHistoryScreen = () => {
         {item.status === 'P' && (
           <TouchableOpacity 
             style={styles.editButton}
-            onPress={() => navigation.navigate('EditReview', { reviewId: item.id })}
+            onPress={() => navigation.navigate('EditReview', { reviewId: item.id, review: item })}
           >
             <View>
               <Ionicons name="create-outline" size={18} color="#085924" />
