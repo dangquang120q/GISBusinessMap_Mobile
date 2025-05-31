@@ -50,11 +50,6 @@ class BusinessBranchService {
    */
   async getAllByBusiness(params = {}) {
     try {
-      // Đảm bảo businessTypeId là chuỗi nếu tồn tại
-      if (params.businessTypeId !== undefined && params.businessTypeId !== null) {
-        params.businessTypeId = String(params.businessTypeId);
-      }
-      
       const response = await api.get('/api/services/app/BusinessBranches/GetAllByBusiness', { params });
       return response.result || { items: [] }; // Đảm bảo luôn trả về cấu trúc hợp lệ
     } catch (error) {

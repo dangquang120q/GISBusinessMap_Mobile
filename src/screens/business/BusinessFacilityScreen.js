@@ -45,7 +45,7 @@ const BusinessFacilityScreen = ({navigation}) => {
         params.businessTypeName = businessTypeSearch;
       }
       
-      const result = await BusinessBranchService.getList(params);
+      const result = await BusinessBranchService.getAllByBusiness(params);
       
       if (result && result.items) {
         // Chuyển đổi dữ liệu API sang định dạng dùng trong UI
