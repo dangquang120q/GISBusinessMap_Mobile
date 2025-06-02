@@ -8,11 +8,11 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import BusinessReviewService from '../../services/BusinessReviewService';
+import { showError, showSuccess, showDeleteConfirmation } from '../../utils/PopupUtils';
 
 const ReviewDetailScreen = () => {
   const navigation = useNavigation();
@@ -34,7 +34,7 @@ const ReviewDetailScreen = () => {
         }
       } catch (error) {
         console.error('Error fetching review details:', error);
-        Alert.alert('Lỗi', 'Không thể tải thông tin đánh giá. Vui lòng thử lại sau.');
+        showError('Không thể tải thông tin đánh giá. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
       }
@@ -251,29 +251,21 @@ const ReviewDetailScreen = () => {
               review.status !== 'P' && styles.fullWidthButton
             ]}
             onPress={() => {
-              Alert.alert(
-                'Xác nhận xóa',
+              showDeleteConfirmation(
                 'Bạn có chắc chắn muốn xóa đánh giá này không?',
-                [
-                  { text: 'Hủy', style: 'cancel' },
-                  { 
-                    text: 'Xóa', 
-                    style: 'destructive',
-                    onPress: async () => {
-                      try {
-                        setLoading(true);
-                        await BusinessReviewService.delete(review.id);
-                        Alert.alert('Thành công', 'Đã xóa đánh giá');
-                        navigation.goBack();
-                      } catch (error) {
-                        console.error('Error deleting review:', error);
-                        Alert.alert('Lỗi', 'Không thể xóa đánh giá. Vui lòng thử lại sau.');
-                      } finally {
-                        setLoading(false);
-                      }
-                    }
+                async () => {
+                  try {
+                    setLoading(true);
+                    await BusinessReviewService.delete(review.id);
+                    showSuccess('Đã xóa đánh giá');
+                    navigation.goBack();
+                  } catch (error) {
+                    console.error('Error deleting review:', error);
+                    showError('Không thể xóa đánh giá. Vui lòng thử lại sau.');
+                  } finally {
+                    setLoading(false);
                   }
-                ]
+                }
               );
             }}
           >

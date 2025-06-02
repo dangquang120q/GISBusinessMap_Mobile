@@ -10,7 +10,6 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 
 import DatePicker from 'react-native-date-picker';
@@ -23,6 +22,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 
 import CustomButton from '../../components/CustomButton';
 import AccountService from '../../services/AccountService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const RegisterScreen = ({navigation}) => {
   // Form states
@@ -35,6 +35,18 @@ const RegisterScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Error states for form validation
+  const [formErrors, setFormErrors] = useState({
+    name: '',
+    surname: '',
+    phoneNumber: '',
+    email: '',
+    username: '',
+    password: '',
+    confirmPassword: '',
+    dateOfBirth: ''
+  });
   
   // UI states
   const [isLoading, setIsLoading] = useState(false);
@@ -113,11 +125,8 @@ const RegisterScreen = ({navigation}) => {
       }
     }
     
-    if (!isValid) {
-      // Hiển thị lỗi đầu tiên
-      const firstError = Object.values(errors)[0];
-      Alert.alert('Lỗi', firstError);
-    }
+    // Update form errors state
+    setFormErrors(errors);
     
     return isValid;
   };
@@ -157,21 +166,16 @@ const RegisterScreen = ({navigation}) => {
       setIsLoading(false);
       
       if (result && result.canLogin) {
-        Alert.alert(
-          'Đăng ký thành công',
-          'Tài khoản của bạn đã được tạo thành công. Bạn có thể đăng nhập ngay bây giờ.',
-          [
-            {
-              text: 'Đăng nhập',
-              onPress: () => navigation.navigate('LoginScreen'),
-            },
-          ]
-        );
+        showConfirmation({
+          title: 'Đăng ký thành công',
+          message: 'Tài khoản của bạn đã được tạo thành công. Bạn có thể đăng nhập ngay bây giờ.',
+          confirmText: 'Đăng nhập',
+          onConfirm: () => navigation.navigate('LoginScreen'),
+          onCancel: () => {},
+          cancelText: 'Đóng'
+        });
       } else {
-        Alert.alert(
-          'Đăng ký thành công',
-          'Tài khoản của bạn đã được tạo, nhưng cần được xác nhận trước khi đăng nhập.'
-        );
+        showSuccess('Tài khoản của bạn đã được tạo, nhưng cần được xác nhận trước khi đăng nhập.');
       }
     } catch (err) {
       setIsLoading(false);
@@ -196,7 +200,7 @@ const RegisterScreen = ({navigation}) => {
         errorMessage = 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên đăng nhập khác.';
       }
       
-      Alert.alert('Lỗi đăng ký', errorMessage);
+      showError(errorMessage);
     }
   };
   
@@ -207,6 +211,23 @@ const RegisterScreen = ({navigation}) => {
     const year = date.getFullYear();
     
     return `${day}/${month}/${year}`;
+  };
+
+  // Custom Input Field with Error Message
+  const CustomInputField = ({ label, value, onChangeText, icon, keyboardType, inputType, error }) => {
+    return (
+      <View style={styles.inputContainer}>
+        <InputField
+          label={label}
+          value={value}
+          onChangeText={onChangeText}
+          icon={icon}
+          keyboardType={keyboardType}
+          inputType={inputType}
+        />
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      </View>
+    );
   };
 
   return (
@@ -228,7 +249,7 @@ const RegisterScreen = ({navigation}) => {
 
         <View style={styles.nameContainer}>
           <View style={styles.nameField}>
-            <InputField
+            <CustomInputField
               label={'Tên'}
               value={name}
               onChangeText={setName}
@@ -240,11 +261,12 @@ const RegisterScreen = ({navigation}) => {
                   style={{marginRight: 5}}
                 />
               }
+              error={formErrors.name}
             />
           </View>
           
           <View style={styles.nameField}>
-            <InputField
+            <CustomInputField
               label={'Họ'}
               value={surname}
               onChangeText={setSurname}
@@ -256,11 +278,12 @@ const RegisterScreen = ({navigation}) => {
                   style={{marginRight: 5}}
                 />
               }
+              error={formErrors.surname}
             />
           </View>
         </View>
 
-        <InputField
+        <CustomInputField
           label={'Tên đăng nhập'}
           value={username}
           onChangeText={setUsername}
@@ -272,9 +295,10 @@ const RegisterScreen = ({navigation}) => {
               style={{marginRight: 5}}
             />
           }
+          error={formErrors.username}
         />
 
-        <InputField
+        <CustomInputField
           label={'Email'}
           value={email}
           onChangeText={setEmail}
@@ -287,9 +311,10 @@ const RegisterScreen = ({navigation}) => {
             />
           }
           keyboardType="email-address"
+          error={formErrors.email}
         />
 
-        <InputField
+        <CustomInputField
           label={'Số điện thoại'}
           value={phoneNumber}
           onChangeText={setPhoneNumber}
@@ -302,6 +327,7 @@ const RegisterScreen = ({navigation}) => {
             />
           }
           keyboardType="phone-pad"
+          error={formErrors.phoneNumber}
         />
 
         <View style={styles.genderContainer}>
@@ -336,25 +362,27 @@ const RegisterScreen = ({navigation}) => {
           </TouchableOpacity>
         </View>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            borderBottomColor: '#ccc',
-            borderBottomWidth: 1,
-            paddingBottom: 8,
-            marginBottom: 30,
-          }}>
-          <Ionicons
-            name="calendar-outline"
-            size={20}
-            color="#666"
-            style={{marginRight: 5}}
-          />
-          <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
-            <Text style={{color: '#666', marginLeft: 5, marginTop: 5}}>
-              {dobLabel !== 'Ngày sinh' ? formatDate(dateOfBirth) : dobLabel}
-            </Text>
-          </TouchableOpacity>
+        <View style={styles.dateContainer}>
+          <View
+            style={{
+              flexDirection: 'row',
+              borderBottomColor: '#ccc',
+              borderBottomWidth: 1,
+              paddingBottom: 8,
+            }}>
+            <Ionicons
+              name="calendar-outline"
+              size={20}
+              color="#666"
+              style={{marginRight: 5}}
+            />
+            <TouchableOpacity onPress={() => setDatePickerOpen(true)}>
+              <Text style={{color: '#666', marginLeft: 5, marginTop: 5}}>
+                {dobLabel !== 'Ngày sinh' ? formatDate(dateOfBirth) : dobLabel}
+              </Text>
+            </TouchableOpacity>
+          </View>
+          {formErrors.dateOfBirth ? <Text style={styles.errorText}>{formErrors.dateOfBirth}</Text> : null}
         </View>
 
         <DatePicker
@@ -374,7 +402,7 @@ const RegisterScreen = ({navigation}) => {
           }}
         />
 
-        <InputField
+        <CustomInputField
           label={'Mật khẩu'}
           value={password}
           onChangeText={setPassword}
@@ -387,9 +415,10 @@ const RegisterScreen = ({navigation}) => {
             />
           }
           inputType="password"
+          error={formErrors.password}
         />
 
-        <InputField
+        <CustomInputField
           label={'Xác nhận mật khẩu'}
           value={confirmPassword}
           onChangeText={setConfirmPassword}
@@ -402,6 +431,7 @@ const RegisterScreen = ({navigation}) => {
             />
           }
           inputType="password"
+          error={formErrors.confirmPassword}
         />
 
         <CustomButton 
@@ -471,7 +501,7 @@ const styles = StyleSheet.create({
   genderContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 15,
     borderBottomColor: '#ccc',
     borderBottomWidth: 1,
     paddingBottom: 8,
@@ -537,6 +567,18 @@ const styles = StyleSheet.create({
   loginText: {
     color: Colors.primary, 
     fontWeight: '700',
+  },
+  errorText: {
+    color: '#F05454',
+    fontSize: 12,
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  inputContainer: {
+    marginBottom: 5,
+  },
+  dateContainer: {
+    marginBottom: 30,
   },
 });
 

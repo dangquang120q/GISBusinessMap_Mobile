@@ -7,7 +7,6 @@ import {
   ScrollView,
   SafeAreaView,
   StyleSheet,
-  Alert,
   Image,
   ActivityIndicator,
   Modal,
@@ -21,6 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import SessionService from '../../services/SessionService';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { AuthContext } from '../../context/AuthContext';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
@@ -55,6 +55,21 @@ const EditProfileScreen = () => {
     businessDescription: '',
     taxCode: '',
     representativeName: '',
+  });
+
+  // Validation error states
+  const [userErrors, setUserErrors] = useState({
+    name: '',
+    surname: '',
+    emailAddress: '',
+    phoneNumber: '',
+  });
+
+  const [businessErrors, setBusinessErrors] = useState({
+    businessName: '',
+    businessCode: '',
+    businessAddress: '',
+    businessPhone: '',
   });
 
   // Fetch user profile data on component mount
@@ -100,34 +115,78 @@ const EditProfileScreen = () => {
         }
       }
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể tải thông tin hồ sơ. Vui lòng thử lại sau.');
+      showError('Không thể tải thông tin hồ sơ. Vui lòng thử lại sau.');
       console.error('Error fetching user profile:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const validateBusinessData = () => {
+    const errors = {
+      businessName: '',
+      businessCode: '',
+      businessAddress: '',
+      businessPhone: '',
+    };
+    let isValid = true;
+
+    if (!businessData.businessName.trim()) {
+      errors.businessName = 'Vui lòng nhập tên doanh nghiệp';
+      isValid = false;
+    }
+    
+    if (!businessData.businessCode.trim()) {
+      errors.businessCode = 'Vui lòng nhập mã số doanh nghiệp';
+      isValid = false;
+    }
+    
+    if (!businessData.businessAddress.trim()) {
+      errors.businessAddress = 'Vui lòng nhập địa chỉ doanh nghiệp';
+      isValid = false;
+    }
+    
+    if (!businessData.businessPhone.trim()) {
+      errors.businessPhone = 'Vui lòng nhập số điện thoại liên hệ';
+      isValid = false;
+    }
+
+    setBusinessErrors(errors);
+    return isValid;
+  };
+
+  const validateUserData = () => {
+    const errors = {
+      name: '',
+      surname: '',
+      emailAddress: '',
+    };
+    let isValid = true;
+
+    if (!userData.name.trim()) {
+      errors.name = 'Vui lòng nhập tên';
+      isValid = false;
+    }
+    
+    if (!userData.surname.trim()) {
+      errors.surname = 'Vui lòng nhập họ';
+      isValid = false;
+    }
+    
+    if (!userData.emailAddress.trim()) {
+      errors.emailAddress = 'Vui lòng nhập email';
+      isValid = false;
+    }
+
+    setUserErrors(errors);
+    return isValid;
+  };
+
   const handleSaveChanges = async () => {
     // Validate fields
     if (isBusiness) {
       // Kiểm tra dữ liệu doanh nghiệp
-      if (!businessData.businessName.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập tên doanh nghiệp');
-        return;
-      }
-      
-      if (!businessData.businessCode.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập mã số doanh nghiệp');
-        return;
-      }
-      
-      if (!businessData.businessAddress.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập địa chỉ doanh nghiệp');
-        return;
-      }
-      
-      if (!businessData.businessPhone.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại liên hệ');
+      if (!validateBusinessData()) {
         return;
       }
       
@@ -137,31 +196,17 @@ const EditProfileScreen = () => {
         // Trong thực tế, cần gọi API cập nhật thông tin doanh nghiệp
         // Giả lập cập nhật thành công
         
-        Alert.alert(
-          'Thành công',
-          'Thông tin doanh nghiệp đã được cập nhật',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        showSuccess('Thông tin doanh nghiệp đã được cập nhật');
+        navigation.goBack();
       } catch (error) {
-        Alert.alert('Lỗi', 'Không thể cập nhật thông tin doanh nghiệp. Vui lòng thử lại sau.');
+        showError('Không thể cập nhật thông tin doanh nghiệp. Vui lòng thử lại sau.');
         console.error('Error updating business profile:', error);
       } finally {
         setIsSaving(false);
       }
     } else {
       // Validate fields
-      if (!userData.name.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập tên');
-        return;
-      }
-      
-      if (!userData.surname.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập họ');
-        return;
-      }
-      
-      if (!userData.emailAddress.trim()) {
-        Alert.alert('Lỗi', 'Vui lòng nhập email');
+      if (!validateUserData()) {
         return;
       }
       
@@ -180,13 +225,10 @@ const EditProfileScreen = () => {
         // Call API to update profile
         await SessionService.updateProfile(profileData);
         
-        Alert.alert(
-          'Thành công',
-          'Thông tin hồ sơ đã được cập nhật',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        showSuccess('Thông tin hồ sơ đã được cập nhật');
+        navigation.goBack();
       } catch (error) {
-        Alert.alert('Lỗi', 'Không thể cập nhật hồ sơ. Vui lòng thử lại sau.');
+        showError('Không thể cập nhật hồ sơ. Vui lòng thử lại sau.');
         console.error('Error updating profile:', error);
       } finally {
         setIsSaving(false);
@@ -219,7 +261,7 @@ const EditProfileScreen = () => {
         // Check if permission constants are defined correctly
         if (!PermissionsAndroid.PERMISSIONS || !PermissionsAndroid.PERMISSIONS.CAMERA) {
           console.error('Camera permission constant is undefined');
-          Alert.alert('Lỗi', 'Không thể xác định quyền camera. Vui lòng thử lại sau.');
+          showError('Không thể xác định quyền camera. Vui lòng thử lại sau.');
           return;
         }
 
@@ -237,35 +279,34 @@ const EditProfileScreen = () => {
         // Handle null/undefined result
         if (granted === undefined || granted === null) {
           console.warn('Camera permission result is null or undefined');
-          Alert.alert('Lỗi quyền truy cập', 'Không thể xác định quyền camera. Vui lòng thử lại sau.');
+          showError('Không thể xác định quyền camera. Vui lòng thử lại sau.');
           return;
         }
 
         // Check permission result
         if (granted === PermissionsAndroid.RESULTS.DENIED) {
-          Alert.alert('Từ chối quyền', 'Quyền camera bị từ chối. Bạn cần cấp quyền để chụp ảnh.');
+          showError('Quyền camera bị từ chối. Bạn cần cấp quyền để chụp ảnh.');
           return;
         }
 
         if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
-          Alert.alert(
-            'Quyền bị chặn',
-            'Bạn đã chặn quyền camera. Vui lòng mở cài đặt để cấp quyền.',
-            [
-              { text: 'Hủy', style: 'cancel' },
-              { text: 'Mở cài đặt', onPress: () => Linking.openSettings() }
-            ]
-          );
+          showConfirmation({
+            title: 'Quyền bị chặn',
+            message: 'Bạn đã chặn quyền camera. Vui lòng mở cài đặt để cấp quyền.',
+            confirmText: 'Mở cài đặt',
+            cancelText: 'Hủy',
+            onConfirm: () => Linking.openSettings()
+          });
           return;
         }
 
         if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Từ chối quyền', 'Camera không được cấp quyền. Vui lòng thử lại.');
+          showError('Camera không được cấp quyền. Vui lòng thử lại.');
           return;
         }
       } catch (err) {
         console.error('Error requesting camera permission:', err);
-        Alert.alert('Lỗi', 'Có lỗi xảy ra khi xin quyền camera. Vui lòng thử lại sau.');
+        showError('Có lỗi xảy ra khi xin quyền camera. Vui lòng thử lại sau.');
         return;
       }
     }
@@ -276,7 +317,7 @@ const EditProfileScreen = () => {
           console.log('User cancelled camera');
         } else if (response.errorCode) {
           console.error('Camera Error: ', response.errorMessage);
-          Alert.alert('Lỗi', 'Không thể mở máy ảnh. Vui lòng thử lại sau.');
+          showError('Không thể mở máy ảnh. Vui lòng thử lại sau.');
         } else if (response.assets && response.assets.length > 0) {
           const source = response.assets[0];
           setSelectedImage({
@@ -290,7 +331,7 @@ const EditProfileScreen = () => {
       });
     } catch (error) {
       console.error('Error launching camera:', error);
-      Alert.alert('Lỗi', 'Không thể mở máy ảnh. Vui lòng thử lại sau.');
+      showError('Không thể mở máy ảnh. Vui lòng thử lại sau.');
     }
   };
 
@@ -312,7 +353,7 @@ const EditProfileScreen = () => {
         console.log('User cancelled image picker');
       } else if (response.errorCode) {
         console.error('ImagePicker Error: ', response.errorMessage);
-        Alert.alert('Lỗi', 'Không thể mở thư viện ảnh. Vui lòng thử lại sau.');
+        showError('Không thể mở thư viện ảnh. Vui lòng thử lại sau.');
       } else if (response.assets && response.assets.length > 0) {
         const source = response.assets[0];
         setSelectedImage({
@@ -353,21 +394,33 @@ const EditProfileScreen = () => {
       <View style={styles.formGroup}>
         <Text style={styles.label}>Tên doanh nghiệp <Text style={styles.required}>*</Text></Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, businessErrors.businessName ? styles.inputError : null]}
           value={businessData.businessName}
-          onChangeText={(text) => setBusinessData({...businessData, businessName: text})}
+          onChangeText={(text) => {
+            setBusinessData({...businessData, businessName: text});
+            if (text.trim()) setBusinessErrors({...businessErrors, businessName: ''});
+          }}
           placeholder="Nhập tên doanh nghiệp"
         />
+        {businessErrors.businessName ? (
+          <Text style={styles.errorText}>{businessErrors.businessName}</Text>
+        ) : null}
       </View>
       
       <View style={styles.formGroup}>
         <Text style={styles.label}>Mã số doanh nghiệp <Text style={styles.required}>*</Text></Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, businessErrors.businessCode ? styles.inputError : null]}
           value={businessData.businessCode}
-          onChangeText={(text) => setBusinessData({...businessData, businessCode: text})}
+          onChangeText={(text) => {
+            setBusinessData({...businessData, businessCode: text});
+            if (text.trim()) setBusinessErrors({...businessErrors, businessCode: ''});
+          }}
           placeholder="Nhập mã số doanh nghiệp"
         />
+        {businessErrors.businessCode ? (
+          <Text style={styles.errorText}>{businessErrors.businessCode}</Text>
+        ) : null}
       </View>
       
       <View style={styles.formGroup}>
@@ -393,24 +446,36 @@ const EditProfileScreen = () => {
       <View style={styles.formGroup}>
         <Text style={styles.label}>Địa chỉ <Text style={styles.required}>*</Text></Text>
         <TextInput
-          style={[styles.input, {textAlignVertical: 'top'}]}
+          style={[styles.input, {textAlignVertical: 'top'}, businessErrors.businessAddress ? styles.inputError : null]}
           value={businessData.businessAddress}
-          onChangeText={(text) => setBusinessData({...businessData, businessAddress: text})}
+          onChangeText={(text) => {
+            setBusinessData({...businessData, businessAddress: text});
+            if (text.trim()) setBusinessErrors({...businessErrors, businessAddress: ''});
+          }}
           placeholder="Nhập địa chỉ doanh nghiệp"
           multiline
           numberOfLines={3}
         />
+        {businessErrors.businessAddress ? (
+          <Text style={styles.errorText}>{businessErrors.businessAddress}</Text>
+        ) : null}
       </View>
       
       <View style={styles.formGroup}>
         <Text style={styles.label}>Số điện thoại <Text style={styles.required}>*</Text></Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, businessErrors.businessPhone ? styles.inputError : null]}
           value={businessData.businessPhone}
-          onChangeText={(text) => setBusinessData({...businessData, businessPhone: text})}
+          onChangeText={(text) => {
+            setBusinessData({...businessData, businessPhone: text});
+            if (text.trim()) setBusinessErrors({...businessErrors, businessPhone: ''});
+          }}
           placeholder="Nhập số điện thoại doanh nghiệp"
           keyboardType="phone-pad"
         />
+        {businessErrors.businessPhone ? (
+          <Text style={styles.errorText}>{businessErrors.businessPhone}</Text>
+        ) : null}
       </View>
       
       <View style={styles.formGroup}>
@@ -497,32 +562,50 @@ const EditProfileScreen = () => {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Tên <Text style={styles.required}>*</Text></Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, userErrors.name ? styles.inputError : null]}
                 value={userData.name}
-                onChangeText={(text) => setUserData({...userData, name: text})}
+                onChangeText={(text) => {
+                  setUserData({...userData, name: text});
+                  if (text.trim()) setUserErrors({...userErrors, name: ''});
+                }}
                 placeholder="Nhập tên"
               />
+              {userErrors.name ? (
+                <Text style={styles.errorText}>{userErrors.name}</Text>
+              ) : null}
             </View>
             
             <View style={styles.formGroup}>
               <Text style={styles.label}>Họ <Text style={styles.required}>*</Text></Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, userErrors.surname ? styles.inputError : null]}
                 value={userData.surname}
-                onChangeText={(text) => setUserData({...userData, surname: text})}
+                onChangeText={(text) => {
+                  setUserData({...userData, surname: text});
+                  if (text.trim()) setUserErrors({...userErrors, surname: ''});
+                }}
                 placeholder="Nhập họ"
               />
+              {userErrors.surname ? (
+                <Text style={styles.errorText}>{userErrors.surname}</Text>
+              ) : null}
             </View>
             
             <View style={styles.formGroup}>
               <Text style={styles.label}>Email <Text style={styles.required}>*</Text></Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, userErrors.emailAddress ? styles.inputError : null]}
                 value={userData.emailAddress}
-                onChangeText={(text) => setUserData({...userData, emailAddress: text})}
+                onChangeText={(text) => {
+                  setUserData({...userData, emailAddress: text});
+                  if (text.trim()) setUserErrors({...userErrors, emailAddress: ''});
+                }}
                 placeholder="Nhập email"
                 keyboardType="email-address"
               />
+              {userErrors.emailAddress ? (
+                <Text style={styles.errorText}>{userErrors.emailAddress}</Text>
+              ) : null}
             </View>
             
             <View style={styles.formGroup}>
@@ -708,6 +791,15 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  inputError: {
+    borderColor: '#e74c3c',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   saveButton: {
     backgroundColor: '#085924',

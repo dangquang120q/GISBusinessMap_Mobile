@@ -3,6 +3,14 @@ import { API_URL } from '../config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CommonActions } from '@react-navigation/native';
 
+// Popup handlers
+let popupHandler = null;
+
+// Function to set popup handler from PopupContext
+export const setErrorHandler = (handler) => {
+  popupHandler = handler;
+};
+
 // Navigation reference to use outside of React components
 let navigationRef = null;
 
@@ -85,22 +93,38 @@ apiClient.interceptors.response.use(
         // Redirect đến màn hình login
         navigateToAuth();
       }
-      
       // Xử lý lỗi không có quyền (403)
-      if (status === 403) {
+      else if (status === 403) {
         console.log('Forbidden: No permission to access this resource');
+        if (popupHandler) {
+          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thoát ứng dụng và mở lại.');
+        }
       }
-      
       // Lỗi server (500)
-      if (status >= 500) {
+      else if (status >= 500) {
         console.log('Server error occurred');
+        if (popupHandler) {
+          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thoát ứng dụng và mở lại.');
+        }
+      }
+      // Các lỗi khác
+      else {
+        if (popupHandler) {
+          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thoát ứng dụng và mở lại.');
+        }
       }
     } else if (error.request) {
       // Request gửi đi nhưng không nhận được response
       console.log('Network error or server not responding');
+      if (popupHandler) {
+        popupHandler.showError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng.');
+      }
     } else {
       // Lỗi khi thiết lập request
       console.log('Error setting up request:', error.message);
+      if (popupHandler) {
+        popupHandler.showError('Đã có lỗi xảy ra khi thiết lập yêu cầu.');
+      }
     }
     
     return Promise.reject(error);
@@ -160,6 +184,25 @@ export const api = {
     } catch (error) {
       console.error(`DELETE with data Error for ${url}:`, error);
       throw error;
+    }
+  },
+  
+  // Helpers to show success and info popups
+  showSuccess: (message) => {
+    if (popupHandler && popupHandler.showSuccess) {
+      popupHandler.showSuccess(message);
+    }
+  },
+  
+  showInfo: (message) => {
+    if (popupHandler && popupHandler.showInfo) {
+      popupHandler.showInfo(message);
+    }
+  },
+  
+  showError: (message) => {
+    if (popupHandler && popupHandler.showError) {
+      popupHandler.showError(message);
     }
   }
 };

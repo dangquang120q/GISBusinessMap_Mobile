@@ -10,11 +10,11 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ForeignersService from '../../services/ForeignersService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const ForeignerManagementScreen = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -93,7 +93,7 @@ const ForeignerManagementScreen = ({navigation}) => {
     } catch (err) {
       setError('Không thể tải danh sách người nước ngoài. Vui lòng thử lại sau.');
       console.error('Error fetching foreigners:', err);
-      Alert.alert('Lỗi', 'Không thể tải danh sách người nước ngoài. Vui lòng thử lại sau.');
+      showError('Không thể tải danh sách người nước ngoài. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
       setRefreshing(false);

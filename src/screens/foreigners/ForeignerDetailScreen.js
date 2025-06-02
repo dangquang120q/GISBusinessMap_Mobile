@@ -6,12 +6,12 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ForeignersService from '../../services/ForeignersService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const ForeignerDetailScreen = ({route, navigation}) => {
   const { foreignerId } = route.params || {};
@@ -88,7 +88,7 @@ const ForeignerDetailScreen = ({route, navigation}) => {
       } catch (err) {
         console.error('Error fetching foreigner details:', err);
         setError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
-        Alert.alert('Lỗi', 'Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+        showError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
       }
@@ -115,20 +115,17 @@ const ForeignerDetailScreen = ({route, navigation}) => {
       setLoading(false);
       
       // Show success message
-      Alert.alert(
-        'Thành công',
-        'Đã xóa người nước ngoài khỏi danh sách',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.navigate('ForeignerManagement'),
-          },
-        ]
-      );
+      showConfirmation({
+        title: 'Thành công',
+        message: 'Đã xóa người nước ngoài khỏi danh sách',
+        confirmText: 'OK',
+        onConfirm: () => navigation.navigate('ForeignerManagement'),
+        cancelText: '',
+      });
     } catch (err) {
       console.error('Error deleting foreigner:', err);
       setLoading(false);
-      Alert.alert('Lỗi', 'Không thể xóa người nước ngoài. Vui lòng thử lại sau.');
+      showError('Không thể xóa người nước ngoài. Vui lòng thử lại sau.');
     }
   };
 

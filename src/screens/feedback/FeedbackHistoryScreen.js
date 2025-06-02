@@ -8,12 +8,12 @@ import {
   SafeAreaView,
   ActivityIndicator,
   ScrollView,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import BusinessFeedbackService from '../../services/BusinessFeedbackService';
 import BusinessFeedbackType from '../../services/BusinessFeedbackType';
+import { showError } from '../../utils/PopupUtils';
 
 const FeedbackHistoryScreen = () => {
   const navigation = useNavigation();
@@ -46,11 +46,7 @@ const FeedbackHistoryScreen = () => {
     } catch (error) {
       console.error('Error fetching feedback:', error);
       setError('Không thể tải dữ liệu phản ánh.');
-      Alert.alert(
-        'Lỗi',
-        'Không thể tải dữ liệu phản ánh. Vui lòng thử lại sau.',
-        [{ text: 'OK' }]
-      );
+      showError('Không thể tải dữ liệu phản ánh. Vui lòng thử lại sau.');
       setFeedback([]);
     } finally {
       setLoading(false);

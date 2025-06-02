@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import BusinessBranchService from '../../services/BusinessBranchService';
+import { showError } from '../../utils/PopupUtils';
 
 const BusinessFacilityDetailScreen = ({route, navigation}) => {
   const { facilityId } = route.params || {};
@@ -73,11 +73,9 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
         }
         
         setError(errorMessage);
-        Alert.alert(
-          'Lỗi',
-          `Không thể tải thông tin chi tiết cơ sở kinh doanh: ${errorMessage}`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
+        
+        showError(`Không thể tải thông tin chi tiết cơ sở kinh doanh: ${errorMessage}`);
+        navigation.goBack();
       } finally {
         setLoading(false);
       }

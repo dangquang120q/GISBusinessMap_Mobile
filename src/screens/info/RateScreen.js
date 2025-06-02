@@ -7,65 +7,56 @@ import {
   ScrollView,
   Image,
   TextInput,
-  Alert,
   Linking,
   Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const RateScreen = () => {
   const navigation = useNavigation();
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
+  const [ratingError, setRatingError] = useState('');
 
   const handleRating = (value) => {
     setRating(value);
+    setRatingError('');
   };
 
   const handleSubmit = () => {
     if (rating === 0) {
-      Alert.alert(
-        'Thông báo',
-        'Vui lòng chọn số sao đánh giá',
-        [{ text: 'OK' }]
-      );
+      setRatingError('Vui lòng chọn số sao đánh giá');
       return;
     }
 
     // Here you would typically send the rating and feedback to your backend
-    Alert.alert(
-      'Cảm ơn bạn!',
-      'Cảm ơn bạn đã đánh giá ứng dụng của chúng tôi.',
-      [
-        {
-          text: 'Đánh giá trên cửa hàng',
-          onPress: () => {
-            const storeUrl = Platform.select({
-              ios: 'https://apps.apple.com/app/id[YOUR_APP_ID]',
-              android: 'market://details?id=com.msf.gisbusiness',
-            });
-            const webUrl = Platform.select({
-              ios: 'https://apps.apple.com/app/id[YOUR_APP_ID]',
-              android: 'https://play.google.com/store/apps/details?id=com.msf.gisbusiness',
-            });
-            
-            Linking.canOpenURL(storeUrl).then(supported => {
-              if (supported) {
-                Linking.openURL(storeUrl);
-              } else {
-                Linking.openURL(webUrl);
-              }
-            });
-          },
-        },
-        {
-          text: 'Đóng',
-          onPress: () => navigation.goBack(),
-          style: 'cancel',
-        },
-      ]
-    );
+    showConfirmation({
+      title: 'Cảm ơn bạn!',
+      message: 'Cảm ơn bạn đã đánh giá ứng dụng của chúng tôi.',
+      confirmText: 'Đánh giá trên cửa hàng',
+      cancelText: 'Đóng',
+      onConfirm: () => {
+        const storeUrl = Platform.select({
+          ios: 'https://apps.apple.com/app/id[YOUR_APP_ID]',
+          android: 'market://details?id=com.msf.gisbusiness',
+        });
+        const webUrl = Platform.select({
+          ios: 'https://apps.apple.com/app/id[YOUR_APP_ID]',
+          android: 'https://play.google.com/store/apps/details?id=com.msf.gisbusiness',
+        });
+        
+        Linking.canOpenURL(storeUrl).then(supported => {
+          if (supported) {
+            Linking.openURL(storeUrl);
+          } else {
+            Linking.openURL(webUrl);
+          }
+        });
+      },
+      onCancel: () => navigation.goBack()
+    });
   };
 
   const renderStars = () => {
@@ -117,8 +108,8 @@ const RateScreen = () => {
             <View style={styles.starsContainer}>
               {renderStars()}
             </View>
-            <Text style={styles.ratingText}>
-              {rating === 0
+            <Text style={[styles.ratingText, ratingError ? styles.errorText : null]}>
+              {ratingError || (rating === 0
                 ? 'Vui lòng chọn số sao'
                 : rating === 1
                 ? 'Rất không hài lòng'
@@ -128,7 +119,7 @@ const RateScreen = () => {
                 ? 'Bình thường'
                 : rating === 4
                 ? 'Hài lòng'
-                : 'Rất hài lòng'}
+                : 'Rất hài lòng')}
             </Text>
           </View>
 
@@ -249,6 +240,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     textAlign: 'center',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontWeight: '500',
   },
   feedbackSection: {
     marginBottom: 30,

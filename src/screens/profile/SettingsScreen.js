@@ -6,12 +6,12 @@ import {
   TouchableOpacity,
   Switch,
   ScrollView,
-  Alert,
   Platform,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../context/AuthContext';
+import { showConfirmation } from '../../utils/PopupUtils';
 
 const SettingsScreen = () => {
   const {logout, userRole} = useContext(AuthContext);
@@ -40,24 +40,17 @@ const SettingsScreen = () => {
 
   const requestNotificationPermission = async () => {
     // Trong ứng dụng thực tế, yêu cầu cấp quyền thông báo
-    Alert.alert(
-      'Cấp quyền thông báo',
-      'Ứng dụng cần quyền gửi thông báo để thông báo cho bạn về các hoạt động mới.',
-      [
-        { 
-          text: 'Để sau', 
-          style: 'cancel' 
-        },
-        { 
-          text: 'Mở cài đặt', 
-          onPress: () => {
-            // Mở cài đặt của thiết bị
-            setNotificationPermissionStatus('granted');
-            setNotifications(true);
-          } 
-        }
-      ]
-    );
+    showConfirmation({
+      title: 'Cấp quyền thông báo',
+      message: 'Ứng dụng cần quyền gửi thông báo để thông báo cho bạn về các hoạt động mới.',
+      cancelText: 'Để sau',
+      confirmText: 'Mở cài đặt',
+      onConfirm: () => {
+        // Mở cài đặt của thiết bị
+        setNotificationPermissionStatus('granted');
+        setNotifications(true);
+      }
+    });
   };
 
   const toggleNotifications = (value) => {

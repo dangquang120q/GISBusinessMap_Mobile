@@ -8,11 +8,11 @@ import {
   SafeAreaView,
   ActivityIndicator,
   ScrollView,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import BusinessReviewService from '../../services/BusinessReviewService';
+import { showError, showSuccess, showDeleteConfirmation } from '../../utils/PopupUtils';
 
 const ReviewHistoryScreen = () => {
   const navigation = useNavigation();
@@ -52,32 +52,16 @@ const ReviewHistoryScreen = () => {
       console.error('Error fetching reviews:', error);
       setError('Có lỗi xảy ra khi tải dữ liệu đánh giá');
       
-      // Show error alert
-      Alert.alert(
-        'Lỗi',
-        'Không thể tải danh sách đánh giá. Vui lòng thử lại sau.',
-        [{ text: 'OK' }]
-      );
+      showError('Không thể tải danh sách đánh giá. Vui lòng thử lại sau.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteReview = (reviewId) => {
-    Alert.alert(
-      'Xác nhận xóa',
+    showDeleteConfirmation(
       'Bạn có chắc chắn muốn xóa đánh giá này?',
-      [
-        {
-          text: 'Hủy',
-          style: 'cancel'
-        },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: () => deleteReview(reviewId)
-        }
-      ]
+      () => deleteReview(reviewId)
     );
   };
 
@@ -90,11 +74,10 @@ const ReviewHistoryScreen = () => {
       setReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
       setTotalCount(prev => Math.max(0, prev - 1));
       
-      // Show success message
-      Alert.alert('Thành công', 'Đã xóa đánh giá thành công');
+      showSuccess('Đã xóa đánh giá thành công');
     } catch (error) {
       console.error('Error deleting review:', error);
-      Alert.alert('Lỗi', 'Không thể xóa đánh giá. Vui lòng thử lại sau.');
+      showError('Không thể xóa đánh giá. Vui lòng thử lại sau.');
     } finally {
       setDeleting(false);
     }

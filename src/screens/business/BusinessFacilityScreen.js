@@ -9,7 +9,6 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import BusinessBranchService from '../../services/BusinessBranchService';
@@ -73,7 +72,6 @@ const BusinessFacilityScreen = ({navigation}) => {
     } catch (err) {
       console.error('Error fetching business facilities:', err);
       setError('Không thể tải danh sách cơ sở kinh doanh');
-      // Không hiển thị lỗi alert mỗi lần gọi API thất bại
       setFacilities([]);
     } finally {
       setLoading(false);

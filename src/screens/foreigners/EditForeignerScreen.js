@@ -7,11 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ForeignersService from '../../services/ForeignersService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const EditForeignerScreen = ({ route, navigation }) => {
   const { foreignerId, foreigner: initialForeigner } = route.params || {};
@@ -112,7 +112,7 @@ const EditForeignerScreen = ({ route, navigation }) => {
         }
       } catch (err) {
         console.error('Error fetching foreigner details:', err);
-        Alert.alert('Lỗi', 'Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+        showError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
       } finally {
         setInitialLoading(false);
       }
@@ -262,19 +262,20 @@ const EditForeignerScreen = ({ route, navigation }) => {
         setLoading(false);
         
         // Hiển thị thông báo thành công
-        Alert.alert(
-          'Thành công',
-          'Đã cập nhật thông tin người nước ngoài thành công',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('ForeignerDetail', { 
-                foreignerId: formData.id,
-                refresh: true 
-              }),
-            },
-          ]
-        );
+        showConfirmation({
+          title: 'Thành công',
+          message: 'Đã cập nhật thông tin người nước ngoài thành công',
+          confirmText: 'OK',
+          onConfirm: () => navigation.navigate('ForeignerDetail', { 
+            foreignerId: formData.id,
+            refresh: true 
+          }),
+          onCancel: () => navigation.navigate('ForeignerDetail', { 
+            foreignerId: formData.id,
+            refresh: true 
+          }),
+          cancelText: '',
+        });
       } catch (err) {
         console.error('Error updating foreigner:', err);
         setLoading(false);
@@ -292,16 +293,10 @@ const EditForeignerScreen = ({ route, navigation }) => {
           errorMessage = err.message;
         }
         
-        Alert.alert('Lỗi', errorMessage);
+        showError(errorMessage);
       }
     } else {
-      // Hiển thị lỗi đầu tiên gặp phải
-      const firstErrorKey = Object.keys(errors)[0];
-      if (firstErrorKey) {
-        Alert.alert('Lỗi', `Vui lòng kiểm tra lại thông tin: ${errors[firstErrorKey]}`);
-      } else {
-        Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
-      }
+      showError('Vui lòng kiểm tra lại thông tin');
     }
   };
 

@@ -8,12 +8,12 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import BusinessFeedbackService from '../../services/BusinessFeedbackService';
 import BusinessFeedbackType from '../../services/BusinessFeedbackType';
+import { showError } from '../../utils/PopupUtils';
 
 const FeedbackDetailScreen = () => {
   const navigation = useNavigation();
@@ -35,7 +35,7 @@ const FeedbackDetailScreen = () => {
         }
       } catch (error) {
         console.error('Error fetching feedback details:', error);
-        Alert.alert('Lỗi', 'Không thể tải thông tin phản ánh. Vui lòng thử lại sau.');
+        showError('Không thể tải thông tin phản ánh. Vui lòng thử lại sau.');
       } finally {
         setLoading(false);
       }

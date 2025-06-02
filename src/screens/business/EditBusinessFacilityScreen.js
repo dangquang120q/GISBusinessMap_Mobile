@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,16 +7,17 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import BusinessBranchService from '../../services/BusinessBranchService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const EditBusinessFacilityScreen = ({ route, navigation }) => {
   const { facilityId, facility: initialFacility } = route.params;
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
+  const scrollViewRef = useRef(null);
   
   const [formData, setFormData] = useState({
     id: '',
@@ -106,7 +107,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
         }
       } catch (err) {
         console.error('Error fetching facility details:', err);
-        Alert.alert('Lỗi', 'Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+        showError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
       } finally {
         setInitialLoading(false);
       }
@@ -227,6 +228,14 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
     }
 
     setErrors(newErrors);
+    
+    // If there are errors, scroll to the first error field
+    if (!isValid && scrollViewRef.current) {
+      // For this to work properly in a real app, we'd need refs for each input field
+      // For now, we'll just scroll to the top to make errors visible
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
+    }
+    
     return isValid;
   };
 
@@ -263,20 +272,18 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
         
         setLoading(false);
         
-        // Show success message
-        Alert.alert(
-          'Thành công',
-          'Thông tin cơ sở kinh doanh đã được cập nhật thành công',
-          [
-            {
-              text: 'OK',
-              onPress: () => navigation.navigate('BusinessFacilityDetail', { 
-                facilityId: formData.id,
-                refresh: true 
-              }),
-            },
-          ]
-        );
+        // Show success message with confirmation popup
+        showConfirmation({
+          title: 'Thành công',
+          message: 'Thông tin cơ sở kinh doanh đã được cập nhật thành công',
+          confirmText: 'OK',
+          onConfirm: () => navigation.navigate('BusinessFacilityDetail', { 
+            facilityId: formData.id,
+            refresh: true 
+          }),
+          onCancel: () => {},
+          cancelText: '',
+        });
       } catch (err) {
         console.error('Error updating business facility:', err);
         setLoading(false);
@@ -294,15 +301,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           errorMessage = err.message;
         }
         
-        Alert.alert('Lỗi', errorMessage);
-      }
-    } else {
-      // Scroll to the first error
-      const firstErrorKey = Object.keys(errors)[0];
-      if (firstErrorKey) {
-        Alert.alert('Lỗi', `Vui lòng kiểm tra lại thông tin: ${errors[firstErrorKey]}`);
-      } else {
-        Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
+        showError(errorMessage);
       }
     }
   };
@@ -344,7 +343,10 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
         <View style={styles.placeholder} />
       </View>
       
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content}
+        ref={scrollViewRef}
+      >
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Thông tin chung</Text>
           
@@ -355,6 +357,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               placeholder="Nhập tên cơ sở"
               value={formData.branchName}
               onChangeText={(text) => handleInputChange('branchName', text)}
+              name="branchName"
             />
             {errors.branchName && <Text style={styles.errorText}>{errors.branchName}</Text>}
           </View>
@@ -366,6 +369,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               placeholder="Nhập số giấy phép"
               value={formData.businessCode}
               onChangeText={(text) => handleInputChange('businessCode', text)}
+              name="businessCode"
             />
             {errors.businessCode && <Text style={styles.errorText}>{errors.businessCode}</Text>}
           </View>
@@ -377,6 +381,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               placeholder="Nhập loại hình kinh doanh"
               value={formData.businessTypeName}
               onChangeText={(text) => handleInputChange('businessTypeName', text)}
+              name="businessTypeName"
             />
             {errors.businessTypeName && <Text style={styles.errorText}>{errors.businessTypeName}</Text>}
           </View>
@@ -389,6 +394,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
                 placeholder="DD/MM/YYYY"
                 value={formData.establishedDate}
                 onChangeText={(text) => handleInputChange('establishedDate', text)}
+                name="establishedDate"
               />
               {errors.establishedDate && <Text style={styles.errorText}>{errors.establishedDate}</Text>}
             </View>
@@ -400,6 +406,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
                 placeholder="DD/MM/YYYY"
                 value={formData.deactivationDate}
                 onChangeText={(text) => handleInputChange('deactivationDate', text)}
+                name="deactivationDate"
               />
               {errors.deactivationDate && <Text style={styles.errorText}>{errors.deactivationDate}</Text>}
             </View>
@@ -447,6 +454,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               value={formData.addressDetail}
               onChangeText={(text) => handleInputChange('addressDetail', text)}
               multiline
+              name="addressDetail"
             />
             {errors.addressDetail && <Text style={styles.errorText}>{errors.addressDetail}</Text>}
           </View>
@@ -459,6 +467,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               value={formData.area}
               onChangeText={(text) => handleInputChange('area', text)}
               keyboardType="numeric"
+              name="area"
             />
           </View>
           
@@ -478,6 +487,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               placeholder="Nhập tên chủ sở hữu"
               value={formData.representativeName}
               onChangeText={(text) => handleInputChange('representativeName', text)}
+              name="representativeName"
             />
             {errors.representativeName && <Text style={styles.errorText}>{errors.representativeName}</Text>}
           </View>
@@ -490,6 +500,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               value={formData.phoneNumber}
               onChangeText={(text) => handleInputChange('phoneNumber', text)}
               keyboardType="phone-pad"
+              name="phoneNumber"
             />
             {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
           </View>
@@ -503,6 +514,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
               onChangeText={(text) => handleInputChange('email', text)}
               keyboardType="email-address"
               autoCapitalize="none"
+              name="email"
             />
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
@@ -510,12 +522,14 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Website</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, errors.website && styles.inputError]}
               placeholder="Nhập địa chỉ website"
               value={formData.website}
               onChangeText={(text) => handleInputChange('website', text)}
               autoCapitalize="none"
+              name="website"
             />
+            {errors.website && <Text style={styles.errorText}>{errors.website}</Text>}
           </View>
         </View>
         

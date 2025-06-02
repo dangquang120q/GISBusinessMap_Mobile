@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
-  Alert,
   TextInput,
   Modal,
   ActivityIndicator
@@ -14,6 +13,7 @@ import {
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import SessionService from '../../services/SessionService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const PrivacyScreen = () => {
   const navigation = useNavigation();
@@ -33,6 +33,11 @@ const PrivacyScreen = () => {
     newPassword: '',
     confirmPassword: '',
   });
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const toggleSwitch = (setting) => {
@@ -43,13 +48,36 @@ const PrivacyScreen = () => {
   };
 
   const handlePasswordChange = async () => {
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      Alert.alert('Lỗi', 'Vui lòng điền đầy đủ thông tin');
-      return;
+    // Reset errors
+    setPasswordErrors({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    
+    let hasErrors = false;
+    
+    if (!passwordData.currentPassword) {
+      setPasswordErrors(prev => ({...prev, currentPassword: 'Vui lòng nhập mật khẩu hiện tại'}));
+      hasErrors = true;
+    }
+
+    if (!passwordData.newPassword) {
+      setPasswordErrors(prev => ({...prev, newPassword: 'Vui lòng nhập mật khẩu mới'}));
+      hasErrors = true;
+    }
+
+    if (!passwordData.confirmPassword) {
+      setPasswordErrors(prev => ({...prev, confirmPassword: 'Vui lòng xác nhận mật khẩu mới'}));
+      hasErrors = true;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      Alert.alert('Lỗi', 'Mật khẩu mới không khớp');
+      setPasswordErrors(prev => ({...prev, confirmPassword: 'Mật khẩu mới không khớp'}));
+      hasErrors = true;
+    }
+
+    if (hasErrors) {
       return;
     }
 
@@ -62,23 +90,13 @@ const PrivacyScreen = () => {
         newPassword: passwordData.newPassword
       });
       
-      Alert.alert(
-        'Thành công',
-        'Mật khẩu đã được thay đổi',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setShowPasswordModal(false);
-              setPasswordData({
-                currentPassword: '',
-                newPassword: '',
-                confirmPassword: '',
-              });
-            }
-          }
-        ]
-      );
+      showSuccess('Mật khẩu đã được thay đổi');
+      setShowPasswordModal(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
     } catch (error) {
       console.error('Error changing password:', error);
       
@@ -91,28 +109,24 @@ const PrivacyScreen = () => {
         }
       }
       
-      Alert.alert('Lỗi', errorMessage);
+      showError(errorMessage);
     } finally {
       setIsChangingPassword(false);
     }
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Xóa tài khoản',
-      'Bạn có chắc chắn muốn xóa tài khoản vĩnh viễn? Dữ liệu của bạn sẽ không thể khôi phục.',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { 
-          text: 'Xóa tài khoản', 
-          style: 'destructive',
-          onPress: () => {
-            // Handle account deletion logic here
-            Alert.alert('Đã yêu cầu xóa tài khoản', 'Chúng tôi sẽ gửi email xác nhận để hoàn tất quy trình.');
-          } 
-        }
-      ]
-    );
+    showConfirmation({
+      title: 'Xóa tài khoản',
+      message: 'Bạn có chắc chắn muốn xóa tài khoản vĩnh viễn? Dữ liệu của bạn sẽ không thể khôi phục.',
+      confirmText: 'Xóa tài khoản',
+      cancelText: 'Hủy',
+      isDestructive: true,
+      onConfirm: () => {
+        // Handle account deletion logic here
+        showSuccess('Đã yêu cầu xóa tài khoản. Chúng tôi sẽ gửi email xác nhận để hoàn tất quy trình.');
+      }
+    });
   };
 
   const renderSectionHeader = (title, icon) => (
@@ -205,29 +219,54 @@ const PrivacyScreen = () => {
               </TouchableOpacity>
             </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Mật khẩu hiện tại"
-              secureTextEntry
-              value={passwordData.currentPassword}
-              onChangeText={(text) => setPasswordData({...passwordData, currentPassword: text})}
-            />
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, passwordErrors.currentPassword ? styles.inputError : null]}
+                placeholder="Mật khẩu hiện tại"
+                secureTextEntry
+                value={passwordData.currentPassword}
+                onChangeText={(text) => {
+                  setPasswordData({...passwordData, currentPassword: text});
+                  if (text) setPasswordErrors({...passwordErrors, currentPassword: ''});
+                }}
+              />
+              {passwordErrors.currentPassword ? (
+                <Text style={styles.errorText}>{passwordErrors.currentPassword}</Text>
+              ) : null}
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Mật khẩu mới"
-              secureTextEntry
-              value={passwordData.newPassword}
-              onChangeText={(text) => setPasswordData({...passwordData, newPassword: text})}
-            />
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, passwordErrors.newPassword ? styles.inputError : null]}
+                placeholder="Mật khẩu mới"
+                secureTextEntry
+                value={passwordData.newPassword}
+                onChangeText={(text) => {
+                  setPasswordData({...passwordData, newPassword: text});
+                  if (text) setPasswordErrors({...passwordErrors, newPassword: ''});
+                }}
+              />
+              {passwordErrors.newPassword ? (
+                <Text style={styles.errorText}>{passwordErrors.newPassword}</Text>
+              ) : null}
+            </View>
 
-            <TextInput
-              style={styles.input}
-              placeholder="Xác nhận mật khẩu mới"
-              secureTextEntry
-              value={passwordData.confirmPassword}
-              onChangeText={(text) => setPasswordData({...passwordData, confirmPassword: text})}
-            />
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, passwordErrors.confirmPassword ? styles.inputError : null]}
+                placeholder="Xác nhận mật khẩu mới"
+                secureTextEntry
+                value={passwordData.confirmPassword}
+                onChangeText={(text) => {
+                  setPasswordData({...passwordData, confirmPassword: text});
+                  if (text && text === passwordData.newPassword) 
+                    setPasswordErrors({...passwordErrors, confirmPassword: ''});
+                }}
+              />
+              {passwordErrors.confirmPassword ? (
+                <Text style={styles.errorText}>{passwordErrors.confirmPassword}</Text>
+              ) : null}
+            </View>
 
             <TouchableOpacity 
               style={styles.modalButton}
@@ -396,13 +435,24 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  inputContainer: {
+    marginBottom: 16,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
-    marginBottom: 16,
     fontSize: 16,
+  },
+  inputError: {
+    borderColor: '#e74c3c',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   modalButton: {
     backgroundColor: '#085924',

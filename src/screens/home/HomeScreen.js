@@ -10,7 +10,6 @@ import {
   ScrollView,
   Platform,
   Dimensions,
-  Alert,
   PanResponder,
   Animated,
   Image,
@@ -32,6 +31,7 @@ import BusinessFeedbackTypeService from '../../services/BusinessFeedbackTypeServ
 import BusinessFeedbackService from '../../services/BusinessFeedbackService';
 import api from '../../services/api';
 import SessionService from '../../services/SessionService';
+import { showError, showSuccess, showConfirmation, showInfo } from '../../utils/PopupUtils';
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
 
@@ -1117,14 +1117,13 @@ export default function HomeScreen() {
 
   const handleAddReview = () => {
     if (!isAuthenticated) {
-      Alert.alert(
-        'Cần đăng nhập',
-        'Bạn cần đăng nhập để sử dụng chức năng này.',
-        [
-          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
-          { text: 'Hủy', style: 'cancel' }
-        ]
-      );
+      showConfirmation({
+        title: 'Cần đăng nhập',
+        message: 'Bạn cần đăng nhập để sử dụng chức năng này.',
+        confirmText: 'Đăng nhập',
+        onConfirm: () => navigation.navigate('LoginScreen'),
+        cancelText: 'Hủy',
+      });
       return;
     }
     if (!selectedFacility) return;
@@ -1311,33 +1310,47 @@ export default function HomeScreen() {
   // Add a new state for feedback submission loading
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Update the handleFeedbackSubmit function to handle single selection
+  // Update the handleFeedbackSubmit function to handle validation
   const handleFeedbackSubmit = async () => {
+    // Reset validation errors
+    setFormErrors({
+      phone: '',
+      feedbackTypes: '',
+      content: ''
+    });
+    
+    // Validation flag
+    let hasErrors = false;
+    
     if (!isAuthenticated) {
-      Alert.alert(
-        'Cần đăng nhập',
-        'Bạn cần đăng nhập để sử dụng chức năng này.',
-        [
-          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
-          { text: 'Hủy', style: 'cancel' }
-        ]
-      );
+      showConfirmation({
+        title: 'Cần đăng nhập',
+        message: 'Bạn cần đăng nhập để sử dụng chức năng này.',
+        confirmText: 'Đăng nhập',
+        onConfirm: () => navigation.navigate('LoginScreen'),
+        cancelText: 'Hủy',
+      });
       return;
     }
+    
     if (!selectedFacility) return;
     
     if (!feedbackData.phone.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập số điện thoại');
-      return;
+      setFormErrors(prev => ({...prev, phone: 'Vui lòng nhập số điện thoại'}));
+      hasErrors = true;
     }
     
     if (!feedbackData.content.trim()) {
-      Alert.alert('Thông báo', 'Vui lòng nhập nội dung phản ánh');
-      return;
+      setFormErrors(prev => ({...prev, content: 'Vui lòng nhập nội dung phản ánh'}));
+      hasErrors = true;
     }
 
     if (feedbackData.feedbackTypes.length === 0) {
-      Alert.alert('Thông báo', 'Vui lòng chọn loại phản ánh');
+      setFormErrors(prev => ({...prev, feedbackTypes: 'Vui lòng chọn loại phản ánh'}));
+      hasErrors = true;
+    }
+    
+    if (hasErrors) {
       return;
     }
     
@@ -1383,11 +1396,7 @@ export default function HomeScreen() {
       setIsFeedbackModalVisible(false);
       
       // Show success message
-      Alert.alert(
-        'Thành công',
-        'Phản ánh của bạn đã được gửi thành công tới cơ quan chức năng',
-        [{ text: 'OK' }]
-      );
+      showSuccess('Phản ánh của bạn đã được gửi thành công tới cơ quan chức năng');
       
       // Reset form data
       setFeedbackData({
@@ -1400,11 +1409,7 @@ export default function HomeScreen() {
       });
     } catch (error) {
       console.error('Error submitting feedback:', error);
-      Alert.alert(
-        'Lỗi',
-        'Có lỗi xảy ra khi gửi phản ánh. Vui lòng thử lại sau.',
-        [{ text: 'OK' }]
-      );
+      showError('Không thể gửi phản ánh. Vui lòng thử lại sau.');
     } finally {
       setIsSubmitting(false);
     }
@@ -1603,14 +1608,13 @@ export default function HomeScreen() {
   // Add function to handle edit review
   const handleEditReview = (review) => {
     if (!isAuthenticated) {
-      Alert.alert(
-        'Cần đăng nhập',
-        'Bạn cần đăng nhập để sử dụng chức năng này.',
-        [
-          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
-          { text: 'Hủy', style: 'cancel' }
-        ]
-      );
+      showConfirmation({
+        title: 'Cần đăng nhập',
+        message: 'Bạn cần đăng nhập để sử dụng chức năng này.',
+        confirmText: 'Đăng nhập',
+        onConfirm: () => navigation.navigate('LoginScreen'),
+        cancelText: 'Hủy',
+      });
       return;
     }
     setMenuVisible(false);
@@ -1626,35 +1630,27 @@ export default function HomeScreen() {
   // Add function to handle delete review
   const handleDeleteReview = (review) => {
     if (!isAuthenticated) {
-      Alert.alert(
-        'Cần đăng nhập',
-        'Bạn cần đăng nhập để sử dụng chức năng này.',
-        [
-          { text: 'Đăng nhập', onPress: () => navigation.navigate('LoginScreen') },
-          { text: 'Hủy', style: 'cancel' }
-        ]
-      );
+      showConfirmation({
+        title: 'Cần đăng nhập',
+        message: 'Bạn cần đăng nhập để sử dụng chức năng này.',
+        confirmText: 'Đăng nhập',
+        onConfirm: () => navigation.navigate('LoginScreen'),
+        cancelText: 'Hủy',
+      });
       return;
     }
     setMenuVisible(false);
-    Alert.alert(
-      'Xác nhận xóa',
-      'Bạn có chắc chắn muốn xóa bài đánh giá này?',
-      [
-        {
-          text: 'Hủy',
-          style: 'cancel'
-        },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: () => {
-            // Handle delete
-            console.log('Delete review:', review.id);
-          }
-        }
-      ]
-    );
+    showConfirmation({
+      title: 'Xác nhận xóa',
+      message: 'Bạn có chắc chắn muốn xóa bài đánh giá này?',
+      confirmText: 'Xóa',
+      onConfirm: () => {
+        // Handle delete
+        console.log('Delete review:', review.id);
+      },
+      cancelText: 'Hủy',
+      isDestructive: true,
+    });
   };
 
   // Add function to check if user has reviews
@@ -1947,12 +1943,18 @@ export default function HomeScreen() {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Số điện thoại: <Text style={{color: 'red'}}>*</Text></Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, formErrors.phone ? styles.inputError : null]}
                 value={feedbackData.phone}
-                onChangeText={(text) => setFeedbackData({...feedbackData, phone: text})}
+                onChangeText={(text) => {
+                  setFeedbackData({...feedbackData, phone: text});
+                  if (text.trim()) {
+                    setFormErrors(prev => ({...prev, phone: ''}));
+                  }
+                }}
                 placeholder="Nhập số điện thoại"
                 keyboardType="phone-pad"
               />
+              {formErrors.phone ? <Text style={styles.errorText}>{formErrors.phone}</Text> : null}
             </View>
             
             <View style={styles.formGroup}>
@@ -1960,21 +1962,33 @@ export default function HomeScreen() {
               <MultiSelectDropdown
                 options={feedbackTypes.length > 0 ? feedbackTypes : [{ label: 'Đang tải...', value: '0', disabled: true }]}
                 selectedValues={feedbackData.feedbackTypes}
-                onChange={types => setFeedbackData({ ...feedbackData, feedbackTypes: types })}
+                onChange={types => {
+                  setFeedbackData({ ...feedbackData, feedbackTypes: types });
+                  if (types.length > 0) {
+                    setFormErrors(prev => ({...prev, feedbackTypes: ''}));
+                  }
+                }}
                 placeholder="Chọn loại phản ánh"
               />
+              {formErrors.feedbackTypes ? <Text style={styles.errorText}>{formErrors.feedbackTypes}</Text> : null}
             </View>
             
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nội dung phản ánh: <Text style={{color: 'red'}}>*</Text></Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, formErrors.content ? styles.inputError : null]}
                 value={feedbackData.content}
-                onChangeText={(text) => setFeedbackData({...feedbackData, content: text})}
+                onChangeText={(text) => {
+                  setFeedbackData({...feedbackData, content: text});
+                  if (text.trim()) {
+                    setFormErrors(prev => ({...prev, content: ''}));
+                  }
+                }}
                 placeholder="Nhập nội dung phản ánh chi tiết..."
                 multiline={true}
                 numberOfLines={5}
               />
+              {formErrors.content ? <Text style={styles.errorText}>{formErrors.content}</Text> : null}
             </View>
 
             <View style={styles.formGroup}>
@@ -2142,21 +2156,16 @@ export default function HomeScreen() {
         const permission = await requestMediaPermission();
         
         if (permission === 'never_ask_again') {
-          Alert.alert(
-            'Cần quyền truy cập',
-            'Bạn đã từ chối quyền và chọn không hỏi lại. Vui lòng vào Cài đặt để cấp lại quyền.',
-            [
-              { text: 'Hủy', style: 'cancel' },
-              { text: 'Mở cài đặt', onPress: () => Linking.openSettings() },
-            ]
-          );
+          showConfirmation({
+            title: 'Cần quyền truy cập',
+            message: 'Bạn đã từ chối quyền và chọn không hỏi lại. Vui lòng vào Cài đặt để cấp lại quyền.',
+            confirmText: 'Mở cài đặt',
+            onConfirm: () => Linking.openSettings(),
+            cancelText: 'Hủy',
+          });
           return;
         } else if (permission === 'denied') {
-          Alert.alert(
-            'Cần quyền truy cập',
-            'Ứng dụng cần quyền truy cập media để hoạt động chính xác',
-            [{ text: 'Đã hiểu', style: 'cancel' }]
-          );
+          showInfo('Ứng dụng cần quyền truy cập media để hoạt động chính xác');
           return;
         }
       }
@@ -2181,7 +2190,7 @@ export default function HomeScreen() {
 
         if (result.errorCode) {
           console.log('ImagePicker Error: ', result.errorMessage);
-          Alert.alert('Lỗi', 'Không thể truy cập thư viện ảnh. Vui lòng thử lại sau.');
+          showError('Không thể truy cập thư viện ảnh. Vui lòng thử lại sau.');
           return;
         }
 
@@ -2196,11 +2205,11 @@ export default function HomeScreen() {
         }
       } catch (imagePickerError) {
         console.error('Error in image picker:', imagePickerError);
-        Alert.alert('Lỗi', 'Có lỗi xảy ra khi chọn media. Vui lòng thử lại sau.');
+        showError('Có lỗi xảy ra khi chọn media. Vui lòng thử lại sau.');
       }
     } catch (error) {
       console.error('Error in handleMediaPicker:', error);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý quyền truy cập. Vui lòng thử lại sau.');
+      showError('Có lỗi xảy ra khi xử lý quyền truy cập. Vui lòng thử lại sau.');
     }
   };
 
@@ -2283,6 +2292,13 @@ export default function HomeScreen() {
     }
     setIsFeedbackModalVisible(true);
   };
+
+  // Add validation errors state
+  const [formErrors, setFormErrors] = useState({
+    phone: '',
+    feedbackTypes: '',
+    content: ''
+  });
 
   return (
     <SafeAreaView style={styles.container}>

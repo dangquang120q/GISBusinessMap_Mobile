@@ -7,11 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import ForeignersService from '../../services/ForeignersService';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const AddForeignerScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
@@ -190,31 +190,36 @@ const AddForeignerScreen = ({ navigation }) => {
         
         setLoading(false);
         
-        // Show success message
-        Alert.alert(
-          'Thành công',
-          'Đã đăng ký người nước ngoài thành công',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Navigate to detail page if the foreigner was created successfully
-                if (result && result.id) {
-                  navigation.navigate('ForeignerDetail', { foreignerId: result.id });
-                } else {
-                  navigation.goBack();
-                }
-              },
-            },
-          ]
-        );
+        // Show success message with confirmation popup
+        showConfirmation({
+          title: 'Thành công',
+          message: 'Đã đăng ký người nước ngoài thành công',
+          confirmText: 'OK',
+          onConfirm: () => {
+            // Navigate to detail page if the foreigner was created successfully
+            if (result && result.id) {
+              navigation.navigate('ForeignerDetail', { foreignerId: result.id });
+            } else {
+              navigation.goBack();
+            }
+          },
+          onCancel: () => {
+            // Navigate to detail page if the foreigner was created successfully
+            if (result && result.id) {
+              navigation.navigate('ForeignerDetail', { foreignerId: result.id });
+            } else {
+              navigation.goBack();
+            }
+          },
+          cancelText: '',
+        });
       } catch (err) {
         console.error('Error creating foreigner:', err);
         setLoading(false);
-        Alert.alert('Lỗi', 'Không thể đăng ký người nước ngoài. Vui lòng thử lại sau.');
+        showError('Không thể đăng ký người nước ngoài. Vui lòng thử lại sau.');
       }
     } else {
-      Alert.alert('Lỗi', 'Vui lòng kiểm tra lại thông tin');
+      showError('Vui lòng kiểm tra lại thông tin');
     }
   };
 

@@ -6,10 +6,10 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
-  Alert,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const NotificationsScreen = () => {
   const navigation = useNavigation();
@@ -61,11 +61,7 @@ const NotificationsScreen = () => {
     // Here you would make an API call to save notification settings
     // For example: saveNotificationSettings(settings);
     
-    Alert.alert(
-      'Thành công',
-      'Cài đặt thông báo đã được lưu',
-      [{ text: 'OK' }]
-    );
+    showSuccess('Cài đặt thông báo đã được lưu');
   };
 
   const renderSectionHeader = (title, icon) => (
