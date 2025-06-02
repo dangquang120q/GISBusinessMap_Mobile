@@ -665,10 +665,11 @@ export default function HomeScreen() {
           padding: 3px 8px;
           font-weight: 500;
           font-size: 12px;
-          white-space: nowrap;
+          white-space: normal !important;
+          width: auto !important;
         }
         
-        .custom-tooltip:before {
+        .leaflet-tooltip-right.custom-tooltip::before {
           display: none;
         }
 
@@ -903,8 +904,12 @@ export default function HomeScreen() {
                 className: 'custom-tooltip',
                 offset: [3, 0]  // Reduced offset to bring text closer to icon
               };
+              
+              // Create tooltip with text wrapping and ellipsis
               leafletMarker.bindTooltip(
-                '<span style="color: ' + iconColor + '; font-weight: 700; font-size: 13px;">' + marker.name + '</span>', 
+                '<div style="color: ' + iconColor + '; font-weight: 700; font-size: 13px; max-width: 200px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: ellipsis;">' + 
+                marker.name + 
+                '</div>', 
                 tooltipOptions
               );
             }
