@@ -1054,6 +1054,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
   },
+  inputError: {
+    borderColor: '#e74c3c',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  disabledButton: {
+    backgroundColor: '#7ca294',
+    opacity: 0.8,
+  },
 });
 
 export default styles; 

@@ -22,6 +22,10 @@ export const setNavigationRef = (ref) => {
 // Function to navigate when token expires
 const navigateToAuth = () => {
   if (navigationRef) {
+    // For authentication errors, we'll stay on the current screen
+    // and let specific error handling be managed by the components
+    console.log('Authentication issue detected, redirecting to login');
+    
     navigationRef.dispatch(
       CommonActions.reset({
         index: 0,
@@ -35,6 +39,8 @@ const navigateToAuth = () => {
         ],
       })
     );
+  } else {
+    console.warn('Unable to navigate: navigationRef is not set');
   }
 };
 
@@ -80,37 +86,48 @@ apiClient.interceptors.response.use(
     // Xử lý các trường hợp lỗi phổ biến
     if (error.response) {
       // Lỗi từ server với mã trạng thái
-      const { status } = error.response;
+      const { status, config } = error.response;
       
       // Xử lý token hết hạn (401)
       if (status === 401) {
         console.log('Token expired or invalid');
         
-        // Xóa token và thông tin người dùng
-        await AsyncStorage.removeItem('userToken');
-        await AsyncStorage.removeItem('userData');
+        // Don't redirect for login/auth endpoints
+        const isAuthEndpoint = 
+          config.url.includes('/api/TokenAuth/Authenticate') || 
+          config.url.includes('/api/Account');
         
-        // Redirect đến màn hình login
-        navigateToAuth();
+        if (!isAuthEndpoint) {
+          // Xóa token và thông tin người dùng
+          await AsyncStorage.removeItem('userToken');
+          await AsyncStorage.removeItem('userData');
+          
+          // Redirect đến màn hình login
+          navigateToAuth();
+          
+          if (popupHandler) {
+            popupHandler.showError('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+          }
+        }
       }
       // Xử lý lỗi không có quyền (403)
       else if (status === 403) {
         console.log('Forbidden: No permission to access this resource');
         if (popupHandler) {
-          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thoát ứng dụng và mở lại.');
+          popupHandler.showError('Bạn không có quyền truy cập tài nguyên này.');
         }
       }
       // Lỗi server (500)
       else if (status >= 500) {
-        console.log('Server error occurred');
-        if (popupHandler) {
-          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thoát ứng dụng và mở lại.');
+        console.log('Server error occurred:', error.response.data);
+        if (popupHandler && !config.url.includes('/api/TokenAuth/Authenticate')) {
+          popupHandler.showError('Có lỗi xảy ra từ máy chủ. Vui lòng thử lại sau.');
         }
       }
       // Các lỗi khác
       else {
-        if (popupHandler) {
-          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thoát ứng dụng và mở lại.');
+        if (popupHandler && !config.url.includes('/api/TokenAuth/Authenticate')) {
+          popupHandler.showError('Có vấn đề về kết nối. Vui lòng thử lại sau.');
         }
       }
     } else if (error.request) {

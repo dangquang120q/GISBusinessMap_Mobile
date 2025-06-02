@@ -3,6 +3,7 @@ import React from 'react';
 import AppNav from './src/navigation/AppNav';
 import {AuthProvider} from './src/context/AuthContext';
 import {PopupProvider, usePopup} from './src/context/PopupContext';
+import {ConfigurationProvider} from './src/context/ConfigurationContext';
 import ErrorPopup from './src/components/ErrorPopup';
 import SuccessPopup from './src/components/SuccessPopup';
 import InfoPopup from './src/components/InfoPopup';
@@ -66,10 +67,12 @@ const PopupHandler = () => {
 function App() {
   return (
     <PopupProvider>
-      <AuthProvider>
-        <AppNav />
-        <PopupHandler />
-      </AuthProvider>
+      <ConfigurationProvider>
+        <AuthProvider>
+          <AppNav />
+          <PopupHandler />
+        </AuthProvider>
+      </ConfigurationProvider>
     </PopupProvider>
   );
 }

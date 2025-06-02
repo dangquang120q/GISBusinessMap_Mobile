@@ -16,10 +16,23 @@ class TokenAuthService {
   async authenticate(loginData) {
     try {
       const response = await api.post('/api/TokenAuth/Authenticate', loginData);
-      return response.result;
+      
+      if (!response || !response.result) {
+        throw new Error('Không nhận được kết quả xác thực');
+      }
+      
+      return {
+        success: true,
+        data: response.result
+      };
     } catch (error) {
       console.error('Error authenticating user:', error);
-      throw error;
+      
+      return {
+        success: false,
+        error: error,
+        message: error.response?.data?.error?.message || 'Đăng nhập thất bại'
+      };
     }
   }
 
@@ -31,10 +44,17 @@ class TokenAuthService {
   async logout() {
     try {
       const response = await api.post('/api/TokenAuth/Logout');
-      return response;
+      return {
+        success: true,
+        data: response
+      };
     } catch (error) {
       console.error('Error logging out:', error);
-      throw error;
+      return {
+        success: false,
+        error: error,
+        message: 'Đăng xuất thất bại'
+      };
     }
   }
 }

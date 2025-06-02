@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useCallback, memo} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -24,6 +24,25 @@ import CustomButton from '../../components/CustomButton';
 import AccountService from '../../services/AccountService';
 import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
+// Memoize the CustomInputField component to prevent unnecessary re-renders
+const CustomInputField = memo(({ label, value, onChangeText, icon, keyboardType, inputType, error }) => {
+  const shouldShowError = formSubmitted => formSubmitted && error;
+  
+  return (
+    <View style={styles.inputContainer}>
+      <InputField
+        label={label}
+        value={value}
+        onChangeText={onChangeText}
+        icon={icon}
+        keyboardType={keyboardType}
+        inputType={inputType}
+      />
+      {shouldShowError ? <Text style={styles.errorText}>{error}</Text> : null}
+    </View>
+  );
+});
+
 const RegisterScreen = ({navigation}) => {
   // Form states
   const [name, setName] = useState('');
@@ -36,7 +55,7 @@ const RegisterScreen = ({navigation}) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   
-  // Error states for form validation
+  // Error states for form validation - only show after submit attempt
   const [formErrors, setFormErrors] = useState({
     name: '',
     surname: '',
@@ -47,6 +66,9 @@ const RegisterScreen = ({navigation}) => {
     confirmPassword: '',
     dateOfBirth: ''
   });
+  
+  // Track if form has been submitted once
+  const [formSubmitted, setFormSubmitted] = useState(false);
   
   // UI states
   const [isLoading, setIsLoading] = useState(false);
@@ -131,8 +153,38 @@ const RegisterScreen = ({navigation}) => {
     return isValid;
   };
   
+  // Memoized change handlers to prevent recreating functions on every render
+  const handleNameChange = useCallback((text) => {
+    setName(text);
+  }, []);
+
+  const handleSurnameChange = useCallback((text) => {
+    setSurname(text);
+  }, []);
+
+  const handleUsernameChange = useCallback((text) => {
+    setUsername(text);
+  }, []);
+
+  const handleEmailChange = useCallback((text) => {
+    setEmail(text);
+  }, []);
+
+  const handlePhoneChange = useCallback((text) => {
+    setPhoneNumber(text);
+  }, []);
+
+  const handlePasswordChange = useCallback((text) => {
+    setPassword(text);
+  }, []);
+
+  const handleConfirmPasswordChange = useCallback((text) => {
+    setConfirmPassword(text);
+  }, []);
+  
   // Handle registration
   const handleRegister = async () => {
+    setFormSubmitted(true);
     if (!validateForm()) return;
     
     try {
@@ -170,7 +222,13 @@ const RegisterScreen = ({navigation}) => {
           title: 'Đăng ký thành công',
           message: 'Tài khoản của bạn đã được tạo thành công. Bạn có thể đăng nhập ngay bây giờ.',
           confirmText: 'Đăng nhập',
-          onConfirm: () => navigation.navigate('LoginScreen'),
+          onConfirm: () => {
+            // Navigate to the Login screen using the correct name from AuthStack.js
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
+          },
           onCancel: () => {},
           cancelText: 'Đóng'
         });
@@ -213,28 +271,18 @@ const RegisterScreen = ({navigation}) => {
     return `${day}/${month}/${year}`;
   };
 
-  // Custom Input Field with Error Message
-  const CustomInputField = ({ label, value, onChangeText, icon, keyboardType, inputType, error }) => {
-    return (
-      <View style={styles.inputContainer}>
-        <InputField
-          label={label}
-          value={value}
-          onChangeText={onChangeText}
-          icon={icon}
-          keyboardType={keyboardType}
-          inputType={inputType}
-        />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-      </View>
-    );
+  // Render FormFieldError component
+  const renderError = (error) => {
+    if (!formSubmitted || !error) return null;
+    return <Text style={styles.errorText}>{error}</Text>;
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        style={styles.scrollView}>
+        style={styles.scrollView}
+        keyboardShouldPersistTaps="handled">
         <View style={styles.imageContainer}>
           <Image
             source={require('../../assets/images/logo.png')}
@@ -249,86 +297,96 @@ const RegisterScreen = ({navigation}) => {
 
         <View style={styles.nameContainer}>
           <View style={styles.nameField}>
-            <CustomInputField
-              label={'Tên'}
-              value={name}
-              onChangeText={setName}
-              icon={
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  color="#666"
-                  style={{marginRight: 5}}
-                />
-              }
-              error={formErrors.name}
-            />
+            <View style={styles.inputContainer}>
+              <InputField
+                label={'Tên'}
+                value={name}
+                onChangeText={handleNameChange}
+                icon={
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color="#666"
+                    style={{marginRight: 5}}
+                  />
+                }
+              />
+              {renderError(formErrors.name)}
+            </View>
           </View>
           
           <View style={styles.nameField}>
-            <CustomInputField
-              label={'Họ'}
-              value={surname}
-              onChangeText={setSurname}
-              icon={
-                <Ionicons
-                  name="person-outline"
-                  size={20}
-                  color="#666"
-                  style={{marginRight: 5}}
-                />
-              }
-              error={formErrors.surname}
-            />
+            <View style={styles.inputContainer}>
+              <InputField
+                label={'Họ'}
+                value={surname}
+                onChangeText={handleSurnameChange}
+                icon={
+                  <Ionicons
+                    name="person-outline"
+                    size={20}
+                    color="#666"
+                    style={{marginRight: 5}}
+                  />
+                }
+              />
+              {renderError(formErrors.surname)}
+            </View>
           </View>
         </View>
 
-        <CustomInputField
-          label={'Tên đăng nhập'}
-          value={username}
-          onChangeText={setUsername}
-          icon={
-            <Ionicons
-              name="at-outline"
-              size={20}
-              color="#666"
-              style={{marginRight: 5}}
-            />
-          }
-          error={formErrors.username}
-        />
+        <View style={styles.inputContainer}>
+          <InputField
+            label={'Tên đăng nhập'}
+            value={username}
+            onChangeText={handleUsernameChange}
+            icon={
+              <Ionicons
+                name="at-outline"
+                size={20}
+                color="#666"
+                style={{marginRight: 5}}
+              />
+            }
+          />
+          {renderError(formErrors.username)}
+        </View>
 
-        <CustomInputField
-          label={'Email'}
-          value={email}
-          onChangeText={setEmail}
-          icon={
-            <MaterialIcons
-              name="alternate-email"
-              size={20}
-              color="#666"
-              style={{marginRight: 5}}
-            />
-          }
-          keyboardType="email-address"
-          error={formErrors.email}
-        />
+        <View style={styles.inputContainer}>
+          <InputField
+            label={'Email'}
+            value={email}
+            onChangeText={handleEmailChange}
+            icon={
+              <MaterialIcons
+                name="alternate-email"
+                size={20}
+                color="#666"
+                style={{marginRight: 5}}
+              />
+            }
+            keyboardType="email-address"
+          />
+          {renderError(formErrors.email)}
+        </View>
 
-        <CustomInputField
-          label={'Số điện thoại'}
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          icon={
-            <Ionicons
-              name="call-outline"
-              size={20}
-              color="#666"
-              style={{marginRight: 5}}
-            />
-          }
-          keyboardType="phone-pad"
-          error={formErrors.phoneNumber}
-        />
+        <View style={styles.inputContainer}>
+          <InputField
+            label={'Số điện thoại'}
+            value={phoneNumber}
+            onChangeText={handlePhoneChange}
+            icon={
+              <Ionicons
+                name="call-outline"
+                size={20}
+                color="#666"
+                style={{marginRight: 5}}
+              />
+            }
+            keyboardType="phone-pad"
+          />
+          {renderError(formErrors.phoneNumber)}
+        </View>
 
         <View style={styles.genderContainer}>
           <Text style={styles.genderLabel}>Giới tính:</Text>
@@ -382,7 +440,7 @@ const RegisterScreen = ({navigation}) => {
               </Text>
             </TouchableOpacity>
           </View>
-          {formErrors.dateOfBirth ? <Text style={styles.errorText}>{formErrors.dateOfBirth}</Text> : null}
+          {renderError(formErrors.dateOfBirth)}
         </View>
 
         <DatePicker
@@ -402,37 +460,41 @@ const RegisterScreen = ({navigation}) => {
           }}
         />
 
-        <CustomInputField
-          label={'Mật khẩu'}
-          value={password}
-          onChangeText={setPassword}
-          icon={
-            <Ionicons
-              name="ios-lock-closed-outline"
-              size={20}
-              color="#666"
-              style={{marginRight: 5}}
-            />
-          }
-          inputType="password"
-          error={formErrors.password}
-        />
+        <View style={styles.inputContainer}>
+          <InputField
+            label={'Mật khẩu'}
+            value={password}
+            onChangeText={handlePasswordChange}
+            icon={
+              <Ionicons
+                name="ios-lock-closed-outline"
+                size={20}
+                color="#666"
+                style={{marginRight: 5}}
+              />
+            }
+            inputType="password"
+          />
+          {renderError(formErrors.password)}
+        </View>
 
-        <CustomInputField
-          label={'Xác nhận mật khẩu'}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          icon={
-            <Ionicons
-              name="ios-lock-closed-outline"
-              size={20}
-              color="#666"
-              style={{marginRight: 5}}
-            />
-          }
-          inputType="password"
-          error={formErrors.confirmPassword}
-        />
+        <View style={styles.inputContainer}>
+          <InputField
+            label={'Xác nhận mật khẩu'}
+            value={confirmPassword}
+            onChangeText={handleConfirmPasswordChange}
+            icon={
+              <Ionicons
+                name="ios-lock-closed-outline"
+                size={20}
+                color="#666"
+                style={{marginRight: 5}}
+              />
+            }
+            inputType="password"
+          />
+          {renderError(formErrors.confirmPassword)}
+        </View>
 
         <CustomButton 
           label={isLoading ? 'Đang xử lý...' : 'Đăng ký'} 

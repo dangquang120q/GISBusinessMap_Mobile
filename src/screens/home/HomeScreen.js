@@ -32,6 +32,8 @@ import BusinessFeedbackService from '../../services/BusinessFeedbackService';
 import api from '../../services/api';
 import SessionService from '../../services/SessionService';
 import { showError, showSuccess, showConfirmation, showInfo } from '../../utils/PopupUtils';
+import BusinessReviewService from '../../services/BusinessReviewService';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 // Demo API URL - replace with your actual API URL
 // import {API_URL} from '../config/api';
 
@@ -214,6 +216,8 @@ export default function HomeScreen() {
               openHours: '',
               description: `${item.organizationName || ''} ${item.organizationName && item.representativeName ? '-' : ''} ${item.representativeName || ''}`,
               status: item.status || '',
+              businessId: item.businessId || 0,
+              address: item.addressDetail || ''
             };
           });
           if (isMounted) {
@@ -1083,10 +1087,8 @@ export default function HomeScreen() {
             
             const facilityId = String(data.facilityId);
             const facilityToShow = facilities.find(f => String(f.id) === facilityId);
-            console.log('Found facility:', facilityToShow);
             
             if (facilityToShow && isMountedRef.current) {
-              console.log('Opening bottom sheet for facility:', facilityToShow.name);
               handleViewFacilityDetails(facilityToShow);
             } else {
               console.error('Facility not found for ID:', facilityId);
@@ -1115,7 +1117,23 @@ export default function HomeScreen() {
       .replace(/Đ/g, 'D');
   };
 
-  const handleAddReview = () => {
+  // Add review validation errors state
+  const [reviewErrors, setReviewErrors] = useState({
+    title: '',
+    content: ''
+  });
+
+  // Update the handleAddReview function
+  const handleAddReview = async () => {
+    // Reset validation errors
+    setReviewErrors({
+      title: '',
+      content: ''
+    });
+    
+    // Validation flag
+    let hasErrors = false;
+    
     if (!isAuthenticated) {
       showConfirmation({
         title: 'Cần đăng nhập',
@@ -1126,22 +1144,58 @@ export default function HomeScreen() {
       });
       return;
     }
+    
     if (!selectedFacility) return;
     
-    setIsReviewModalVisible(false);
+    // Validate required fields
+    if (!newReview.title.trim()) {
+      setReviewErrors(prev => ({...prev, title: 'Vui lòng nhập tiêu đề đánh giá'}));
+      hasErrors = true;
+    }
     
-    // In a real app, make an API call to add the review
-    console.log('Review added:', {
-      facilityId: selectedFacility.id,
-      ...newReview,
-    });
+    if (!newReview.content.trim()) {
+      setReviewErrors(prev => ({...prev, content: 'Vui lòng nhập nội dung đánh giá'}));
+      hasErrors = true;
+    }
     
-    setNewReview({
-      title: '',
-      rating: 5,
-      content: '',
-      media: [],
-    });
+    if (hasErrors) {
+      return;
+    }
+    
+    // Show loading state
+    setIsSaving(true);
+    
+    try {
+      // Prepare review data
+      const reviewData = {
+        businessId: selectedFacility.businessId || 0,
+        branchId: selectedFacility.id || 0,
+        rating: newReview.rating || 5,
+        title: newReview.title.trim(),
+        content: newReview.content.trim()
+      };
+      
+      // Call API to create review
+      await BusinessReviewService.createByUser(reviewData);
+      
+      // Show success message
+      showSuccess('Đánh giá của bạn đã được gửi thành công');
+      
+      // Close modal and reset form
+      setIsReviewModalVisible(false);
+      setNewReview({
+        title: '',
+        rating: 5,
+        content: '',
+        media: [],
+      });
+      
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      showError('Không thể gửi đánh giá. Vui lòng thử lại sau.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleViewFacilityDetails = (facility) => {
@@ -1149,9 +1203,7 @@ export default function HomeScreen() {
       console.error('Cannot view facility details:', facility ? 'isMounted is false' : 'facility is null');
       return;
     }
-    
-    console.log('Showing facility details:', facility.id, facility.name);
-    
+        
     try {
       // Ensure all facility properties have default values to avoid rendering issues
       const safetyFacility = {
@@ -1170,7 +1222,8 @@ export default function HomeScreen() {
         openHours: facility.openHours || '',
         description: facility.description || 'Chưa có thông tin chi tiết về cơ sở này.',
         status: facility.status || '',
-        businessTypeId: facility.businessTypeId || 0
+        businessTypeId: facility.businessTypeId || 0,
+        businessId: facility.businessId || 0,
       };
       
       // Set the facility data
@@ -1185,39 +1238,75 @@ export default function HomeScreen() {
       
       // Set empty reviews to avoid any rendering issues
       setReviews([]);
+      setReviewsLoading(true);
       
-      // After a short delay, load mock reviews
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          const mockReviews = [
-            {
-              id: 1,
-              reviewerName: 'Nguyễn Văn A',
-              rating: 5,
-              title: 'Dịch vụ xuất sắc!',
-              content: 'Dịch vụ rất tuyệt vời!',
-              date: '15/08/2023',
-              likes: 2,
-              replies: 0,
-            },
-            {
-              id: 2,
-              reviewerName: 'Trần Thị B',
-              rating: 4,
-              title: 'Tốt nhưng vẫn có thể cải thiện',
-              content: 'Dịch vụ tốt, giá cả phải chăng.',
-              date: '20/07/2023',
-              likes: 0,
-              replies: 1,
-            },
-          ];
-          setReviews(mockReviews);
-        }
-      }, 500);
+      // Fetch real reviews data using API
+      fetchFacilityReviews(safetyFacility.id);
     } catch (error) {
       console.error('Error showing facility details:', error);
     }
   };
+
+  // Add a function to fetch reviews for a facility
+  const fetchFacilityReviews = async (branchId) => {
+    if (!branchId) {
+      setReviewsLoading(false);
+      return;
+    }
+    
+    try {
+      // Call the API to get reviews for this branch
+      const response = await BusinessReviewService.getList({
+        branchId: branchId,
+        maxResultCount: 10
+      });
+      
+      if (isMountedRef.current) {
+        if (response && Array.isArray(response.items)) {
+          // Map API response to our reviews format
+          const mappedReviews = response.items.map(item => ({
+            id: item.id,
+            reviewerName: item.reviewerName || 'Ẩn danh',
+            rating: item.rating || 0,
+            title: item.title || '',
+            content: item.content || 'Không có nội dung',
+            date: formatDate(item.reviewDate || item.createdDate),
+            status: item.status,
+            likes: 0,
+            replies: 0,
+            media: item.listBusinessReviewMedia || []
+          }));
+          setReviews(mappedReviews);
+        } else {
+          // Empty or invalid response
+          setReviews([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      if (isMountedRef.current) {
+        setReviews([]);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setReviewsLoading(false);
+      }
+    }
+  };
+
+  // Add a helper function to format dates
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  // Add state for reviews loading
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   const focusFacility = (facility) => {
     if (webViewRef.current) {
@@ -1367,27 +1456,17 @@ export default function HomeScreen() {
           attachmentUrl = fileUrl;
         }
       }
-      
+      console.log('selectedFacility', selectedFacility);
       // Prepare the data for API
       const submitData = {
-        FeedbackTypeId: parseInt(feedbackData.feedbackTypes[0], 10), // Use the first selected type
-        SenderPhone: feedbackData.phone,
-        Content: feedbackData.content,
-        AttachmentUrl: attachmentUrl,
-        Channel: 'mobile',
-        BusinessBranchId: selectedFacility.id
+        feedbackTypeId: parseInt(feedbackData.feedbackTypes[0], 10), // Use the first selected type
+        senderPhone: feedbackData.phone,
+        content: feedbackData.content,
+        attachmentUrl: attachmentUrl,
+        channel: 'mobile',
+        branchId: selectedFacility.id,
+        businessId: selectedFacility.businessId,
       };
-      
-      // Add user data if available (from userData state)
-      if (userData) {
-        submitData.SenderName = userData.name || '';
-        submitData.SenderEmail = userData.emailAddress || '';
-      }
-      
-      // Add address from the selected facility
-      if (selectedFacility && selectedFacility.address) {
-        submitData.SenderAddress = selectedFacility.address;
-      }
 
       // Call the API
       const response = await BusinessFeedbackService.createByUser(submitData);
@@ -1560,7 +1639,8 @@ export default function HomeScreen() {
         ) : null}
         
         <View style={styles.sectionDivider} />
-
+        {renderReviewsTab()}
+        <View style={styles.sectionDivider} />
         {/* Description section */}
         <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Giới thiệu</Text>
         <Text style={styles.descriptionText}>
@@ -1653,17 +1733,22 @@ export default function HomeScreen() {
     });
   };
 
-  // Add function to check if user has reviews
-  const hasUserReviews = () => {
-    return reviews.some(review => review.reviewerName === 'Nguyễn Văn A');
-  };
-
   const renderReviewsTab = () => {
     // Safety check for null selectedFacility
     if (!selectedFacility) {
       return (
         <View style={styles.tabContent}>
           <Text>Không có dữ liệu</Text>
+        </View>
+      );
+    }
+    
+    // Show loading indicator
+    if (reviewsLoading) {
+      return (
+        <View style={[styles.tabContent, styles.emptyReviews]}>
+          <ActivityIndicator size="large" color="#085924" />
+          <Text style={{marginTop: 10, color: '#666'}}>Đang tải đánh giá...</Text>
         </View>
       );
     }
@@ -1722,14 +1807,14 @@ export default function HomeScreen() {
             </View>
           ))}
           
-          {isAuthenticated && (
+          {/* {isAuthenticated && (
             <TouchableOpacity
               style={{backgroundColor: '#085924', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10}}
               onPress={() => setIsReviewModalVisible(true)}
             >
               <Text style={{color: '#fff'}}>Thêm đánh giá mới</Text>
             </TouchableOpacity>
-          )}
+          )} */}
         </View>
       </ScrollView>
     );
@@ -1829,11 +1914,17 @@ export default function HomeScreen() {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Tiêu đề: <Text style={{color: 'red'}}>*</Text></Text>
               <TextInput
-                style={styles.input}
+                style={[styles.input, reviewErrors.title ? styles.inputError : null]}
                 value={newReview.title}
-                onChangeText={(text) => setNewReview({...newReview, title: text})}
+                onChangeText={(text) => {
+                  setNewReview({...newReview, title: text});
+                  if (text.trim()) {
+                    setReviewErrors(prev => ({...prev, title: ''}));
+                  }
+                }}
                 placeholder="Nhập tiêu đề đánh giá"
               />
+              {reviewErrors.title ? <Text style={styles.errorText}>{reviewErrors.title}</Text> : null}
             </View>
             
             <View style={styles.formGroup}>
@@ -1858,13 +1949,19 @@ export default function HomeScreen() {
             <View style={styles.formGroup}>
               <Text style={styles.label}>Nội dung đánh giá: <Text style={{color: 'red'}}>*</Text></Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[styles.input, styles.textArea, reviewErrors.content ? styles.inputError : null]}
                 value={newReview.content}
-                onChangeText={(text) => setNewReview({...newReview, content: text})}
+                onChangeText={(text) => {
+                  setNewReview({...newReview, content: text});
+                  if (text.trim()) {
+                    setReviewErrors(prev => ({...prev, content: ''}));
+                  }
+                }}
                 placeholder="Nhập nội dung đánh giá..."
                 multiline={true}
                 numberOfLines={5}
               />
+              {reviewErrors.content ? <Text style={styles.errorText}>{reviewErrors.content}</Text> : null}
             </View>
 
             <View style={styles.formGroup}>
@@ -1905,9 +2002,14 @@ export default function HomeScreen() {
             </View>
             
             <TouchableOpacity
-              style={styles.submitButton}
-              onPress={handleAddReview}>
-              <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
+              style={[styles.submitButton, isSaving && styles.disabledButton]}
+              onPress={handleAddReview}
+              disabled={isSaving}>
+              {isSaving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.submitButtonText}>Thêm đánh giá</Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </View>
@@ -2300,6 +2402,9 @@ export default function HomeScreen() {
     content: ''
   });
 
+  // Add isSaving state
+  const [isSaving, setIsSaving] = useState(false);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Map View */}
@@ -2511,8 +2616,8 @@ export default function HomeScreen() {
                 <ActivityIndicator size="small" color={filters[type.id] ? "#fff" : "#666"} style={styles.filterButtonIcon} />
               ) : (
                 <View>
-                  <Ionicons 
-                    name={type.businessTypeIcon || 'business'} 
+                  <MaterialIcons 
+                    name={(type.businessTypeIcon ? type.businessTypeIcon.replace(/_/g, '-') : 'business')}
                     size={18} 
                     color={filters[type.id] ? "#fff" : "#666"} 
                   />

@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect} from 'react';
+import React, {useContext, useState, useEffect, useCallback} from 'react';
 import {
   SafeAreaView,
   View,
@@ -76,7 +76,25 @@ const LoginScreen = ({navigation}) => {
     return true;
   };
 
+  // Memoized input handlers to prevent unnecessary re-renders
+  const handleEmailChange = useCallback((text) => {
+    setEmail(text);
+    setError('');
+    validateEmail(text);
+  }, []);
+  
+  const handlePasswordChange = useCallback((text) => {
+    setPassword(text);
+    setError('');
+    validatePassword(text);
+  }, []);
+  
+  const toggleShowPassword = useCallback(() => {
+    setShowPassword(prev => !prev);
+  }, []);
+
   const handleLogin = async () => {
+    // Validate inputs
     const isEmailValid = validateEmail(email);
     const isPasswordValid = validatePassword(password);
 
@@ -89,7 +107,7 @@ const LoginScreen = ({navigation}) => {
       setIsLoading(true);
       setError('');
       
-      // Call login function with the modified email
+      // Call login function with email and password
       const result = await login(email, password);
       
       if (!mounted) {
@@ -97,10 +115,30 @@ const LoginScreen = ({navigation}) => {
         return;
       }
 
-      if (!result) {
-        setError('Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      // Check for login success/failure
+      if (!result || !result.success) {
+        // Handle login failure
+        console.error('Login failed with error:', result?.error);
+        
+        let errorMessage = 'Đăng nhập thất bại. Vui lòng kiểm tra thông tin đăng nhập.';
+        
+        // Extract detailed error message if available
+        if (result?.error?.response) {
+          if (result.error.response.status === 500) {
+            errorMessage = 'Đã xảy ra lỗi máy chủ. Vui lòng thử lại sau.';
+          } else if (result.error.response.data?.error?.message) {
+            errorMessage = result.error.response.data.error.message;
+          }
+        } else if (result?.message) {
+          errorMessage = result.message;
+        }
+        
+        setError(errorMessage);
+        setIsLoading(false);
+        // We stay on the login screen - do not navigate anywhere
       } else {
-        console.log('Login successful, waiting for isAuthenticated to update');
+        // Login succeeded, effect will handle navigation based on isAuthenticated
+        console.log('Login successful, waiting for isAuthenticated state to update');
       }
     } catch (err) {
       if (!mounted) {
@@ -120,7 +158,7 @@ const LoginScreen = ({navigation}) => {
         // that falls out of the range of 2xx
         console.log('Error response data:', err.response.data);
         console.log('Error response status:', err.response.status);
-        setError(`Lỗi server: ${err.response.data?.message || 'Vui lòng thử lại sau'}`);
+        setError(`Lỗi server: ${err.response.data?.error?.message || 'Vui lòng thử lại sau'}`);
       } else if (err.request) {
         // The request was made but no response was received
         console.log('No response received:', err.request);
@@ -130,11 +168,8 @@ const LoginScreen = ({navigation}) => {
         console.log('Error setting up request:', err.message);
         setError('Có lỗi xảy ra. Vui lòng thử lại sau.');
       }
-    } finally {
-      if (mounted) {
-        console.log('Login process completed, setting loading to false');
-        setIsLoading(false);
-      }
+      
+      setIsLoading(false);
     }
   };
 
@@ -226,11 +261,7 @@ const LoginScreen = ({navigation}) => {
             }
             keyboardType="email-address"
             value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              setError('');
-              validateEmail(text);
-            }}
+            onChangeText={handleEmailChange}
             editable={!isLoading}
           />
           {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
@@ -249,15 +280,11 @@ const LoginScreen = ({navigation}) => {
             }
             inputType="password"
             value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              setError('');
-              validatePassword(text);
-            }}
+            onChangeText={handlePasswordChange}
             editable={!isLoading}
             showPassword={showPassword}
             fieldButtonIcon={
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <TouchableOpacity onPress={toggleShowPassword}>
                 <Ionicons 
                   name={showPassword ? "eye-off-outline" : "eye-outline"} 
                   size={20} 

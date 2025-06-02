@@ -9,6 +9,8 @@ import TabNavigator from './TabNavigator';
 
 import {AuthContext} from '../context/AuthContext';
 import {setNavigationRef} from '../services/api';
+import ConfigurationLoader from '../components/ConfigurationLoader';
+import {useConfiguration} from '../context/ConfigurationContext';
 
 const Stack = createNativeStackNavigator();
 
@@ -16,9 +18,10 @@ const Stack = createNativeStackNavigator();
 const AuthScreen = () => <AuthStack />;
 const AppScreen = () => <AppNavigator />;
 
-const AppNav = () => {
+const NavigationContent = () => {
     const {isLoading, isAuthenticated} = useContext(AuthContext);
     const navigationRef = useRef(null);
+    const {configuration} = useConfiguration();
 
     useEffect(() => {
         // Set navigation reference for API service to use
@@ -27,6 +30,7 @@ const AppNav = () => {
         }
     }, [navigationRef.current]);
 
+    // Custom loading indicator for auth loading
     if (isLoading) {
         return (
             <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
@@ -47,6 +51,15 @@ const AppNav = () => {
                 )}
             </Stack.Navigator>
         </NavigationContainer>
+    );
+};
+
+const AppNav = () => {
+    // Wrap navigation with ConfigurationLoader to ensure configuration is loaded
+    return (
+        <ConfigurationLoader>
+            <NavigationContent />
+        </ConfigurationLoader>
     );
 };
 

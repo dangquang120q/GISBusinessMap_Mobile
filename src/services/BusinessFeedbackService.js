@@ -52,6 +52,7 @@ class BusinessFeedbackService {
    */
   async createByUser(feedbackData) {
     try {
+      console.log('feedbackData', feedbackData);
       const response = await api.post('/api/services/app/BusinessFeedbacks/CreateByUser', feedbackData);
       return response.result;
     } catch (error) {

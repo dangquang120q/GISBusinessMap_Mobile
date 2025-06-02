@@ -1,7 +1,7 @@
-import React from 'react';
+import React, {memo} from 'react';
 import {View, Text, TouchableOpacity, TextInput} from 'react-native';
 
-export default function InputField({
+const InputField = memo(function InputField({
   label,
   icon,
   inputType,
@@ -11,7 +11,7 @@ export default function InputField({
   fieldButtonIcon,
   value,
   onChangeText,
-  editable,
+  editable = true,
   showPassword,
 }) {
   return (
@@ -33,6 +33,8 @@ export default function InputField({
           value={value}
           onChangeText={onChangeText}
           editable={editable}
+          underlineColorAndroid="transparent"
+          autoCapitalize="none"
         />
       ) : (
         <TextInput
@@ -42,6 +44,8 @@ export default function InputField({
           value={value}
           onChangeText={onChangeText}
           editable={editable}
+          underlineColorAndroid="transparent"
+          autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"}
         />
       )}
       {fieldButtonIcon ? (
@@ -53,4 +57,6 @@ export default function InputField({
       ) : null}
     </View>
   );
-}
+});
+
+export default InputField;
