@@ -26,7 +26,6 @@ export const AuthProvider = ({children}) => {
             // Save token and update authentication state
             setUserToken(response.data.result.accessToken);
             await AsyncStorage.setItem('userToken', response.data.result.accessToken);
-            console.log('Authentication successful:', response.data.result);
             
             // Set user role
             const role = response.data.result.userType ?? 1;

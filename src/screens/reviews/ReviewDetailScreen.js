@@ -80,8 +80,10 @@ const ReviewDetailScreen = () => {
         return 'Đã duyệt';
       case 'P':
         return 'Chờ duyệt';
-      case 'R':
+      case 'S':
         return 'Từ chối';
+      case 'D':
+        return 'Đã xóa';
       default:
         return 'Không xác định';
     }
@@ -93,8 +95,10 @@ const ReviewDetailScreen = () => {
         return { bg: '#e8f5e9', text: '#2e7d32' };
       case 'P':
         return { bg: '#fff3e0', text: '#f57c00' };
-      case 'R':
+      case 'S':
         return { bg: '#ffebee', text: '#c62828' };
+      case 'D':
+        return { bg: '#f5f5f5', text: '#757575' };
       default:
         return { bg: '#f5f5f5', text: '#757575' };
     }

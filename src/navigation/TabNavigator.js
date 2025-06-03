@@ -9,7 +9,7 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 // Import from screen folders using index.js
 import { HomeScreen } from '../screens/home';
 import { EditProfileScreen, SettingsScreen } from '../screens/profile';
-import { ReviewHistoryScreen, ReviewDetailScreen } from '../screens/reviews';
+import { ReviewHistoryScreen, ReviewDetailScreen, EditReviewScreen } from '../screens/reviews';
 import { FeedbackHistoryScreen, FeedbackDetailScreen } from '../screens/feedback';
 import { NotificationsListScreen } from '../screens/notifications';
 import { 
@@ -51,6 +51,7 @@ const ReviewStackScreen = () => {
     <ReviewStack.Navigator screenOptions={{headerShown: false}}>
       <ReviewStack.Screen name="ReviewHistory" component={ReviewHistoryScreen} />
       <ReviewStack.Screen name="ReviewDetail" component={ReviewDetailScreen} />
+      <ReviewStack.Screen name="EditReviewScreen" component={EditReviewScreen} />
     </ReviewStack.Navigator>
   );
 };
@@ -181,7 +182,6 @@ const TabNavigator = () => {
                   name="BusinessFacilities"
                   component={BusinessFacilityStackScreen}
                   options={{
-                    tabBarBadge: 2,
                     tabBarBadgeStyle: {backgroundColor: 'yellow'},
                     tabBarIcon: ({color, size}) => (
                       <Ionicons name="business-outline" color={color} size={size} />
@@ -192,7 +192,6 @@ const TabNavigator = () => {
                   name="ForeignerManagementTab"
                   component={ForeignerManagementStackScreen}
                   options={{
-                    tabBarBadge: 3,
                     tabBarBadgeStyle: {backgroundColor: 'yellow'},
                     tabBarIcon: ({color, size}) => (
                       <Ionicons name="people-outline" color={color} size={size} />
@@ -207,7 +206,6 @@ const TabNavigator = () => {
                   name="Review"
                   component={ReviewStackScreen}
                   options={{
-                    tabBarBadge: 3,
                     tabBarBadgeStyle: {backgroundColor: 'yellow'},
                     tabBarIcon: ({color, size}) => (
                       <Ionicons name="time-outline" color={color} size={size} />
@@ -218,7 +216,6 @@ const TabNavigator = () => {
                   name="Messages"
                   component={FeedbackStackScreen}
                   options={{
-                    tabBarBadge: 3,
                     tabBarBadgeStyle: {backgroundColor: 'yellow'},
                     tabBarIcon: ({color, size}) => (
                       <Ionicons name="warning-outline" color={color} size={size} />
@@ -248,6 +245,8 @@ const TabNavigator = () => {
               name="Notifications"
               component={NotificationsListScreen}
               options={{
+                tabBarBadge: 2,
+                tabBarBadgeStyle: {backgroundColor: 'yellow'},
                 tabBarIcon: ({color, size}) => (
                   <Ionicons name="notifications-outline" color={color} size={size} />
                 ),

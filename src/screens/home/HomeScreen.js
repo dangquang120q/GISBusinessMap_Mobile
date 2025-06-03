@@ -907,7 +907,7 @@ export default function HomeScreen() {
               
               // Create tooltip with text wrapping and ellipsis
               leafletMarker.bindTooltip(
-                '<div style="color: ' + iconColor + '; font-weight: 700; font-size: 13px; max-width: 200px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: ellipsis;">' + 
+                '<div style="color: ' + iconColor + '; font-weight: 700; font-size: 13px; width: 150px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; text-overflow: ellipsis;">' + 
                 marker.name + 
                 '</div>', 
                 tooltipOptions

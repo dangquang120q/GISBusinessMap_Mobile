@@ -5,17 +5,27 @@ const BusinessFeedbackType = {
   /**
    * Phản ánh đang chờ xác minh
    */
-  PENDING: 'pending',
+  PENDING: 'P',
+  
+  /**
+   * Phản ánh đã xác minh
+   */
+  APPROVED: 'A',
   
   /**
    * Phản ánh đang được xử lý
    */
-  PROCESSING: 'processing',
+  PROCESSING: 'I',
   
   /**
-   * Phản ánh đã được xử lý
+   * Phản ánh đã phản hồi
    */
-  RESOLVED: 'resolved',
+  REPLIED: 'R',
+  
+  /**
+   * Phản ánh đã đóng
+   */
+  CLOSED: 'C',
   
   /**
    * Lấy màu dựa trên trạng thái
@@ -24,14 +34,18 @@ const BusinessFeedbackType = {
    */
   getStatusColor: function(status) {
     switch (status) {
-      case this.RESOLVED:
-        return '#28a745';
+      case this.CLOSED:
+        return '#28a745'; // xanh lá
+      case this.REPLIED:
+        return '#17a2b8'; // xanh dương
       case this.PROCESSING:
-        return '#ffc107';
+        return '#ffc107'; // vàng
+      case this.APPROVED:
+        return '#6f42c1'; // tím
       case this.PENDING:
-        return '#dc3545';
+        return '#dc3545'; // đỏ
       default:
-        return '#6c757d';
+        return '#6c757d'; // xám
     }
   },
   
@@ -42,12 +56,16 @@ const BusinessFeedbackType = {
    */
   getStatusText: function(status) {
     switch (status) {
-      case this.RESOLVED:
-        return 'Đã xử lý';
+      case this.CLOSED:
+        return 'Đã đóng';
+      case this.REPLIED:
+        return 'Đã phản hồi';
       case this.PROCESSING:
         return 'Đang xử lý';
+      case this.APPROVED:
+        return 'Đã xác minh';
       case this.PENDING:
-        return 'Chưa xác minh';
+        return 'Chờ xác minh';
       default:
         return 'Không xác định';
     }
@@ -60,10 +78,14 @@ const BusinessFeedbackType = {
    */
   getStatusIcon: function(status) {
     switch (status) {
-      case this.RESOLVED:
+      case this.CLOSED:
         return 'checkmark-circle';
+      case this.REPLIED:
+        return 'chatbox-ellipses';
       case this.PROCESSING:
         return 'time';
+      case this.APPROVED:
+        return 'checkmark';
       case this.PENDING:
         return 'alert-circle';
       default:

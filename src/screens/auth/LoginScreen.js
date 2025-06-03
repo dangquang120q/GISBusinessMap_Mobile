@@ -41,7 +41,6 @@ const LoginScreen = ({navigation}) => {
 
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('Login successful, navigating to AppScreens');
       navigation.reset({
         index: 0,
         routes: [{ name: 'AppScreens' }],

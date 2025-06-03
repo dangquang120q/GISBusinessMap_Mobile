@@ -61,7 +61,9 @@ class BusinessReviewService {
    */
     async getList(params = {}) {
       try {
+        console.log('params', params);
         const response = await api.get('/api/services/app/BusinessReviews/GetList', params);
+        console.log('response', response);
         return response.result;
       } catch (error) {
         console.error('Error fetching business reviews:', error);
@@ -107,9 +109,9 @@ class BusinessReviewService {
    * @param {Object} reviewData Dữ liệu đánh giá cần cập nhật
    * @returns {Promise} Promise với kết quả đánh giá đã cập nhật
    */
-  async update(reviewData) {
+  async updateByUser(reviewData) {
     try {
-      const response = await api.put('/api/services/app/BusinessReviews/Update', reviewData);
+      const response = await api.put('/api/services/app/BusinessReviews/UpdateByUser', reviewData);
       return response.result;
     } catch (error) {
       console.error(`Error updating business review with id ${reviewData.id}:`, error);
@@ -123,9 +125,9 @@ class BusinessReviewService {
    * @param {number} id ID của đánh giá cần xóa
    * @returns {Promise} Promise với kết quả xóa
    */
-  async delete(id) {
+  async deleteByUser(id) {
     try {
-      const response = await api.delete('/api/services/app/BusinessReviews/Delete', { params: { Id: id } });
+      const response = await api.delete('/api/services/app/BusinessReviews/DeleteByUser', { params: { Id: id } });
       return response;
     } catch (error) {
       console.error(`Error deleting business review with id ${id}:`, error);

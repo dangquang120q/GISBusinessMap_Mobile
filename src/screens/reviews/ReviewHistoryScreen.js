@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,9 @@ import {
   ScrollView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import BusinessReviewService from '../../services/BusinessReviewService';
-import { showError, showSuccess, showDeleteConfirmation } from '../../utils/PopupUtils';
+import { showError, showSuccess, showDeleteConfirmation, showInfo } from '../../utils/PopupUtils';
 
 const ReviewHistoryScreen = () => {
   const navigation = useNavigation();
@@ -26,6 +26,16 @@ const ReviewHistoryScreen = () => {
   useEffect(() => {
     fetchReviews();
   }, []);
+
+  // Sử dụng useFocusEffect để tự động làm mới khi màn hình được focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchReviews();
+      return () => {
+        // Cleanup khi màn hình mất focus nếu cần
+      };
+    }, [])
+  );
 
   const fetchReviews = async () => {
     try {
@@ -68,7 +78,7 @@ const ReviewHistoryScreen = () => {
   const deleteReview = async (reviewId) => {
     try {
       setDeleting(true);
-      await BusinessReviewService.delete(reviewId);
+      await BusinessReviewService.deleteByUser(reviewId);
       
       // Update the local state after successful deletion
       setReviews(prevReviews => prevReviews.filter(review => review.id !== reviewId));
@@ -106,8 +116,10 @@ const ReviewHistoryScreen = () => {
         return 'Đã duyệt';
       case 'P':
         return 'Chờ duyệt';
-      case 'R':
+      case 'S':
         return 'Từ chối';
+      case 'D':
+        return 'Đã xóa';
       default:
         return 'Không xác định';
     }
@@ -121,6 +133,8 @@ const ReviewHistoryScreen = () => {
         return styles.statusPending;
       case 'R':
         return styles.statusRejected;
+      case 'D':
+        return styles.statusDeleted;
       default:
         return {};
     }
@@ -135,13 +149,12 @@ const ReviewHistoryScreen = () => {
     return (
       <View style={styles.starContainer}>
         {[...Array(5)].map((_, i) => (
-          <View key={i}>
-            <Ionicons
-              name={i < rating ? 'star' : 'star-outline'}
-              size={16}
-              color="#FFD700"
-            />
-          </View>
+          <Ionicons 
+            key={i}
+            name={i < rating ? 'star' : 'star-outline'}
+            size={16}
+            color="#FFD700"
+          />
         ))}
       </View>
     );
@@ -179,16 +192,29 @@ const ReviewHistoryScreen = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterButton, filter === 'R' && styles.filterButtonActive]}
-          onPress={() => setFilter('R')}
+          style={[styles.filterButton, filter === 'S' && styles.filterButtonActive]}
+          onPress={() => setFilter('S')}
         >
-          <Text style={[styles.filterButtonText, filter === 'R' && styles.filterButtonTextActive]}>
+          <Text style={[styles.filterButtonText, filter === 'S' && styles.filterButtonTextActive]}>
             Từ chối
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterButton, filter === 'D' && styles.filterButtonActive]}
+          onPress={() => setFilter('D')}
+        >
+          <Text style={[styles.filterButtonText, filter === 'D' && styles.filterButtonTextActive]}>
+            Đã xóa
+          </Text>
+        </TouchableOpacity> 
       </ScrollView>
     </View>
   );
+
+  const handleEditReview = (review) => {
+    // Điều hướng đến màn hình chỉnh sửa đánh giá
+    navigation.navigate('EditReviewScreen', { reviewId: review.id, review: review });
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.reviewItem}>
@@ -226,9 +252,7 @@ const ReviewHistoryScreen = () => {
         {/* Show media indicator if there are images */}
         {item.listBusinessReviewMedia && item.listBusinessReviewMedia.length > 0 && (
           <View style={styles.mediaIndicator}>
-            <View>
-              <Ionicons name="images-outline" size={16} color="#666" />
-            </View>
+            <Ionicons name="images-outline" size={16} color="#666" />
             <Text style={styles.mediaText}>
               {item.listBusinessReviewMedia.length} hình ảnh
             </Text>
@@ -241,11 +265,9 @@ const ReviewHistoryScreen = () => {
         {item.status === 'P' && (
           <TouchableOpacity 
             style={styles.editButton}
-            onPress={() => navigation.navigate('EditReview', { reviewId: item.id, review: item })}
+            onPress={() => handleEditReview(item)}
           >
-            <View>
-              <Ionicons name="create-outline" size={18} color="#085924" />
-            </View>
+            <Ionicons name="create-outline" size={18} color="#085924" />
             <Text style={styles.editButtonText}>Sửa</Text>
           </TouchableOpacity>
         )}
@@ -254,9 +276,7 @@ const ReviewHistoryScreen = () => {
           style={styles.deleteButton}
           onPress={() => handleDeleteReview(item.id)}
         >
-          <View>
-            <Ionicons name="trash-outline" size={18} color="#e74c3c" />
-          </View>
+          <Ionicons name="trash-outline" size={18} color="#e74c3c" />
           <Text style={styles.deleteButtonText}>Xóa</Text>
         </TouchableOpacity>
       </View>
@@ -274,9 +294,7 @@ const ReviewHistoryScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <View>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </View>
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
           Lịch sử đánh giá {totalCount > 0 ? `(${totalCount})` : ''}
@@ -292,9 +310,7 @@ const ReviewHistoryScreen = () => {
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
-          <View>
-            <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
-          </View>
+          <Ionicons name="alert-circle-outline" size={60} color="#e74c3c" />
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={handleRefresh}>
             <Text style={styles.retryButtonText}>Thử lại</Text>
@@ -311,13 +327,11 @@ const ReviewHistoryScreen = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <View>
-            <Ionicons name="document-text-outline" size={80} color="#ccc" />
-          </View>
+          <Ionicons name="document-text-outline" size={80} color="#ccc" />
           <Text style={styles.emptyText}>
             {filter === 'all' 
               ? 'Bạn chưa có đánh giá nào' 
-              : `Không có đánh giá nào ${filter === 'A' ? 'đã duyệt' : filter === 'P' ? 'đang chờ duyệt' : 'bị từ chối'}`}
+              : `Không có đánh giá nào ${filter === 'A' ? 'đã duyệt' : filter === 'P' ? 'đang chờ duyệt' : filter === 'S' ? 'bị từ chối' : 'đã xóa'}`}
           </Text>
         </View>
       )}
@@ -530,6 +544,9 @@ const styles = StyleSheet.create({
   },
   statusRejected: {
     backgroundColor: '#ffebee',
+  },
+  statusDeleted: {
+    backgroundColor: '#f5f5f5',
   },
   statusText: {
     fontSize: 12,

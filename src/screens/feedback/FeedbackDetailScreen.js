@@ -18,7 +18,7 @@ import { showError } from '../../utils/PopupUtils';
 const FeedbackDetailScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { feedbackId, feedback: initialFeedback } = route.params;
+  const { feedbackId, feedback: initialFeedback } = route.params || {};
   
   const [loading, setLoading] = useState(!initialFeedback);
   const [feedback, setFeedback] = useState(initialFeedback || null);
@@ -42,7 +42,7 @@ const FeedbackDetailScreen = () => {
     };
 
     // Only fetch if feedback wasn't provided in navigation params
-    if (!initialFeedback) {
+    if (!initialFeedback && feedbackId) {
       fetchFeedbackDetail();
     }
   }, [feedbackId, initialFeedback]);
@@ -60,7 +60,7 @@ const FeedbackDetailScreen = () => {
       });
     } catch (error) {
       console.error('Error formatting date:', error);
-      return dateString;
+      return '';
     }
   };
 
@@ -80,21 +80,33 @@ const FeedbackDetailScreen = () => {
             style={styles.backButton}
             onPress={() => navigation.goBack()}
           >
-            <View>
-              <Ionicons name="arrow-back" size={24} color="#333" />
-            </View>
+            <Ionicons name="arrow-back" size={24} color="#333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Chi tiết phản hồi</Text>
         </View>
         <View style={styles.errorContainer}>
-          <View>
-            <Ionicons name="alert-circle-outline" size={80} color="#ccc" />
-          </View>
+          <Ionicons name="alert-circle-outline" size={80} color="#ccc" />
           <Text style={styles.errorText}>Không tìm thấy thông tin phản hồi</Text>
         </View>
       </SafeAreaView>
     );
   }
+
+  // Safely get feedback values
+  const status = feedback.status || '';
+  const facilityName = feedback.branchName || feedback.organizationName || 'Không có tên';
+  const feedbackTypeName = feedback.feedbackTypeName || '';
+  const senderAddress = feedback.senderAddress || '';
+  const senderName = feedback.senderName || '';
+  const senderPhone = feedback.senderPhone || '';
+  const senderEmail = feedback.senderEmail || '';
+  const content = feedback.content || '';
+  const reportDate = formatDate(feedback.feedbackDate || feedback.createdDate);
+  const responseContent = feedback.responseContent || '';
+  const responseDate = formatDate(feedback.responseDate);
+  const assignedToName = feedback.assignedToName || '';
+  const ratingAfterResponse = feedback.ratingAfterResponse || 0;
+  const isAnonymous = feedback.isAnonymous || false;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -103,51 +115,43 @@ const FeedbackDetailScreen = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <View>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </View>
+          <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chi tiết phản hồi</Text>
       </View>
       
       <ScrollView style={styles.scrollView}>
         <View style={styles.statusSection}>
-          <View style={[styles.statusBadge, { backgroundColor: BusinessFeedbackType.getStatusColor(feedback.status) }]}>
-            <View>
-              <Ionicons 
-                name={BusinessFeedbackType.getStatusIcon(feedback.status)} 
-                size={18} 
-                color="#fff"
-              />
-            </View>
-            <Text style={styles.statusText}>{BusinessFeedbackType.getStatusText(feedback.status)}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: BusinessFeedbackType.getStatusColor(status) }]}>
+            <Ionicons 
+              name={BusinessFeedbackType.getStatusIcon(status)} 
+              size={18} 
+              color="#fff"
+            />
+            <Text style={styles.statusText}>{BusinessFeedbackType.getStatusText(status)}</Text>
           </View>
         </View>
         
         <View style={styles.facilityInfoSection}>
-          <Text style={styles.facilityName}>{feedback.branchName || feedback.organizationName || 'Không có tên'}</Text>
+          <Text style={styles.facilityName}>{facilityName}</Text>
           
-          {feedback.feedbackTypeName && (
+          {feedbackTypeName ? (
             <View style={styles.facilityTypeContainer}>
-              <View>
-                <Ionicons 
-                  name="chatbubble-outline" 
-                  size={16} 
-                  color="#085924"
-                />
-              </View>
-              <Text style={styles.facilityType}>{feedback.feedbackTypeName}</Text>
+              <Ionicons 
+                name="chatbubble-outline" 
+                size={16} 
+                color="#085924"
+              />
+              <Text style={styles.facilityType}>{feedbackTypeName}</Text>
             </View>
-          )}
+          ) : null}
           
-          {feedback.senderAddress && (
+          {senderAddress ? (
             <View style={styles.addressContainer}>
-              <View>
-                <Ionicons name="location" size={16} color="#666" />
-              </View>
-              <Text style={styles.address}>{feedback.senderAddress}</Text>
+              <Ionicons name="location" size={16} color="#666" />
+              <Text style={styles.address}>{senderAddress}</Text>
             </View>
-          )}
+          ) : null}
         </View>
         
         <View style={styles.divider} />
@@ -156,49 +160,41 @@ const FeedbackDetailScreen = () => {
           <Text style={styles.sectionTitle}>Nội dung phản ánh ban đầu</Text>
           
           <View style={styles.reporterInfo}>
-            {!feedback.isAnonymous && feedback.senderName && (
+            {!isAnonymous && senderName ? (
               <View style={styles.reporterRow}>
-                <View>
-                  <Ionicons name="person-outline" size={20} color="#666" />
-                </View>
+                <Ionicons name="person-outline" size={20} color="#666" />
                 <Text style={styles.reporterLabel}>Người phản ánh:</Text>
-                <Text style={styles.reporterValue}>{feedback.senderName}</Text>
+                <Text style={styles.reporterValue}>{senderName}</Text>
               </View>
-            )}
+            ) : null}
             
-            {!feedback.isAnonymous && feedback.senderPhone && (
+            {!isAnonymous && senderPhone ? (
               <View style={styles.reporterRow}>
-                <View>
-                  <Ionicons name="call-outline" size={20} color="#666" />
-                </View>
+                <Ionicons name="call-outline" size={20} color="#666" />
                 <Text style={styles.reporterLabel}>Số điện thoại:</Text>
-                <Text style={styles.reporterValue}>{feedback.senderPhone}</Text>
+                <Text style={styles.reporterValue}>{senderPhone}</Text>
               </View>
-            )}
+            ) : null}
 
-            {!feedback.isAnonymous && feedback.senderEmail && (
+            {!isAnonymous && senderEmail ? (
               <View style={styles.reporterRow}>
-                <View>
-                  <Ionicons name="mail-outline" size={20} color="#666" />
-                </View>
+                <Ionicons name="mail-outline" size={20} color="#666" />
                 <Text style={styles.reporterLabel}>Email:</Text>
-                <Text style={styles.reporterValue}>{feedback.senderEmail}</Text>
+                <Text style={styles.reporterValue}>{senderEmail}</Text>
               </View>
-            )}
+            ) : null}
           </View>
 
           <View style={styles.reportDateContainer}>
-            <View>
-              <Ionicons name="calendar-outline" size={16} color="#666" />
-            </View>
+            <Ionicons name="calendar-outline" size={16} color="#666" />
             <Text style={styles.reportDate}>
-              Ngày báo cáo: {formatDate(feedback.feedbackDate || feedback.createdDate)}
+              Ngày báo cáo: {reportDate}
             </Text>
           </View>
           
-          <Text style={styles.reportContent}>{feedback.content}</Text>
+          <Text style={styles.reportContent}>{content}</Text>
 
-          {feedback.attachmentUrl && (
+          {feedback.attachmentUrl ? (
             <View style={styles.mediaSection}>
               <Text style={styles.mediaTitle}>Hình ảnh đính kèm:</Text>
               <TouchableOpacity 
@@ -214,10 +210,10 @@ const FeedbackDetailScreen = () => {
                 />
               </TouchableOpacity>
             </View>
-          )}
+          ) : null}
         </View>
         
-        {feedback.responseContent && (
+        {responseContent ? (
           <>
             <View style={styles.divider} />
             
@@ -225,42 +221,39 @@ const FeedbackDetailScreen = () => {
               <View style={styles.responseHeader}>
                 <View style={styles.responseTitleContainer}>
                   <Text style={styles.sectionTitle}>Phản hồi từ cơ quan chức năng</Text>
-                  {feedback.responseDate && (
+                  {feedback.responseDate ? (
                     <View style={styles.responseDateContainer}>
-                      <View>
-                        <Ionicons name="calendar-outline" size={16} color="#666" />
-                      </View>
+                      <Ionicons name="calendar-outline" size={16} color="#666" />
                       <Text style={styles.responseDate}>
-                        Ngày phản hồi: {formatDate(feedback.responseDate)}
+                        Ngày phản hồi: {responseDate}
                       </Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
               </View>
               
-              <Text style={styles.responseContent}>{feedback.responseContent}</Text>
+              <Text style={styles.responseContent}>{responseContent}</Text>
               
-              {feedback.ratingAfterResponse > 0 && (
+              {ratingAfterResponse > 0 ? (
                 <View style={styles.ratingSection}>
                   <Text style={styles.ratingLabel}>Đánh giá của bạn:</Text>
                   <View style={styles.starContainer}>
                     {[...Array(5)].map((_, i) => (
-                      <View key={i}>
-                        <Ionicons
-                          name={i < feedback.ratingAfterResponse ? 'star' : 'star-outline'}
-                          size={20}
-                          color="#FFD700"
-                        />
-                      </View>
+                      <Ionicons
+                        key={i}
+                        name={i < ratingAfterResponse ? 'star' : 'star-outline'}
+                        size={20}
+                        color="#FFD700"
+                      />
                     ))}
                   </View>
                 </View>
-              )}
+              ) : null}
             </View>
           </>
-        )}
+        ) : null}
         
-        {feedback.assignedToName && (
+        {assignedToName ? (
           <>
             <View style={styles.divider} />
             
@@ -268,19 +261,17 @@ const FeedbackDetailScreen = () => {
               <Text style={styles.sectionTitle}>Thông tin liên hệ</Text>
               
               <View style={styles.contactRow}>
-                <View>
-                  <Ionicons name="person-outline" size={20} color="#666" />
-                </View>
+                <Ionicons name="person-outline" size={20} color="#666" />
                 <View style={styles.contactInfo}>
                   <Text style={styles.contactLabel}>Người phụ trách:</Text>
-                  <Text style={styles.contactValue}>{feedback.assignedToName}</Text>
+                  <Text style={styles.contactValue}>{assignedToName}</Text>
                 </View>
               </View>
             </View>
           </>
-        )}
+        ) : null}
         
-        {feedback.status === BusinessFeedbackType.RESOLVED && feedback.ratingAfterResponse === 0 && (
+        {status === BusinessFeedbackType.RESOLVED && ratingAfterResponse === 0 ? (
           <View style={styles.actionSection}>
             <TouchableOpacity 
               style={styles.rateButton}
@@ -288,13 +279,11 @@ const FeedbackDetailScreen = () => {
                 // Navigate to rating screen or show rating dialog
               }}
             >
-              <View>
-                <Ionicons name="star-outline" size={20} color="#fff" />
-              </View>
+              <Ionicons name="star-outline" size={20} color="#fff" />
               <Text style={styles.rateButtonText}>Đánh giá phản hồi</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

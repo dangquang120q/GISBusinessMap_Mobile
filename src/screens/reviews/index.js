@@ -1,2 +1,11 @@
-export { default as ReviewHistoryScreen } from './ReviewHistoryScreen';
-export { default as ReviewDetailScreen } from './ReviewDetailScreen'; 
+// Import screens
+import ReviewHistoryScreen from './ReviewHistoryScreen';
+import ReviewDetailScreen from './ReviewDetailScreen';
+import EditReviewScreen from './EditReviewScreen';
+
+// Export screens
+export {
+  ReviewHistoryScreen,
+  ReviewDetailScreen,
+  EditReviewScreen
+}; 
