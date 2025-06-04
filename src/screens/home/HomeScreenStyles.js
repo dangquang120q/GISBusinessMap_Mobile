@@ -333,6 +333,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
+  reviewDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  reviewStars: {
+    flexDirection: 'row',
+    marginLeft: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusApproved: {
+    backgroundColor: '#e8f5e9',
+  },
+  statusPending: {
+    backgroundColor: '#fff3e0',
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  statusTextApproved: {
+    color: '#2e7d32',
+  },
+  statusTextPending: {
+    color: '#ef6c00',
+  },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -774,21 +805,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   // Review styles
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  statusApproved: {
-    backgroundColor: '#e8f5e9',
-  },
-  statusPending: {
-    backgroundColor: '#fff3e0',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
   reviewMetaContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -905,171 +921,7 @@ const styles = StyleSheet.create({
   reviewsSection: {
     marginTop: 20,
   },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  statusApproved: {
-    backgroundColor: '#e8f5e9',
-  },
-  statusPending: {
-    backgroundColor: '#fff3e0',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  reviewMetaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 4,
-  },
-  mediaGallery: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  mediaItem: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  mediaThumbnail: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  videoThumbnail: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
-  },
-  playButton: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyReviews: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 30,
-  },
-  emptyReviewsText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  addReviewButton: {
-    backgroundColor: '#085924',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  addReviewButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  menuModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 8,
-    width: 200,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  menuModalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  menuModalItemText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  sectionDivider: {
-    height: 1,
-    backgroundColor: '#E0E0E0',
-    marginVertical: 12,
-    width: '100%',
-  },
-  loginBanner: {
-    position: 'absolute',
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    padding: 15,
-    borderRadius: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  loginText: {
-    fontSize: 14,
-    color: '#333',
-    flex: 1,
-    marginRight: 10,
-  },
-  loginButton: {
-    backgroundColor: '#085924',
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  loginButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  inputError: {
-    borderColor: '#e74c3c',
-  },
-  errorText: {
-    color: '#e74c3c',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  disabledButton: {
-    backgroundColor: '#7ca294',
-    opacity: 0.8,
-  },
-  // New styles for review tab
   reviewSummaryContainer: {
-    padding: 15,
   },
   ratingOverviewContainer: {
     flexDirection: 'row',
@@ -1257,9 +1109,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
   },
-  reviewStars: {
-    flexDirection: 'row',
-  },
   reviewTitle: {
     fontWeight: 'bold',
     fontSize: 16,
@@ -1334,7 +1183,94 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 15,
-  }
+  },
+  menuModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuModalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 8,
+    width: 200,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  menuModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  menuModalItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginVertical: 12,
+    width: '100%',
+  },
+  loginBanner: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    padding: 15,
+    borderRadius: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  loginButton: {
+    backgroundColor: '#085924',
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 20,
+  },
+  loginButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  inputError: {
+    borderColor: '#e74c3c',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  disabledButton: {
+    backgroundColor: '#7ca294',
+    opacity: 0.8,
+  },
 });
 
 export default styles; 

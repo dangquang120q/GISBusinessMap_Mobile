@@ -1660,6 +1660,7 @@ export default function HomeScreen() {
         ) : null}
         
         <View style={styles.sectionDivider} />
+        <Text style={[styles.sectionTitle, {fontSize: 18, fontWeight: 'bold'}]}>Tóm tắt đánh giá</Text>
         {renderReviewsTab()}
         <View style={styles.sectionDivider} />
         {/* Description section */}
@@ -1859,7 +1860,7 @@ export default function HomeScreen() {
             {myReviews.length > 0 && (
               <View>
                 {/* User reviews */}
-                <Text style={styles.recentReviewsTitle}>Bài đánh giá của bạn</Text>
+                <Text style={styles.recentReviewsTitle}>Đánh giá của bạn</Text>
                 {myReviews.map((item, index) => (
                   <View key={`my-${index}`} style={styles.reviewCardGrey}>
                     <View style={styles.reviewCardHeader}>
@@ -1874,12 +1875,25 @@ export default function HomeScreen() {
                             {item.reviewerName || 'Ẩn danh'}{' '}
                             <Text style={styles.myReviewLabel}>(Bạn)</Text>
                           </Text>
-                          <Text style={styles.reviewDate}>{item.date}</Text>
+                          <View style={styles.reviewDateContainer}>
+                            <Text style={styles.reviewDate}>{item.date}</Text>
+                            <View style={styles.reviewStars}>
+                              {renderStars(item.rating || 0)}
+                            </View>
+                          </View>
                         </View>
                       </View>
                       
-                      <View style={styles.reviewStars}>
-                        {renderStars(item.rating || 0)}
+                      <View style={[
+                        styles.statusBadge,
+                        item.status === 'A' ? styles.statusApproved : styles.statusPending
+                      ]}>
+                        <Text style={[
+                          styles.statusText,
+                          item.status === 'A' ? styles.statusTextApproved : styles.statusTextPending
+                        ]}>
+                          {item.status === 'A' ? 'Đã duyệt' : 'Chờ duyệt'}
+                        </Text>
                       </View>
                     </View>
                     
@@ -1936,7 +1950,7 @@ export default function HomeScreen() {
             )}
             {/* Display other reviews */}
             <View style={styles.reviewSummaryHeader}>
-              <Text style={styles.recentReviewsTitle}>Đánh giá gần đây</Text>
+              <Text style={styles.recentReviewsTitle}>Đánh giá</Text>
               {isAuthenticated && myReviews.length === 0 && (
                   <TouchableOpacity 
                     style={styles.addReviewButtonInSummary}
@@ -1959,12 +1973,25 @@ export default function HomeScreen() {
                       <Text style={styles.reviewerName}>
                         {item.reviewerName || 'Ẩn danh'}
                       </Text>
-                      <Text style={styles.reviewDate}>{item.date}</Text>
+                      <View style={styles.reviewDateContainer}>
+                        <Text style={styles.reviewDate}>{item.date}</Text>
+                        <View style={styles.reviewStars}>
+                          {renderStars(item.rating || 0)}
+                        </View>
+                      </View>
                     </View>
                   </View>
                   
-                  <View style={styles.reviewStars}>
-                    {renderStars(item.rating || 0)}
+                  <View style={[
+                    styles.statusBadge,
+                    item.status === 'A' ? styles.statusApproved : styles.statusPending
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      item.status === 'A' ? styles.statusTextApproved : styles.statusTextPending
+                    ]}>
+                      {item.status === 'A' ? 'Đã duyệt' : 'Chờ duyệt'}
+                    </Text>
                   </View>
                 </View>
                 
