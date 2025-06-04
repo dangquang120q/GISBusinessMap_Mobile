@@ -62,6 +62,14 @@ const BusinessFacilityScreen = ({navigation}) => {
           businessType: item.businessTypeName || 'Khác',
           area: '',
           employees: 0,
+          // Thêm các thông tin bổ sung
+          website: item.website || '',
+          socialMediaUrl: item.socialMediaUrl || '',
+          rating: item.rating || 0,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          // Lưu trữ dữ liệu gốc từ API
+          rawData: item
         }));
         
         setFacilities(transformedData);
@@ -119,7 +127,11 @@ const BusinessFacilityScreen = ({navigation}) => {
   });
 
   const handleViewDetails = (facility) => {
-    navigation.navigate('BusinessFacilityDetail', { facilityId: facility.id });
+    navigation.navigate('BusinessFacilityDetail', { 
+      facilityId: facility.id,
+      facilityData: facility,
+      rawData: facility.rawData || null
+    });
   };
 
   const handleAddFacility = () => {

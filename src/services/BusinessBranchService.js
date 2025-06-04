@@ -58,16 +58,6 @@ class BusinessBranchService {
   }
 
   /**
-   * Lấy danh sách cơ sở kinh doanh (alias của getAll)
-   * 
-   * @param {Object} params Tham số tìm kiếm 
-   * @returns {Promise} Promise với kết quả danh sách
-   */
-  async getList(params = {}) {
-    return this.getAllByBusiness(params);
-  }
-
-  /**
    * Lấy chi tiết cơ sở kinh doanh theo ID
    * 
    * @param {number|string} id ID của cơ sở kinh doanh
@@ -139,7 +129,7 @@ class BusinessBranchService {
    * @param {Object} branchData Dữ liệu chi nhánh kinh doanh cần tạo
    * @returns {Promise} Promise với kết quả chi nhánh kinh doanh đã tạo
    */
-  async create(branchData) {
+  async createByBusiness(branchData) {
     if (!branchData) {
       const error = new Error('Thiếu dữ liệu cơ sở kinh doanh');
       error.userMessage = 'Thiếu dữ liệu cơ sở kinh doanh';
@@ -159,7 +149,7 @@ class BusinessBranchService {
         branchData.businessTypeId = String(branchData.businessTypeId);
       }
       
-      const response = await api.post('/api/services/app/BusinessBranches/Create', branchData);
+      const response = await api.post('/api/services/app/BusinessBranches/CreateByBusiness', branchData);
       return response.result;
     } catch (error) {
       throw this.handleApiError(error, 'Lỗi khi tạo cơ sở kinh doanh mới');
@@ -172,7 +162,7 @@ class BusinessBranchService {
    * @param {Object} branchData Dữ liệu chi nhánh kinh doanh cần cập nhật
    * @returns {Promise} Promise với kết quả chi nhánh kinh doanh đã cập nhật
    */
-  async update(branchData) {
+  async updateByBusiness(branchData) {
     if (!branchData) {
       const error = new Error('Thiếu dữ liệu cơ sở kinh doanh');
       error.userMessage = 'Thiếu dữ liệu cơ sở kinh doanh';
@@ -202,7 +192,7 @@ class BusinessBranchService {
         branchData.businessTypeId = String(branchData.businessTypeId);
       }
       
-      const response = await api.put('/api/services/app/BusinessBranches/Update', branchData);
+      const response = await api.put('/api/services/app/BusinessBranches/UpdateByBusiness', branchData);
       return response.result;
     } catch (error) {
       throw this.handleApiError(error, `Lỗi khi cập nhật cơ sở kinh doanh (ID: ${branchData.id})`);
@@ -215,7 +205,7 @@ class BusinessBranchService {
    * @param {number|string} id ID của chi nhánh cần xóa
    * @returns {Promise} Promise với kết quả xóa
    */
-  async delete(id) {
+  async deleteByBusiness(id) {
     if (!id) {
       const error = new Error('ID cơ sở kinh doanh không được để trống');
       error.userMessage = 'ID cơ sở kinh doanh không được để trống';
@@ -226,7 +216,7 @@ class BusinessBranchService {
       // Đảm bảo ID luôn là chuỗi
       const safeId = String(id);
       
-      const response = await api.delete('/api/services/app/BusinessBranches/Delete', { params: { Id: safeId } });
+      const response = await api.delete('/api/services/app/BusinessBranches/DeleteByBusiness', { params: { Id: safeId } });
       return response;
     } catch (error) {
       throw this.handleApiError(error, `Lỗi khi xóa cơ sở kinh doanh (ID: ${id})`);

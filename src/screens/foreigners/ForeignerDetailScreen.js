@@ -70,23 +70,27 @@ const ForeignerDetailScreen = ({route, navigation}) => {
 
   // Load foreigner details on screen load
   useEffect(() => {
-    const fetchForeignerDetails = async () => {
+    const loadForeignerData = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        // If we have an ID, fetch from API
+        // If we have foreigner data passed directly, use it
+        if (route.params?.foreigner) {
+          setForeigner(route.params.foreigner);
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback to API call if we only have an ID
         if (foreignerId) {
           const response = await ForeignersService.get(foreignerId);
           setForeigner(response);
-        } else if (route.params?.foreigner) {
-          // Fallback to the passed foreigner object if no ID
-          setForeigner(route.params.foreigner);
         } else {
           throw new Error('Không có thông tin người nước ngoài');
         }
       } catch (err) {
-        console.error('Error fetching foreigner details:', err);
+        console.error('Error loading foreigner details:', err);
         setError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
         showError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
       } finally {
@@ -94,7 +98,7 @@ const ForeignerDetailScreen = ({route, navigation}) => {
       }
     };
 
-    fetchForeignerDetails();
+    loadForeignerData();
   }, [foreignerId, route.params]);
 
   const handleEditForeigner = () => {
@@ -108,7 +112,7 @@ const ForeignerDetailScreen = ({route, navigation}) => {
   const confirmDelete = async () => {
     try {
       setLoading(true);
-      await ForeignersService.delete(foreigner.id);
+      await ForeignersService.deleteByBusiness(foreigner.id);
       
       // Close the modal
       setShowDeleteModal(false);

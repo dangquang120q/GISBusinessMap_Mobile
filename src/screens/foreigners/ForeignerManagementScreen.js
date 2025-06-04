@@ -131,7 +131,10 @@ const ForeignerManagementScreen = ({navigation}) => {
   };
   
   const handleViewDetails = (foreigner) => {
-    navigation.navigate('ForeignerDetail', { foreigner, foreignerId: foreigner.id });
+    navigation.navigate('ForeignerDetail', { 
+      foreignerId: foreigner.id,
+      foreigner: foreigner 
+    });
   };
   
   const handleAddForeigner = () => {

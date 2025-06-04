@@ -14,14 +14,14 @@ import BusinessBranchService from '../../services/BusinessBranchService';
 import { showError } from '../../utils/PopupUtils';
 
 const BusinessFacilityDetailScreen = ({route, navigation}) => {
-  const { facilityId } = route.params || {};
+  const { facilityId, facilityData, rawData } = route.params || {};
   const [facility, setFacility] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch facility details on component mount
+  // Use passed facility data or fetch if not available
   useEffect(() => {
-    const fetchFacilityDetails = async () => {
+    const loadFacilityData = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -30,6 +30,17 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
           throw new Error('Không có ID cơ sở kinh doanh');
         }
         
+        // If facilityData is passed, use it directly
+        if (facilityData) {
+          setFacility({
+            ...facilityData,
+            rawData: rawData || facilityData.rawData
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Fallback to API call if facilityData is not passed
         const result = await BusinessBranchService.get(facilityId);
         if (result) {
           // Transform API data to facility format
@@ -59,7 +70,7 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
           throw new Error('Không tìm thấy thông tin cơ sở kinh doanh');
         }
       } catch (err) {
-        console.error('Error fetching facility details:', err);
+        console.error('Error loading facility details:', err);
         let errorMessage = 'Không thể tải thông tin chi tiết';
         
         if (err.response && err.response.data) {
@@ -81,8 +92,8 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
       }
     };
 
-    fetchFacilityDetails();
-  }, [facilityId]);
+    loadFacilityData();
+  }, [facilityId, facilityData, rawData]);
 
   // Định dạng địa chỉ từ dữ liệu API
   const formatAddress = (item) => {

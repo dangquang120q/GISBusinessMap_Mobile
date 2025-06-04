@@ -268,7 +268,7 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
         };
         
         // Call API to update
-        await BusinessBranchService.update(branchData);
+        await BusinessBranchService.updateByBusiness(branchData);
         
         setLoading(false);
         

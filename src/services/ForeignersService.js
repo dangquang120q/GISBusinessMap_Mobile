@@ -49,9 +49,9 @@ class ForeignersService {
    * @param {Object} foreignerData Dữ liệu người nước ngoài cần tạo
    * @returns {Promise} Promise với kết quả thông tin người nước ngoài đã tạo
    */
-  async create(foreignerData) {
+  async createByBusiness(foreignerData) {
     try {
-      const response = await api.post('/api/services/app/Foreigners/Create', foreignerData);
+      const response = await api.post('/api/services/app/Foreigners/CreateByBusiness', foreignerData);
       return response.result;
     } catch (error) {
       console.error('Error creating foreigner:', error);
@@ -65,9 +65,9 @@ class ForeignersService {
    * @param {Object} foreignerData Dữ liệu người nước ngoài cần cập nhật
    * @returns {Promise} Promise với kết quả thông tin người nước ngoài đã cập nhật
    */
-  async update(foreignerData) {
+  async updateByBusiness(foreignerData) {
     try {
-      const response = await api.put('/api/services/app/Foreigners/Update', foreignerData);
+      const response = await api.put('/api/services/app/Foreigners/UpdateByBusiness', foreignerData);
       return response.result;
     } catch (error) {
       console.error(`Error updating foreigner with id ${foreignerData.id}:`, error);
@@ -81,9 +81,9 @@ class ForeignersService {
    * @param {number} id ID của người nước ngoài cần xóa
    * @returns {Promise} Promise với kết quả xóa
    */
-  async delete(id) {
+  async deleteByBusiness(id) {
     try {
-      const response = await api.delete('/api/services/app/Foreigners/Delete', { params: { Id: id } });
+      const response = await api.delete('/api/services/app/Foreigners/DeleteByBusiness', { params: { Id: id } });
       return response;
     } catch (error) {
       console.error(`Error deleting foreigner with id ${id}:`, error);

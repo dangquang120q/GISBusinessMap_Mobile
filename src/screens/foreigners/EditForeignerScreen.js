@@ -257,7 +257,7 @@ const EditForeignerScreen = ({ route, navigation }) => {
         };
         
         // Gọi API để cập nhật
-        await ForeignersService.update(foreignerData);
+        await ForeignersService.updateByBusiness(foreignerData);
         
         setLoading(false);
         

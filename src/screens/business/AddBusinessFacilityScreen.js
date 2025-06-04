@@ -204,7 +204,7 @@ const AddBusinessFacilityScreen = ({ navigation }) => {
         };
         
         // Call API to create
-        const result = await BusinessBranchService.create(branchData);
+        const result = await BusinessBranchService.createByBusiness(branchData);
         
         setLoading(false);
         

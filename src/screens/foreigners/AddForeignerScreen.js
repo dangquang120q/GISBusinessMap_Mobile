@@ -186,7 +186,7 @@ const AddForeignerScreen = ({ navigation }) => {
         };
         
         // Call API to create
-        const result = await ForeignersService.create(foreignerData);
+        const result = await ForeignersService.createByBusiness(foreignerData);
         
         setLoading(false);
         
