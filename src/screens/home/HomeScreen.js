@@ -1265,10 +1265,26 @@ export default function HomeScreen() {
         branchId: branchId,
         maxResultCount: 10
       });
-      
       if (isMountedRef.current) {
-        if (response && Array.isArray(response.items)) {
-          // Map API response to our reviews format
+        // Check if response is directly an array or has items property
+        if (response && Array.isArray(response)) {
+          // Handle direct array response
+          const mappedReviews = response.map(item => ({
+            id: item.id,
+            reviewerName: item.reviewerName || 'Ẩn danh',
+            rating: item.rating || 0,
+            title: item.title || '',
+            content: item.content || 'Không có nội dung',
+            date: formatDate(item.reviewDate || item.createdDate),
+            status: item.status,
+            likes: 0,
+            replies: 0,
+            media: item.listBusinessReviewMedia || [],
+            createdBy: item.createdBy || 0,
+          }));
+          setReviews(mappedReviews);
+        } else if (response && Array.isArray(response.items)) {
+          // Handle response with items property
           const mappedReviews = response.items.map(item => ({
             id: item.id,
             reviewerName: item.reviewerName || 'Ẩn danh',
@@ -1279,7 +1295,8 @@ export default function HomeScreen() {
             status: item.status,
             likes: 0,
             replies: 0,
-            media: item.listBusinessReviewMedia || []
+            media: item.listBusinessReviewMedia || [],
+            createdBy: item.createdBy || 0,
           }));
           setReviews(mappedReviews);
         } else {
@@ -1461,7 +1478,6 @@ export default function HomeScreen() {
           attachmentUrl = fileUrl;
         }
       }
-      console.log('selectedFacility', selectedFacility);
       // Prepare the data for API
       const submitData = {
         feedbackTypeId: parseInt(feedbackData.feedbackTypes[0], 10), // Use the first selected type
@@ -1782,44 +1798,225 @@ export default function HomeScreen() {
       );
     }
 
-    // Render reviews with simplified structure
+    // Calculate average rating and counts
+    let totalRating = 0;
+    const ratingCounts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+    
+    reviews.forEach(review => {
+      const rating = review.rating || 5;
+      totalRating += rating;
+      ratingCounts[rating] = (ratingCounts[rating] || 0) + 1;
+    });
+    
+    const averageRating = (totalRating / reviews.length).toFixed(1);
+    const maxCount = Math.max(...Object.values(ratingCounts));
+    // Separate user reviews from other reviews
+    const myReviews = isAuthenticated ? 
+      reviews.filter(review => review.createdBy === userData?.id) : [];
+    const otherReviews = isAuthenticated ?
+      reviews.filter(review => review.createdBy !== userData?.id) : reviews;
+
+    // Render reviews with ratings summary
     return (
       <ScrollView style={styles.tabContent}>
-        <View style={{padding: 15}}>
-          <Text style={{fontSize: 18, fontWeight: 'bold', marginBottom: 15}}>
-            Đánh giá ({reviews.length})
-          </Text>
-          
-          {reviews.map((item, index) => (
-            <View key={index} style={{marginBottom: 15, borderBottomWidth: 1, borderBottomColor: '#eee', paddingBottom: 10}}>
-              <Text style={{fontWeight: 'bold'}}>
-                {item.reviewerName || 'Ẩn danh'}
-              </Text>
-              
-              <View style={{flexDirection: 'row', marginVertical: 5}}>
-                {renderStars(item.rating || 0)}
+        <View style={styles.reviewSummaryContainer}>
+          {/* Rating summary box */}
+            {/* Average rating */}
+            <View style={styles.ratingSummaryBox}>
+              <Text style={styles.averageRatingText}>{averageRating}</Text>
+              <View style={styles.starsRow}>
+                {renderStars(parseFloat(averageRating))}
               </View>
-              
-              {item.title && (
-                <Text style={{fontWeight: 'bold', marginBottom: 5}}>
-                  {item.title}
-                </Text>
-              )}
-              
-              <Text>
-                {item.content || 'Không có nội dung'}
-              </Text>
+              <Text style={styles.totalReviewsText}>({reviews.length})</Text>
             </View>
-          ))}
-          
-          {/* {isAuthenticated && (
-            <TouchableOpacity
-              style={{backgroundColor: '#085924', padding: 10, borderRadius: 5, alignItems: 'center', marginTop: 10}}
-              onPress={() => setIsReviewModalVisible(true)}
-            >
-              <Text style={{color: '#fff'}}>Thêm đánh giá mới</Text>
-            </TouchableOpacity>
-          )} */}
+            
+            {/* Rating bars */}
+            <View style={styles.ratingBarsSection}>
+              {[5, 4, 3, 2, 1].map(star => {
+                const count = ratingCounts[star] || 0;
+                const percentage = maxCount > 0 ? (count / maxCount * 100) : 0;
+                
+                return (
+                  <View key={star} style={styles.ratingBarRow}>
+                    <Text style={styles.ratingBarLabel}>{star}</Text>
+                    <View style={styles.ratingBarTrack}>
+                      <View 
+                        style={[
+                          styles.ratingBarFill,
+                          { width: `${percentage}%` }
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.ratingBarCount}>{count}</Text>
+                  </View>
+                );
+              })}
+            </View>
+                      
+          {/* Reviews list */}
+          <View style={styles.reviewsList}>
+            {/* Display user's reviews first (if any) */}
+            {myReviews.length > 0 && (
+              <View>
+                {/* User reviews */}
+                <Text style={styles.recentReviewsTitle}>Bài đánh giá của bạn</Text>
+                {myReviews.map((item, index) => (
+                  <View key={`my-${index}`} style={styles.reviewCardGrey}>
+                    <View style={styles.reviewCardHeader}>
+                      <View style={styles.reviewerContainer}>
+                        <View style={styles.reviewerAvatar}>
+                          <Text style={styles.reviewerInitial}>
+                            {item.reviewerName ? item.reviewerName.charAt(0).toUpperCase() : 'A'}
+                          </Text>
+                        </View>
+                        <View>
+                          <Text style={styles.reviewerName}>
+                            {item.reviewerName || 'Ẩn danh'}{' '}
+                            <Text style={styles.myReviewLabel}>(Bạn)</Text>
+                          </Text>
+                          <Text style={styles.reviewDate}>{item.date}</Text>
+                        </View>
+                      </View>
+                      
+                      <View style={styles.reviewStars}>
+                        {renderStars(item.rating || 0)}
+                      </View>
+                    </View>
+                    
+                    {item.title && (
+                      <Text style={styles.reviewTitle}>{item.title}</Text>
+                    )}
+                    
+                    <Text style={styles.reviewContent}>
+                      {item.content || 'Không có nội dung'}
+                    </Text>
+                    
+                    {/* Show media if available */}
+                    {item.media && item.media.length > 0 && (
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.reviewMediaContainer}
+                      >
+                        {item.media.map((media, mediaIndex) => (
+                          <Image 
+                            key={mediaIndex}
+                            source={{ uri: media.mediaUrl }}
+                            style={styles.reviewMediaImage}
+                          />
+                        ))}
+                      </ScrollView>
+                    )}
+                    
+                    {/* Edit/Delete buttons for pending reviews */}
+                    {item.status === 'P' && (
+                      <View style={styles.reviewActionButtons}>
+                        <TouchableOpacity 
+                          style={styles.reviewEditButton}
+                          onPress={() => handleEditReview(item)}
+                        >
+                          <Ionicons name="create-outline" size={20} color="#085924" />
+                          <Text style={styles.reviewEditButtonText}>Chỉnh sửa</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          style={styles.reviewDeleteButton}
+                          onPress={() => handleDeleteReview(item)}
+                        >
+                          <Ionicons name="trash-outline" size={20} color="#e74c3c" />
+                          <Text style={styles.reviewDeleteButtonText}>Xóa</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    
+                    <View style={styles.reviewDivider} />
+                  </View>
+                ))}
+              </View>
+            )}
+            {/* Display other reviews */}
+            <View style={styles.reviewSummaryHeader}>
+              <Text style={styles.recentReviewsTitle}>Đánh giá gần đây</Text>
+              {isAuthenticated && myReviews.length === 0 && (
+                  <TouchableOpacity 
+                    style={styles.addReviewButtonInSummary}
+                    onPress={() => setIsReviewModalVisible(true)}
+                  >
+                    <Text style={styles.addReviewButtonText}>Viết đánh giá</Text>
+                  </TouchableOpacity>
+              )}
+            </View>
+            {otherReviews.map((item, index) => (
+              <View key={`other-${index}`} style={styles.reviewCardGrey}>
+                <View style={styles.reviewCardHeader}>
+                  <View style={styles.reviewerContainer}>
+                    <View style={styles.reviewerAvatar}>
+                      <Text style={styles.reviewerInitial}>
+                        {item.reviewerName ? item.reviewerName.charAt(0).toUpperCase() : 'A'}
+                      </Text>
+                    </View>
+                    <View>
+                      <Text style={styles.reviewerName}>
+                        {item.reviewerName || 'Ẩn danh'}
+                      </Text>
+                      <Text style={styles.reviewDate}>{item.date}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.reviewStars}>
+                    {renderStars(item.rating || 0)}
+                  </View>
+                </View>
+                
+                {item.title && (
+                  <Text style={styles.reviewTitle}>{item.title}</Text>
+                )}
+                
+                <Text style={styles.reviewContent}>
+                  {item.content || 'Không có nội dung'}
+                </Text>
+                
+                {/* Show media if available */}
+                {item.media && item.media.length > 0 && (
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.reviewMediaContainer}
+                  >
+                    {item.media.map((media, mediaIndex) => (
+                      <Image 
+                        key={mediaIndex}
+                        source={{ uri: media.mediaUrl }}
+                        style={styles.reviewMediaImage}
+                      />
+                    ))}
+                  </ScrollView>
+                )}
+                
+                {index < otherReviews.length - 1 && (
+                  <View style={styles.reviewDivider} />
+                )}
+              </View>
+            ))}
+            
+            {/* If no reviews at all, show message */}
+            {myReviews.length === 0 && otherReviews.length === 0 && (
+              <View style={styles.emptyMyReviews}>
+                <Ionicons name="star-outline" size={40} color="#ccc" />
+                <Text style={styles.emptyReviewsText}>
+                  Chưa có đánh giá nào
+                </Text>
+                {isAuthenticated && (
+                  <TouchableOpacity 
+                    style={styles.addReviewButton}
+                    onPress={() => setIsReviewModalVisible(true)}
+                  >
+                    <Text style={styles.addReviewButtonText}>Thêm đánh giá</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
         </View>
       </ScrollView>
     );

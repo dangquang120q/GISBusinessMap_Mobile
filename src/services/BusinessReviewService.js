@@ -61,9 +61,7 @@ class BusinessReviewService {
    */
     async getList(params = {}) {
       try {
-        console.log('params', params);
         const response = await api.get('/api/services/app/BusinessReviews/GetList', params);
-        console.log('response', response);
         return response.result;
       } catch (error) {
         console.error('Error fetching business reviews:', error);
