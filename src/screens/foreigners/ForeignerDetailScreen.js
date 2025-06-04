@@ -21,9 +21,11 @@ const ForeignerDetailScreen = ({route, navigation}) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Status constants
-  const STATUS_ACTIVE = 'Đang hoạt động';
-  const STATUS_PENDING = 'Chờ xác nhận';
-  const STATUS_EXPIRED = 'Hết hạn';
+  const STATUS_MAP = {
+    'P': 'Chờ xác thực',
+    'A': 'Đang hoạt động',
+    'E': 'Hết hạn',
+  };
 
   // Function to format date from API
   const formatDate = (dateString) => {
@@ -48,20 +50,20 @@ const ForeignerDetailScreen = ({route, navigation}) => {
     if (checkIfExpired(foreigner.visaExpiryDate) || 
         checkIfExpired(foreigner.workPermitExpiryDate) || 
         checkIfExpired(foreigner.residenceCardExpiry)) {
-      return STATUS_EXPIRED;
+      return STATUS_MAP['E'];
     }
     
-    return STATUS_ACTIVE;
+    return STATUS_MAP['A'];
   };
 
   // Get status style
   const getStatusStyle = (status) => {
     switch(status) {
-      case STATUS_ACTIVE:
+      case STATUS_MAP['A']:
         return styles.activeStatus;
-      case STATUS_PENDING:
+      case STATUS_MAP['P']:
         return styles.pendingStatus;
-      case STATUS_EXPIRED:
+      case STATUS_MAP['E']:
         return styles.expiredStatus;
       default:
         return styles.activeStatus;

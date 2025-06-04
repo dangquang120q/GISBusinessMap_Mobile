@@ -10,109 +10,26 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import BusinessBranchService from '../../services/BusinessBranchService';
 import { showError } from '../../utils/PopupUtils';
 
 const BusinessFacilityDetailScreen = ({route, navigation}) => {
-  const { facilityId, facilityData, rawData } = route.params || {};
-  const [facility, setFacility] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { facility, rawData } = route.params;
+  const [facilityData, setFacilityData] = useState(facility || rawData || null);
+  const [loading, setLoading] = useState(false);
 
-  // Use passed facility data or fetch if not available
   useEffect(() => {
-    const loadFacilityData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        if (!facilityId) {
-          throw new Error('Không có ID cơ sở kinh doanh');
-        }
-        
-        // If facilityData is passed, use it directly
-        if (facilityData) {
-          setFacility({
-            ...facilityData,
-            rawData: rawData || facilityData.rawData
-          });
-          setLoading(false);
-          return;
-        }
-        
-        // Fallback to API call if facilityData is not passed
-        const result = await BusinessBranchService.get(facilityId);
-        if (result) {
-          // Transform API data to facility format
-          const facilityData = {
-            id: result.id ? result.id.toString() : '',
-            name: result.branchName || 'Chưa có tên',
-            address: formatAddress(result),
-            status: result.isActive ? 'Hoạt động' : result.status === 'Chờ phê duyệt' ? 'Chờ phê duyệt' : 'Không hoạt động',
-            licenseNumber: result.businessCode || 'Chưa có mã',
-            operationDate: formatDate(result.establishedDate),
-            expiryDate: formatDate(result.deactivationDate),
-            owner: result.representativeName || 'Chưa có',
-            contactPhone: result.phoneNumber || 'Chưa có',
-            contactEmail: result.email || 'Chưa có',
-            businessType: result.businessTypeName || 'Khác',
-            area: '',
-            employees: 0,
-            // Thêm các thông tin khác từ API
-            website: result.website || '',
-            socialMediaUrl: result.socialMediaUrl || '',
-            rating: result.rating || 0,
-            rawData: result, // Lưu dữ liệu gốc để sử dụng khi cần
-          };
-          
-          setFacility(facilityData);
-        } else {
-          throw new Error('Không tìm thấy thông tin cơ sở kinh doanh');
-        }
-      } catch (err) {
-        console.error('Error loading facility details:', err);
-        let errorMessage = 'Không thể tải thông tin chi tiết';
-        
-        if (err.response && err.response.data) {
-          if (err.response.data.error && err.response.data.error.message) {
-            errorMessage = err.response.data.error.message;
-          } else if (typeof err.response.data === 'string') {
-            errorMessage = err.response.data;
-          }
-        } else if (err.message) {
-          errorMessage = err.message;
-        }
-        
-        setError(errorMessage);
-        
-        showError(`Không thể tải thông tin chi tiết cơ sở kinh doanh: ${errorMessage}`);
-        navigation.goBack();
-      } finally {
-        setLoading(false);
-      }
-    };
+    if (!facility && !rawData) {
+      setFacilityData(null);
+    }
+  }, [facility, rawData]);
 
-    loadFacilityData();
-  }, [facilityId, facilityData, rawData]);
-
-  // Định dạng địa chỉ từ dữ liệu API
-  const formatAddress = (item) => {
-    if (!item) return 'Chưa có địa chỉ';
-    
-    const parts = [];
-    if (item.addressDetail) parts.push(item.addressDetail);
-    if (item.wardName) parts.push(item.wardName);
-    if (item.districtName) parts.push(item.districtName);
-    
-    return parts.join(', ') || 'Chưa có địa chỉ';
-  };
-  
-  // Định dạng ngày tháng
   const formatDate = (dateString) => {
     if (!dateString) return '';
     try {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return ''; // Check if date is valid
+      if (isNaN(date.getTime())) return '';
       return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
     } catch (error) {
       console.error('Error formatting date:', error);
@@ -121,25 +38,17 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
   };
 
   const handleEditFacility = () => {
-    navigation.navigate('EditBusinessFacility', { facilityId: facility.id, facility });
+    navigation.navigate('EditBusinessFacility', { 
+      facilityId: facilityData.id, 
+      facility: facilityData 
+    });
   };
 
-  // Hiển thị trạng thái loading
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#085924" />
-        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  // Hiển thị thông báo lỗi
-  if (error || !facility) {
+  if (!facilityData) {
     return (
       <SafeAreaView style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={50} color="#dc3545" />
-        <Text style={styles.errorText}>{error || 'Không tìm thấy thông tin cơ sở kinh doanh'}</Text>
+        <Text style={styles.errorText}>Không tìm thấy thông tin cơ sở kinh doanh</Text>
         <TouchableOpacity 
           style={styles.retryButton}
           onPress={() => navigation.goBack()}
@@ -163,147 +72,143 @@ const BusinessFacilityDetailScreen = ({route, navigation}) => {
       </View>
       
       <ScrollView style={styles.content}>
-        <View style={styles.facilityHeader}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="business" size={40} color="#085924" />
-          </View>
-          <Text style={styles.facilityName}>{facility.name}</Text>
-          <View style={[styles.statusBadge, 
-            facility.status === 'Hoạt động' ? styles.activeStatus : 
-            facility.status === 'Chờ phê duyệt' ? styles.pendingStatus : 
-            styles.inactiveStatus
-          ]}>
-            <Text style={styles.statusText}>{facility.status}</Text>
-          </View>
-        </View>
-        
+        {/* Basic Information Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin chung</Text>
+          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
+          
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Số giấy phép:</Text>
-            <Text style={styles.infoValue}>{facility.licenseNumber}</Text>
+            <Text style={styles.infoLabel}>Tên cơ sở/chi nhánh:</Text>
+            <Text style={styles.infoValue}>{facilityData.branchName || facilityData.name}</Text>
           </View>
+          
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Loại hình:</Text>
-            <Text style={styles.infoValue}>{facility.businessType}</Text>
+            <Text style={styles.infoLabel}>Loại hình kinh doanh:</Text>
+            <View style={styles.businessTypeContainer}>
+              <MaterialIcons 
+                name={(facilityData.businessTypeIcon ? facilityData.businessTypeIcon.replace(/_/g, '-') : 'business')}
+                size={20} 
+                color={facilityData.businessTypeColor || facilityData.color || '#085924'} 
+                style={styles.businessTypeIcon}
+              />
+              <Text style={styles.infoValue}>{facilityData.businessTypeName}</Text>
+            </View>
           </View>
+          
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Ngày hoạt động:</Text>
-            <Text style={styles.infoValue}>{facility.operationDate}</Text>
+            <Text style={styles.infoLabel}>Người đại diện:</Text>
+            <Text style={styles.infoValue}>{facilityData.representativeName}</Text>
           </View>
+          
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Ngày hết hạn:</Text>
-            <Text style={styles.infoValue}>{facility.expiryDate}</Text>
+            <Text style={styles.infoLabel}>Số điện thoại:</Text>
+            <Text style={styles.infoValue}>{facilityData.phoneNumber}</Text>
           </View>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Địa điểm</Text>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Địa chỉ:</Text>
-            <Text style={styles.infoValue}>{facility.address}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Diện tích:</Text>
-            <Text style={styles.infoValue}>{facility.area}</Text>
-          </View>
-          <View style={styles.mapPlaceholder}>
-            <Ionicons name="map-outline" size={50} color="#085924" />
-            <Text style={styles.mapText}>Xem bản đồ</Text>
-          </View>
-        </View>
-        
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin liên hệ</Text>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Chủ sở hữu:</Text>
-            <Text style={styles.infoValue}>{facility.owner}</Text>
-          </View>
-          <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Điện thoại:</Text>
-            <Text style={styles.infoValue}>{facility.contactPhone}</Text>
-          </View>
+          
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Email:</Text>
-            <Text style={styles.infoValue}>{facility.contactEmail}</Text>
+            <Text style={styles.infoValue}>{facilityData.email || 'Chưa có'}</Text>
           </View>
-          {facility.website && (
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Website:</Text>
-              <Text style={styles.infoValue}>{facility.website}</Text>
-            </View>
-          )}
+          
           <View style={styles.infoItem}>
-            <Text style={styles.infoLabel}>Số nhân viên:</Text>
-            <Text style={styles.infoValue}>{facility.employees}</Text>
+            <Text style={styles.infoLabel}>Website:</Text>
+            <Text style={styles.infoValue}>{facilityData.website || 'Chưa có'}</Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>URL mạng xã hội:</Text>
+            <Text style={styles.infoValue}>{facilityData.socialMediaUrl || 'Chưa có'}</Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Ngày thành lập:</Text>
+            <Text style={styles.infoValue}>{formatDate(facilityData.establishedDate) || 'Chưa có'}</Text>
           </View>
         </View>
-        
+
+        {/* Location Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lịch sử đánh giá của cơ sở</Text>
-          
-          <View style={styles.reviewItem}>
-            <View style={styles.reviewHeader}>
-              <View style={styles.userInfo}>
-                <View style={styles.userIcon}>
-                  <Ionicons name="person" size={18} color="#085924" />
-                </View>
-                <Text style={styles.userName}>Trần Văn Bình</Text>
-              </View>
-              <View style={styles.ratingContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons 
-                    key={star} 
-                    name={star <= 4 ? "star" : "star-outline"} 
-                    size={16} 
-                    color="#FFD700" 
-                  />
-                ))}
+          <Text style={styles.sectionTitle}>Địa chỉ</Text>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Tỉnh/thành phố:</Text>
+            <Text style={styles.infoValue}>{facilityData.provinceName}</Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Quận/huyện:</Text>
+            <Text style={styles.infoValue}>{facilityData.districtName}</Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Phường/xã:</Text>
+            <Text style={styles.infoValue}>{facilityData.wardName}</Text>
+          </View>
+
+          <View style={styles.infoItem}>
+            <Text style={styles.infoLabel}>Địa chỉ chi tiết:</Text>
+            <Text style={styles.infoValue}>{facilityData.addressDetail}</Text>
+          </View>
+
+          <View style={styles.coordinatesContainer}>
+            <View style={styles.coordinateItem}>
+              <Text style={styles.infoLabel}>Vĩ độ:</Text>
+              <Text style={styles.infoValue}>{facilityData.latitude || 'Chưa có'}</Text>
+            </View>
+
+            <View style={styles.coordinateItem}>
+              <Text style={styles.infoLabel}>Kinh độ:</Text>
+              <Text style={styles.infoValue}>{facilityData.longitude || 'Chưa có'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Status Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trạng thái</Text>
+
+          <View style={styles.statusContainer}>
+            <View style={styles.statusItem}>
+              <Text style={styles.infoLabel}>Cơ sở chính:</Text>
+              <View style={styles.statusValue}>
+                <Ionicons 
+                  name={facilityData.isMainBranch ? "checkmark-circle" : "close-circle"} 
+                  size={20} 
+                  color={facilityData.isMainBranch ? "#085924" : "#dc3545"} 
+                />
+                <Text style={[
+                  styles.statusText,
+                  { color: facilityData.isMainBranch ? "#085924" : "#dc3545" }
+                ]}>
+                  {facilityData.isMainBranch ? "Có" : "Không"}
+                </Text>
               </View>
             </View>
-            <Text style={styles.reviewDate}>20/05/2023</Text>
-            <Text style={styles.reviewText}>
-              Đồ ăn ngon, dịch vụ tốt, không gian sạch sẽ và thoáng mát. Sẽ quay lại lần sau.
-            </Text>
-          </View>
-          
-          <View style={styles.reviewItem}>
-            <View style={styles.reviewHeader}>
-              <View style={styles.userInfo}>
-                <View style={styles.userIcon}>
-                  <Ionicons name="person" size={18} color="#085924" />
-                </View>
-                <Text style={styles.userName}>Lê Thị Hương</Text>
-              </View>
-              <View style={styles.ratingContainer}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Ionicons 
-                    key={star} 
-                    name={star <= 5 ? "star" : "star-outline"} 
-                    size={16} 
-                    color="#FFD700" 
-                  />
-                ))}
+
+            <View style={styles.statusItem}>
+              <Text style={styles.infoLabel}>Đang hoạt động:</Text>
+              <View style={styles.statusValue}>
+                <Ionicons 
+                  name={facilityData.isActive ? "checkmark-circle" : "close-circle"} 
+                  size={20} 
+                  color={facilityData.isActive ? "#085924" : "#dc3545"} 
+                />
+                <Text style={[
+                  styles.statusText,
+                  { color: facilityData.isActive ? "#085924" : "#dc3545" }
+                ]}>
+                  {facilityData.isActive ? "Có" : "Không"}
+                </Text>
               </View>
             </View>
-            <Text style={styles.reviewDate}>15/04/2023</Text>
-            <Text style={styles.reviewText}>
-              Tuyệt vời! Nhân viên phục vụ chu đáo, món ăn ngon miệng. Giá cả hợp lý.
-            </Text>
           </View>
-          
-          <TouchableOpacity style={styles.viewMoreButton}>
-            <Text style={styles.viewMoreText}>Xem tất cả đánh giá</Text>
-            <Ionicons name="chevron-forward" size={16} color="#085924" />
-          </TouchableOpacity>
         </View>
         
         <TouchableOpacity 
-          style={styles.editDetailButton}
+          style={styles.editButton}
           onPress={handleEditFacility}
         >
           <Ionicons name="create-outline" size={20} color="#fff" />
-          <Text style={styles.editDetailButtonText}>Chỉnh sửa thông tin cơ sở</Text>
+          <Text style={styles.editButtonText}>Chỉnh sửa thông tin</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -314,6 +219,100 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#085924',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#085924',
+    marginBottom: 16,
+  },
+  infoItem: {
+    marginBottom: 16,
+  },
+  infoLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+  },
+  infoValue: {
+    fontSize: 16,
+    color: '#666',
+  },
+  businessTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  businessTypeIcon: {
+    marginRight: 8,
+  },
+  coordinatesContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  coordinateItem: {
+    width: '48%',
+  },
+  statusContainer: {
+    marginTop: 8,
+  },
+  statusItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statusValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusText: {
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  editButton: {
+    backgroundColor: '#085924',
+    borderRadius: 8,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 30,
+  },
+  editButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
   loadingContainer: {
     flex: 1,
@@ -349,188 +348,6 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-  },
-  header: {
-    backgroundColor: '#085924',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    flex: 1,
-    textAlign: 'center',
-  },
-  editButton: {
-    padding: 5,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  facilityHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e0f2e9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  facilityName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    marginVertical: 5,
-  },
-  activeStatus: {
-    backgroundColor: '#d4edda',
-  },
-  pendingStatus: {
-    backgroundColor: '#fff3cd',
-  },
-  inactiveStatus: {
-    backgroundColor: '#f8d7da',
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  section: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#085924',
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingBottom: 8,
-  },
-  infoItem: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    flexWrap: 'wrap',
-  },
-  infoLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#666',
-    width: '40%',
-  },
-  infoValue: {
-    fontSize: 15,
-    color: '#333',
-    flex: 1,
-  },
-  mapPlaceholder: {
-    height: 150,
-    backgroundColor: '#e0f2e9',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  mapText: {
-    fontSize: 16,
-    color: '#085924',
-    marginTop: 8,
-  },
-  reviewItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingVertical: 12,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  userIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#e0f2e9',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
-  },
-  reviewText: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 20,
-  },
-  viewMoreButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  viewMoreText: {
-    fontSize: 16,
-    color: '#085924',
-    fontWeight: '500',
-    marginRight: 8,
-  },
-  editDetailButton: {
-    backgroundColor: '#085924',
-    borderRadius: 8,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 30,
-  },
-  editDetailButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 8,
   },
 });
 

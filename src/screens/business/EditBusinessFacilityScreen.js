@@ -8,42 +8,75 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
+  Switch,
+  Modal,
+  FlatList,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import DatePicker from 'react-native-date-picker';
 import BusinessBranchService from '../../services/BusinessBranchService';
+import BusinessTypeCatalogService from '../../services/BusinessTypeCatalogService';
+import LocationService from '../../services/LocationService';
 import { showError, showSuccess, showConfirmation } from '../../utils/PopupUtils';
 
 const EditBusinessFacilityScreen = ({ route, navigation }) => {
   const { facilityId, facility: initialFacility } = route.params;
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const scrollViewRef = useRef(null);
   
   const [formData, setFormData] = useState({
     id: '',
     branchName: '',
-    addressDetail: '',
-    businessCode: '',
-    businessTypeId: '',
+    businessTypeId: null,
     businessTypeName: '',
-    establishedDate: '',
-    deactivationDate: '',
+    businessTypeIcon: '',
+    businessTypeColor: '',
     representativeName: '',
     phoneNumber: '',
     email: '',
     website: '',
-    area: '',
+    socialMediaUrl: '',
+    establishedDate: '',
+    deactivationDate: '',
+    provinceId: null,
+    provinceName: '',
+    districtId: null,
+    districtName: '',
+    wardId: null,
+    wardName: '',
+    addressDetail: '',
+    latitude: '',
+    longitude: '',
+    isMainBranch: false,
     isActive: true,
   });
 
-  // Hàm chuyển đổi ngày từ API (ISO) sang DD/MM/YYYY
+  // States for dropdown data
+  const [businessTypes, setBusinessTypes] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+
+  // States for dropdown modals
+  const [showBusinessTypeModal, setShowBusinessTypeModal] = useState(false);
+  const [showProvinceModal, setShowProvinceModal] = useState(false);
+  const [showDistrictModal, setShowDistrictModal] = useState(false);
+  const [showWardModal, setShowWardModal] = useState(false);
+  const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+  const [isDeactivationDatePickerVisible, setDeactivationDatePickerVisible] = useState(false);
+
+  const [errors, setErrors] = useState({});
+
+  // Format date from API (ISO) to DD/MM/YYYY
   const formatDateForForm = (dateString) => {
     if (!dateString) return '';
     const date = new Date(dateString);
     return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()}`;
   };
 
-  // Hàm chuyển đổi ngày từ DD/MM/YYYY sang YYYY-MM-DDT00:00:00
+  // Format date from DD/MM/YYYY to YYYY-MM-DDT00:00:00
   const parseDateForApi = (dateString) => {
     if (!dateString || !dateString.trim()) return null;
     
@@ -51,14 +84,11 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
       const parts = dateString.split('/');
       if (parts.length !== 3) return null;
       
-      // Validate parts are numbers
       const day = parseInt(parts[0]);
       const month = parseInt(parts[1]);
       const year = parseInt(parts[2]);
       
       if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
-      
-      // Check date validity
       if (day < 1 || day > 31 || month < 1 || month > 12) return null;
       
       return `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
@@ -69,173 +99,235 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
   };
 
   useEffect(() => {
-    const fetchFacilityDetails = async () => {
+    const loadInitialData = async () => {
       try {
-        if (!facilityId && !initialFacility) return;
-        
         setInitialLoading(true);
         
+        // Load facility data
         let facilityData = initialFacility;
-        
-        // If we have an ID but no facility object, fetch from API
         if (facilityId && !initialFacility) {
           const response = await BusinessBranchService.get(facilityId);
           facilityData = response;
         }
-        
+
+        // Load dropdown data
+        const [businessTypesResponse, provincesResponse] = await Promise.all([
+          BusinessTypeCatalogService.getList(),
+          LocationService.getCities()
+        ]);
+
+        setBusinessTypes(businessTypesResponse.result);
+        setProvinces(provincesResponse.result);
+
         if (facilityData) {
           // Transform API data to form format
           setFormData({
             id: facilityData.id || '',
             branchName: facilityData.branchName || facilityData.name || '',
-            addressDetail: facilityData.addressDetail || facilityData.address || '',
-            businessCode: facilityData.businessCode || facilityData.licenseNumber || '',
-            businessTypeId: facilityData.businessTypeId || '',
+            businessTypeId: facilityData.businessTypeId || null,
             businessTypeName: facilityData.businessTypeName || facilityData.businessType || '',
-            establishedDate: facilityData.establishedDate ? formatDateForForm(facilityData.establishedDate) : 
-                           facilityData.operationDate || '',
-            deactivationDate: facilityData.deactivationDate ? formatDateForForm(facilityData.deactivationDate) : 
-                             facilityData.expiryDate || '',
+            businessTypeIcon: facilityData.businessTypeIcon || 'business',
+            businessTypeColor: facilityData.businessTypeColor || '#085924',
             representativeName: facilityData.representativeName || facilityData.owner || '',
             phoneNumber: facilityData.phoneNumber || facilityData.contactPhone || '',
             email: facilityData.email || facilityData.contactEmail || '',
             website: facilityData.website || '',
-            area: facilityData.area ? facilityData.area.toString().replace('m²', '') : '',
+            socialMediaUrl: facilityData.socialMediaUrl || '',
+            establishedDate: facilityData.establishedDate ? formatDateForForm(facilityData.establishedDate) : '',
+            deactivationDate: facilityData.deactivationDate ? formatDateForForm(facilityData.deactivationDate) : '',
+            provinceId: facilityData.provinceId || null,
+            provinceName: facilityData.provinceName || '',
+            districtId: facilityData.districtId || null,
+            districtName: facilityData.districtName || '',
+            wardId: facilityData.wardId || null,
+            wardName: facilityData.wardName || '',
+            addressDetail: facilityData.addressDetail || facilityData.address || '',
+            latitude: facilityData.latitude || '',
+            longitude: facilityData.longitude || '',
+            isMainBranch: facilityData.isMainBranch || false,
             isActive: facilityData.isActive !== undefined ? facilityData.isActive : 
                      facilityData.status === 'Hoạt động',
           });
+
+          // Load districts if province is selected
+          if (facilityData.provinceId) {
+            const districtsResponse = await LocationService.getDistricts(facilityData.provinceId);
+            setDistricts(districtsResponse.result);
+
+            // Load wards if district is selected
+            if (facilityData.districtId) {
+              const wardsResponse = await LocationService.getWards(facilityData.districtId);
+              setWards(wardsResponse.result);
+            }
+          }
         }
       } catch (err) {
-        console.error('Error fetching facility details:', err);
-        showError('Không thể tải thông tin chi tiết. Vui lòng thử lại sau.');
+        console.error('Error loading initial data:', err);
+        showError('Không thể tải dữ liệu ban đầu. Vui lòng thử lại sau.');
+        navigation.goBack();
       } finally {
         setInitialLoading(false);
       }
     };
 
-    fetchFacilityDetails();
+    loadInitialData();
   }, [facilityId, initialFacility]);
 
-  const [errors, setErrors] = useState({});
+  // Load districts when province changes
+  useEffect(() => {
+    if (formData.provinceId) {
+      const loadDistricts = async () => {
+        try {
+          const response = await LocationService.getDistricts(formData.provinceId);
+          setDistricts(response.result);
+          // Clear district and ward selection
+          setFormData(prev => ({
+            ...prev,
+            districtId: null,
+            districtName: '',
+            wardId: null,
+            wardName: ''
+          }));
+        } catch (error) {
+          console.error('Error loading districts:', error);
+          showError('Không thể tải danh sách quận/huyện');
+        }
+      };
+
+      loadDistricts();
+    }
+  }, [formData.provinceId]);
+
+  // Load wards when district changes
+  useEffect(() => {
+    if (formData.districtId) {
+      const loadWards = async () => {
+        try {
+          const response = await LocationService.getWards(formData.districtId);
+          setWards(response.result);
+          // Clear ward selection
+          setFormData(prev => ({
+            ...prev,
+            wardId: null,
+            wardName: ''
+          }));
+        } catch (error) {
+          console.error('Error loading wards:', error);
+          showError('Không thể tải danh sách phường/xã');
+        }
+      };
+
+      loadWards();
+    }
+  }, [formData.districtId]);
+
+  const handleDateConfirm = (date) => {
+    const formattedDate = date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    handleInputChange('establishedDate', formattedDate);
+    setDatePickerVisible(false);
+  };
+
+  const handleDeactivationDateConfirm = (date) => {
+    const formattedDate = date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+    handleInputChange('deactivationDate', formattedDate);
+    setDeactivationDatePickerVisible(false);
+  };
 
   const validateForm = () => {
     let isValid = true;
     const newErrors = {};
 
-    // Validate name
-    if (!formData.branchName || !formData.branchName.trim()) {
-      newErrors.branchName = 'Vui lòng nhập tên cơ sở';
-      isValid = false;
-    }
+    // Required fields validation
+    const requiredFields = {
+      branchName: 'Tên cơ sở/chi nhánh',
+      businessTypeId: 'Loại hình kinh doanh',
+      representativeName: 'Người đại diện',
+      phoneNumber: 'Số điện thoại',
+      provinceId: 'Tỉnh/thành phố',
+      districtId: 'Quận/huyện',
+      wardId: 'Phường/xã',
+      addressDetail: 'Địa chỉ chi tiết'
+    };
 
-    // Validate address
-    if (!formData.addressDetail || !formData.addressDetail.trim()) {
-      newErrors.addressDetail = 'Vui lòng nhập địa chỉ';
-      isValid = false;
-    }
-
-    // Validate business code
-    if (!formData.businessCode || !formData.businessCode.trim()) {
-      newErrors.businessCode = 'Vui lòng nhập số giấy phép';
-      isValid = false;
-    }
-
-    // Validate business type
-    if (!formData.businessTypeName || !formData.businessTypeName.trim()) {
-      newErrors.businessTypeName = 'Vui lòng nhập loại hình kinh doanh';
-      isValid = false;
-    }
-
-    // Validate owner
-    if (!formData.representativeName || !formData.representativeName.trim()) {
-      newErrors.representativeName = 'Vui lòng nhập tên chủ sở hữu';
-      isValid = false;
-    }
-
-    // Validate phone (more comprehensive validation)
-    if (!formData.phoneNumber || !formData.phoneNumber.trim()) {
-      newErrors.phoneNumber = 'Vui lòng nhập số điện thoại';
-      isValid = false;
-    } else if (!/^(0|\+84)([0-9]{9,10})$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
-      newErrors.phoneNumber = 'Số điện thoại không hợp lệ (Vui lòng nhập số điện thoại Việt Nam)';
-      isValid = false;
-    }
-
-    // Validate email (more comprehensive validation)
-    if (formData.email && formData.email.trim()) {
-      const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-      if (!emailRegex.test(formData.email.trim())) {
-        newErrors.email = 'Địa chỉ email không hợp lệ';
+    Object.keys(requiredFields).forEach(field => {
+      if (!formData[field]) {
+        newErrors[field] = `Vui lòng nhập ${requiredFields[field]}`;
         isValid = false;
       }
+    });
+
+    // Phone number validation
+    if (formData.phoneNumber && !/^(0|\+84)([0-9]{9,10})$/.test(formData.phoneNumber.replace(/\s/g, ''))) {
+      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
+      isValid = false;
     }
 
-    // Validate dates (more comprehensive format validation)
-    const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
-    
-    if (formData.establishedDate && formData.establishedDate.trim()) {
+    // Email validation
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Email không hợp lệ';
+      isValid = false;
+    }
+
+    // Date validation
+    if (formData.establishedDate) {
+      const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
       if (!dateRegex.test(formData.establishedDate)) {
-        newErrors.establishedDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+        newErrors.establishedDate = 'Ngày không hợp lệ (DD/MM/YYYY)';
         isValid = false;
-      } else {
-        // Validate if date is valid
-        const [day, month, year] = formData.establishedDate.split('/');
-        const date = new Date(year, month - 1, day);
-        if (date.getDate() !== parseInt(day) || 
-            date.getMonth() !== parseInt(month) - 1 || 
-            date.getFullYear() !== parseInt(year)) {
-          newErrors.establishedDate = 'Ngày không hợp lệ';
-          isValid = false;
-        }
       }
     }
-    
-    if (formData.deactivationDate && formData.deactivationDate.trim()) {
+
+    if (formData.deactivationDate) {
+      const dateRegex = /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/;
       if (!dateRegex.test(formData.deactivationDate)) {
-        newErrors.deactivationDate = 'Định dạng ngày không hợp lệ (DD/MM/YYYY)';
+        newErrors.deactivationDate = 'Ngày không hợp lệ (DD/MM/YYYY)';
         isValid = false;
-      } else {
-        // Validate if date is valid
-        const [day, month, year] = formData.deactivationDate.split('/');
-        const date = new Date(year, month - 1, day);
-        if (date.getDate() !== parseInt(day) || 
-            date.getMonth() !== parseInt(month) - 1 || 
-            date.getFullYear() !== parseInt(year)) {
-          newErrors.deactivationDate = 'Ngày không hợp lệ';
-          isValid = false;
-        }
+      }
+
+      // Check if deactivation date is after established date
+      if (formData.establishedDate && dateRegex.test(formData.establishedDate)) {
+        const [estDay, estMonth, estYear] = formData.establishedDate.split('/');
+        const [deactDay, deactMonth, deactYear] = formData.deactivationDate.split('/');
+        const estDate = new Date(estYear, estMonth - 1, estDay);
+        const deactDate = new Date(deactYear, deactMonth - 1, deactDay);
         
-        // Check if deactivation date is after established date
-        if (formData.establishedDate && formData.establishedDate.trim() && dateRegex.test(formData.establishedDate)) {
-          const [estDay, estMonth, estYear] = formData.establishedDate.split('/');
-          const estDate = new Date(estYear, estMonth - 1, estDay);
-          
-          if (date < estDate) {
-            newErrors.deactivationDate = 'Ngày hết hạn phải sau ngày hoạt động';
-            isValid = false;
-          }
+        if (deactDate < estDate) {
+          newErrors.deactivationDate = 'Ngày hết hạn phải sau ngày thành lập';
+          isValid = false;
         }
       }
     }
 
-    // Validate website format if provided
-    if (formData.website && formData.website.trim()) {
-      const websiteRegex = /^(https?:\/\/)?(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/;
-      if (!websiteRegex.test(formData.website.trim())) {
-        newErrors.website = 'URL website không hợp lệ';
-        isValid = false;
-      }
+    // URL validations
+    const urlRegex = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/;
+    if (formData.website && !urlRegex.test(formData.website)) {
+      newErrors.website = 'Website không hợp lệ';
+      isValid = false;
+    }
+    if (formData.socialMediaUrl && !urlRegex.test(formData.socialMediaUrl)) {
+      newErrors.socialMediaUrl = 'URL mạng xã hội không hợp lệ';
+      isValid = false;
+    }
+        
+    // Coordinates validation
+    if (formData.latitude && (isNaN(formData.latitude) || formData.latitude < -90 || formData.latitude > 90)) {
+      newErrors.latitude = 'Vĩ độ không hợp lệ';
+      isValid = false;
+    }
+    if (formData.longitude && (isNaN(formData.longitude) || formData.longitude < -180 || formData.longitude > 180)) {
+      newErrors.longitude = 'Kinh độ không hợp lệ';
+      isValid = false;
     }
 
     setErrors(newErrors);
-    
-    // If there are errors, scroll to the first error field
-    if (!isValid && scrollViewRef.current) {
-      // For this to work properly in a real app, we'd need refs for each input field
-      // For now, we'll just scroll to the top to make errors visible
-      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: true });
-    }
-    
     return isValid;
   };
 
@@ -253,16 +345,27 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
         const branchData = {
           id: formData.id,
           branchName: formData.branchName.trim(),
-          addressDetail: formData.addressDetail.trim(),
-          businessCode: formData.businessCode.trim(),
-          businessTypeId: formData.businessTypeId || null,
+          businessTypeId: formData.businessTypeId,
           businessTypeName: formData.businessTypeName.trim(),
-          establishedDate: parseDateForApi(formData.establishedDate),
-          deactivationDate: parseDateForApi(formData.deactivationDate),
+          businessTypeIcon: formData.businessTypeIcon,
+          businessTypeColor: formData.businessTypeColor,
           representativeName: formData.representativeName.trim(),
           phoneNumber: formData.phoneNumber.trim(),
           email: formData.email ? formData.email.trim() : null,
           website: formData.website ? formData.website.trim() : null,
+          socialMediaUrl: formData.socialMediaUrl ? formData.socialMediaUrl.trim() : null,
+          establishedDate: parseDateForApi(formData.establishedDate),
+          deactivationDate: parseDateForApi(formData.deactivationDate),
+          provinceId: formData.provinceId,
+          provinceName: formData.provinceName,
+          districtId: formData.districtId,
+          districtName: formData.districtName,
+          wardId: formData.wardId,
+          wardName: formData.wardName,
+          addressDetail: formData.addressDetail.trim(),
+          latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+          longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+          isMainBranch: formData.isMainBranch,
           isActive: formData.isActive,
           status: formData.isActive ? 'Hoạt động' : 'Không hoạt động',
         };
@@ -270,63 +373,56 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
         // Call API to update
         await BusinessBranchService.updateByBusiness(branchData);
         
-        setLoading(false);
-        
-        // Show success message with confirmation popup
-        showConfirmation({
-          title: 'Thành công',
-          message: 'Thông tin cơ sở kinh doanh đã được cập nhật thành công',
-          confirmText: 'OK',
-          onConfirm: () => navigation.navigate('BusinessFacilityDetail', { 
-            facilityId: formData.id,
-            refresh: true 
-          }),
-          onCancel: () => {},
-          cancelText: '',
-        });
+        showSuccess('Cập nhật cơ sở kinh doanh thành công');
+        navigation.goBack();
       } catch (err) {
         console.error('Error updating business facility:', err);
+        showError('Không thể cập nhật cơ sở kinh doanh. Vui lòng thử lại sau.');
+      } finally {
         setLoading(false);
-        
-        // Show more specific error message if available
-        let errorMessage = 'Không thể cập nhật thông tin cơ sở kinh doanh. Vui lòng thử lại sau.';
-        
-        if (err.response && err.response.data) {
-          if (err.response.data.error && err.response.data.error.message) {
-            errorMessage = err.response.data.error.message;
-          } else if (typeof err.response.data === 'string') {
-            errorMessage = err.response.data;
-          }
-        } else if (err.message) {
-          errorMessage = err.message;
-        }
-        
-        showError(errorMessage);
       }
     }
   };
 
   const handleInputChange = (field, value) => {
-    setFormData({
-      ...formData,
-      [field]: value,
-    });
-    
-    // Clear the error for this field when user types
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
     if (errors[field]) {
-      setErrors({
-        ...errors,
-        [field]: null,
-      });
+      setErrors(prev => ({
+        ...prev,
+        [field]: null
+      }));
     }
   };
 
+  // Render dropdown item
+  const renderDropdownItem = ({ item, onSelect, nameField, valueField = 'id' }) => (
+    <TouchableOpacity
+      style={styles.dropdownItem}
+      onPress={() => onSelect(item)}
+    >
+      <View style={styles.dropdownItemContent}>
+        {item.businessTypeIcon && (
+          <MaterialIcons 
+            name={(item.businessTypeIcon ? item.businessTypeIcon.replace(/_/g, '-') : 'business')}
+            size={24} 
+            color={item.color} 
+            style={styles.dropdownItemIcon}
+          />
+        )}
+        <Text style={styles.dropdownItemText}>{item[nameField]}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   if (initialLoading) {
     return (
-      <SafeAreaView style={styles.loadingContainer}>
+      <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#085924" />
-        <Text style={styles.loadingText}>Đang tải thông tin...</Text>
-      </SafeAreaView>
+        <Text style={styles.loadingText}>Đang tải...</Text>
+      </View>
     );
   }
 
@@ -340,200 +436,252 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Chỉnh sửa cơ sở kinh doanh</Text>
-        <View style={styles.placeholder} />
       </View>
       
-      <ScrollView 
-        style={styles.content}
-        ref={scrollViewRef}
-      >
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Thông tin chung</Text>
+      <ScrollView style={styles.content}>
+        {/* Basic Information Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Tên cơ sở*</Text>
+            <Text style={styles.label}>Tên cơ sở/chi nhánh *</Text>
             <TextInput
               style={[styles.input, errors.branchName && styles.inputError]}
-              placeholder="Nhập tên cơ sở"
               value={formData.branchName}
               onChangeText={(text) => handleInputChange('branchName', text)}
-              name="branchName"
+              placeholder="Nhập tên cơ sở/chi nhánh"
             />
             {errors.branchName && <Text style={styles.errorText}>{errors.branchName}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Số giấy phép*</Text>
-            <TextInput
-              style={[styles.input, errors.businessCode && styles.inputError]}
-              placeholder="Nhập số giấy phép"
-              value={formData.businessCode}
-              onChangeText={(text) => handleInputChange('businessCode', text)}
-              name="businessCode"
-            />
-            {errors.businessCode && <Text style={styles.errorText}>{errors.businessCode}</Text>}
-          </View>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Loại hình kinh doanh*</Text>
-            <TextInput
-              style={[styles.input, errors.businessTypeName && styles.inputError]}
-              placeholder="Nhập loại hình kinh doanh"
-              value={formData.businessTypeName}
-              onChangeText={(text) => handleInputChange('businessTypeName', text)}
-              name="businessTypeName"
-            />
-            {errors.businessTypeName && <Text style={styles.errorText}>{errors.businessTypeName}</Text>}
-          </View>
-          
-          <View style={styles.row}>
-            <View style={[styles.inputContainer, styles.halfInput]}>
-              <Text style={styles.inputLabel}>Ngày hoạt động</Text>
-              <TextInput
-                style={[styles.input, errors.establishedDate && styles.inputError]}
-                placeholder="DD/MM/YYYY"
-                value={formData.establishedDate}
-                onChangeText={(text) => handleInputChange('establishedDate', text)}
-                name="establishedDate"
-              />
-              {errors.establishedDate && <Text style={styles.errorText}>{errors.establishedDate}</Text>}
-            </View>
-            
-            <View style={[styles.inputContainer, styles.halfInput]}>
-              <Text style={styles.inputLabel}>Ngày hết hạn</Text>
-              <TextInput
-                style={[styles.input, errors.deactivationDate && styles.inputError]}
-                placeholder="DD/MM/YYYY"
-                value={formData.deactivationDate}
-                onChangeText={(text) => handleInputChange('deactivationDate', text)}
-                name="deactivationDate"
-              />
-              {errors.deactivationDate && <Text style={styles.errorText}>{errors.deactivationDate}</Text>}
-            </View>
-          </View>
-          
-          <View style={styles.statusContainer}>
-            <Text style={styles.inputLabel}>Trạng thái</Text>
-            <View style={styles.statusOptions}>
-              <TouchableOpacity 
-                style={[
-                  styles.statusOption, 
-                  formData.isActive === true && styles.activeStatusOption
-                ]}
-                onPress={() => handleInputChange('isActive', true)}
-              >
-                <Text style={styles.statusOptionText}>Hoạt động</Text>
-                {formData.isActive === true && (
-                  <Ionicons name="checkmark-circle" size={20} color="#085924" />
+            <Text style={styles.label}>Loại hình kinh doanh *</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.dropdownButton]}
+              onPress={() => setShowBusinessTypeModal(true)}
+            >
+              <View style={styles.dropdownButtonContent}>
+                {formData.businessTypeIcon && (
+                  <MaterialIcons 
+                    name={(formData.businessTypeIcon ? formData.businessTypeIcon.replace(/_/g, '-') : 'business')}
+                    size={20} 
+                    color={formData.businessTypeColor} 
+                    style={styles.dropdownButtonIcon}
+                  />
                 )}
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.statusOption, 
-                  formData.isActive === false && styles.inactiveStatusOption
-                ]}
-                onPress={() => handleInputChange('isActive', false)}
-              >
-                <Text style={styles.statusOptionText}>Không hoạt động</Text>
-                {formData.isActive === false && (
-                  <Ionicons name="checkmark-circle" size={20} color="#dc3545" />
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-        
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Địa điểm</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Địa chỉ*</Text>
-            <TextInput
-              style={[styles.input, errors.addressDetail && styles.inputError]}
-              placeholder="Nhập địa chỉ cơ sở"
-              value={formData.addressDetail}
-              onChangeText={(text) => handleInputChange('addressDetail', text)}
-              multiline
-              name="addressDetail"
-            />
-            {errors.addressDetail && <Text style={styles.errorText}>{errors.addressDetail}</Text>}
+                <Text style={formData.businessTypeName ? styles.dropdownButtonText : styles.placeholderText}>
+                  {formData.businessTypeName || 'Chọn loại hình kinh doanh'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+            {errors.businessTypeId && <Text style={styles.errorText}>{errors.businessTypeId}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Diện tích (m²)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Nhập diện tích"
-              value={formData.area}
-              onChangeText={(text) => handleInputChange('area', text)}
-              keyboardType="numeric"
-              name="area"
-            />
-          </View>
-          
-          <TouchableOpacity style={styles.mapButton}>
-            <Ionicons name="location-outline" size={20} color="#fff" />
-            <Text style={styles.mapButtonText}>Chọn vị trí trên bản đồ</Text>
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.formSection}>
-          <Text style={styles.sectionTitle}>Thông tin liên hệ</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Tên chủ sở hữu*</Text>
+            <Text style={styles.label}>Người đại diện *</Text>
             <TextInput
               style={[styles.input, errors.representativeName && styles.inputError]}
-              placeholder="Nhập tên chủ sở hữu"
               value={formData.representativeName}
               onChangeText={(text) => handleInputChange('representativeName', text)}
-              name="representativeName"
+              placeholder="Nhập tên người đại diện"
             />
             {errors.representativeName && <Text style={styles.errorText}>{errors.representativeName}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Số điện thoại*</Text>
+            <Text style={styles.label}>Số điện thoại *</Text>
             <TextInput
               style={[styles.input, errors.phoneNumber && styles.inputError]}
-              placeholder="Nhập số điện thoại"
               value={formData.phoneNumber}
               onChangeText={(text) => handleInputChange('phoneNumber', text)}
+              placeholder="Nhập số điện thoại"
               keyboardType="phone-pad"
-              name="phoneNumber"
             />
             {errors.phoneNumber && <Text style={styles.errorText}>{errors.phoneNumber}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Email</Text>
+            <Text style={styles.label}>Email</Text>
             <TextInput
               style={[styles.input, errors.email && styles.inputError]}
-              placeholder="Nhập địa chỉ email"
               value={formData.email}
               onChangeText={(text) => handleInputChange('email', text)}
+              placeholder="Nhập email"
               keyboardType="email-address"
               autoCapitalize="none"
-              name="email"
             />
             {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
           
           <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Website</Text>
+            <Text style={styles.label}>Website</Text>
             <TextInput
               style={[styles.input, errors.website && styles.inputError]}
-              placeholder="Nhập địa chỉ website"
               value={formData.website}
               onChangeText={(text) => handleInputChange('website', text)}
+              placeholder="Nhập website"
               autoCapitalize="none"
-              name="website"
             />
             {errors.website && <Text style={styles.errorText}>{errors.website}</Text>}
           </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>URL mạng xã hội</Text>
+            <TextInput
+              style={[styles.input, errors.socialMediaUrl && styles.inputError]}
+              value={formData.socialMediaUrl}
+              onChangeText={(text) => handleInputChange('socialMediaUrl', text)}
+              placeholder="Nhập URL mạng xã hội"
+              autoCapitalize="none"
+            />
+            {errors.socialMediaUrl && <Text style={styles.errorText}>{errors.socialMediaUrl}</Text>}
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputContainer, styles.halfWidth]}>
+              <Text style={styles.label}>Ngày thành lập</Text>
+              <TouchableOpacity
+                style={[styles.input, styles.dateInput, errors.establishedDate && styles.inputError]}
+                onPress={() => setDatePickerVisible(true)}
+              >
+                <Text style={formData.establishedDate ? styles.dateInputText : styles.placeholderText}>
+                  {formData.establishedDate || 'Chọn ngày thành lập'}
+                </Text>
+                <MaterialIcons name="calendar-today" size={20} color="#666" />
+              </TouchableOpacity>
+              {errors.establishedDate && <Text style={styles.errorText}>{errors.establishedDate}</Text>}
+            </View>
+            
+            <View style={[styles.inputContainer, styles.halfWidth]}>
+              <Text style={styles.label}>Ngày hết hạn</Text>
+              <TouchableOpacity
+                style={[styles.input, styles.dateInput, errors.deactivationDate && styles.inputError]}
+                onPress={() => setDeactivationDatePickerVisible(true)}
+              >
+                <Text style={formData.deactivationDate ? styles.dateInputText : styles.placeholderText}>
+                  {formData.deactivationDate || 'Chọn ngày hết hạn'}
+                </Text>
+                <MaterialIcons name="calendar-today" size={20} color="#666" />
+              </TouchableOpacity>
+              {errors.deactivationDate && <Text style={styles.errorText}>{errors.deactivationDate}</Text>}
+            </View>
+          </View>
+        </View>
+
+        {/* Location Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Địa chỉ</Text>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Tỉnh/thành phố *</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.dropdownButton]}
+              onPress={() => setShowProvinceModal(true)}
+            >
+              <Text style={formData.provinceName ? styles.dropdownButtonText : styles.placeholderText}>
+                {formData.provinceName || 'Chọn tỉnh/thành phố'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+            {errors.provinceId && <Text style={styles.errorText}>{errors.provinceId}</Text>}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Quận/huyện *</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.dropdownButton]}
+              onPress={() => formData.provinceId && setShowDistrictModal(true)}
+              disabled={!formData.provinceId}
+            >
+              <Text style={formData.districtName ? styles.dropdownButtonText : styles.placeholderText}>
+                {formData.districtName || 'Chọn quận/huyện'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+            {errors.districtId && <Text style={styles.errorText}>{errors.districtId}</Text>}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Phường/xã *</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.dropdownButton]}
+              onPress={() => formData.districtId && setShowWardModal(true)}
+              disabled={!formData.districtId}
+            >
+              <Text style={formData.wardName ? styles.dropdownButtonText : styles.placeholderText}>
+                {formData.wardName || 'Chọn phường/xã'}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#666" />
+            </TouchableOpacity>
+            {errors.wardId && <Text style={styles.errorText}>{errors.wardId}</Text>}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Địa chỉ chi tiết *</Text>
+            <TextInput
+              style={[styles.input, errors.addressDetail && styles.inputError]}
+              value={formData.addressDetail}
+              onChangeText={(text) => handleInputChange('addressDetail', text)}
+              placeholder="Nhập địa chỉ chi tiết"
+              multiline
+            />
+            {errors.addressDetail && <Text style={styles.errorText}>{errors.addressDetail}</Text>}
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.inputContainer, styles.halfWidth]}>
+              <Text style={styles.label}>Vĩ độ</Text>
+              <TextInput
+                style={[styles.input, errors.latitude && styles.inputError]}
+                value={formData.latitude}
+                onChangeText={(text) => handleInputChange('latitude', text)}
+                placeholder="Nhập vĩ độ"
+                keyboardType="numeric"
+              />
+              {errors.latitude && <Text style={styles.errorText}>{errors.latitude}</Text>}
+            </View>
+
+            <View style={[styles.inputContainer, styles.halfWidth]}>
+              <Text style={styles.label}>Kinh độ</Text>
+              <TextInput
+                style={[styles.input, errors.longitude && styles.inputError]}
+                value={formData.longitude}
+                onChangeText={(text) => handleInputChange('longitude', text)}
+                placeholder="Nhập kinh độ"
+                keyboardType="numeric"
+              />
+              {errors.longitude && <Text style={styles.errorText}>{errors.longitude}</Text>}
+            </View>
+          </View>
+        </View>
+
+        {/* Status Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Trạng thái</Text>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Cơ sở chính</Text>
+            <Switch
+              value={formData.isMainBranch}
+              onValueChange={(value) => handleInputChange('isMainBranch', value)}
+              trackColor={{ false: '#767577', true: '#085924' }}
+              thumbColor={formData.isMainBranch ? '#fff' : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.switchContainer}>
+            <Text style={styles.switchLabel}>Đang hoạt động</Text>
+            <Switch
+              value={formData.isActive}
+              onValueChange={(value) => handleInputChange('isActive', value)}
+              trackColor={{ false: '#767577', true: '#085924' }}
+              thumbColor={formData.isActive ? '#fff' : '#f4f3f4'}
+            />
+          </View>
         </View>
         
-        <View style={styles.buttonsContainer}>
+        <View style={styles.buttonContainer}>
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
@@ -555,6 +703,200 @@ const EditBusinessFacilityScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Business Type Modal */}
+      <Modal
+        visible={showBusinessTypeModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn loại hình kinh doanh</Text>
+              <TouchableOpacity
+                onPress={() => setShowBusinessTypeModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={businessTypes}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => renderDropdownItem({
+                item,
+                onSelect: (selected) => {
+                  handleInputChange('businessTypeId', selected.id);
+                  handleInputChange('businessTypeName', selected.businessTypeName);
+                  handleInputChange('businessTypeIcon', selected.businessTypeIcon);
+                  handleInputChange('businessTypeColor', selected.color);
+                  setShowBusinessTypeModal(false);
+                },
+                nameField: 'businessTypeName'
+              })}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Province Modal */}
+      <Modal
+        visible={showProvinceModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn tỉnh/thành phố</Text>
+              <TouchableOpacity
+                onPress={() => setShowProvinceModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={provinces}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => renderDropdownItem({
+                item,
+                onSelect: (selected) => {
+                  handleInputChange('provinceId', selected.id);
+                  handleInputChange('provinceName', selected.provinceName);
+                  setShowProvinceModal(false);
+                },
+                nameField: 'provinceName'
+              })}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* District Modal */}
+      <Modal
+        visible={showDistrictModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn quận/huyện</Text>
+              <TouchableOpacity
+                onPress={() => setShowDistrictModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={districts}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => renderDropdownItem({
+                item,
+                onSelect: (selected) => {
+                  handleInputChange('districtId', selected.id);
+                  handleInputChange('districtName', selected.districtName);
+                  setShowDistrictModal(false);
+                },
+                nameField: 'districtName'
+              })}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Ward Modal */}
+      <Modal
+        visible={showWardModal}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn phường/xã</Text>
+              <TouchableOpacity
+                onPress={() => setShowWardModal(false)}
+              >
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={wards}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => renderDropdownItem({
+                item,
+                onSelect: (selected) => {
+                  handleInputChange('wardId', selected.id);
+                  handleInputChange('wardName', selected.wardName);
+                  setShowWardModal(false);
+                },
+                nameField: 'wardName'
+              })}
+            />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={isDatePickerVisible}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn ngày thành lập</Text>
+              <TouchableOpacity
+                onPress={() => setDatePickerVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerContainer}>
+              <DatePicker
+                date={formData.establishedDate ? new Date(formData.establishedDate.split('/').reverse().join('-')) : new Date()}
+                onDateChange={handleDateConfirm}
+                mode="date"
+                locale="vi"
+                maximumDate={new Date()}
+                androidVariant="nativeAndroid"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Deactivation Date Picker Modal */}
+      <Modal
+        visible={isDeactivationDatePickerVisible}
+        transparent={true}
+        animationType="slide"
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn ngày hết hạn</Text>
+              <TouchableOpacity
+                onPress={() => setDeactivationDatePickerVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#000" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.datePickerContainer}>
+              <DatePicker
+                date={formData.deactivationDate ? new Date(formData.deactivationDate.split('/').reverse().join('-')) : new Date()}
+                onDateChange={handleDeactivationDateConfirm}
+                mode="date"
+                locale="vi"
+                minimumDate={formData.establishedDate ? new Date(formData.establishedDate.split('/').reverse().join('-')) : new Date()}
+                androidVariant="nativeAndroid"
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -563,6 +905,190 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  header: {
+    backgroundColor: '#085924',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backButton: {
+    marginRight: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#fff',
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#085924',
+    marginBottom: 16,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  label: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  inputError: {
+    borderColor: '#dc3545',
+  },
+  errorText: {
+    color: '#dc3545',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  halfWidth: {
+    width: '48%',
+  },
+  switchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  switchLabel: {
+    fontSize: 16,
+    color: '#333',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#085924',
+    borderRadius: 8,
+    padding: 15,
+    marginRight: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#085924',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  submitButton: {
+    flex: 1,
+    backgroundColor: '#085924',
+    borderRadius: 8,
+    padding: 15,
+    marginLeft: 8,
+    alignItems: 'center',
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dropdownButtonIcon: {
+    marginRight: 8,
+  },
+  dropdownButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  placeholderText: {
+    fontSize: 16,
+    color: '#999',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  dropdownItem: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  dropdownItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dropdownItemIcon: {
+    marginRight: 12,
+  },
+  dropdownItemText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  dateInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateInputText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  datePickerContainer: {
+    padding: 16,
+    alignItems: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -574,161 +1100,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     color: '#666',
-  },
-  header: {
-    backgroundColor: '#085924',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    flex: 1,
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 24,
-    height: 24,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  formSection: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#085924',
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    paddingBottom: 8,
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#dc3545',
-  },
-  errorText: {
-    color: '#dc3545',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  halfInput: {
-    width: '48%',
-  },
-  statusContainer: {
-    marginTop: 8,
-  },
-  statusOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statusOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 12,
-    flex: 0.48,
-  },
-  activeStatusOption: {
-    borderColor: '#085924',
-    backgroundColor: '#e0f2e9',
-  },
-  inactiveStatusOption: {
-    borderColor: '#dc3545',
-    backgroundColor: '#f8d7da',
-  },
-  statusOptionText: {
-    fontSize: 15,
-    color: '#333',
-  },
-  mapButton: {
-    backgroundColor: '#085924',
-    borderRadius: 8,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  mapButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  cancelButton: {
-    borderWidth: 1,
-    borderColor: '#085924',
-    borderRadius: 8,
-    padding: 14,
-    flex: 1,
-    marginRight: 8,
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#085924',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  submitButton: {
-    backgroundColor: '#085924',
-    borderRadius: 8,
-    padding: 14,
-    flex: 1,
-    marginLeft: 8,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
 

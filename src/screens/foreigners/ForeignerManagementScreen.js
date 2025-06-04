@@ -39,6 +39,15 @@ const ForeignerManagementScreen = ({navigation}) => {
   const STATUS_PENDING = 'Chờ xác nhận';
   const STATUS_EXPIRED = 'Hết hạn';
   
+  // Thêm mapping status code sang text
+  const STATUS_MAP = {
+    'P': 'Chờ xác thực',
+    'A': 'Đang hoạt động',
+    'E': 'Hết hạn',
+  };
+
+  const [statusOptions, setStatusOptions] = useState([]);
+
   // Function to format date from API
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -105,6 +114,15 @@ const ForeignerManagementScreen = ({navigation}) => {
     fetchForeigners(true);
   }, [fetchForeigners]);
   
+  // Lấy danh sách status từ API (nếu có endpoint), hoặc từ dữ liệu trả về
+  useEffect(() => {
+    // Khi fetchForeigners xong, lấy các status code duy nhất từ foreigners
+    if (foreigners && foreigners.length > 0) {
+      const codes = Array.from(new Set(foreigners.map(f => f.status)));
+      setStatusOptions(codes);
+    }
+  }, [foreigners]);
+  
   // Function to handle refreshing
   const onRefresh = useCallback(() => {
     fetchForeigners(true);
@@ -141,18 +159,12 @@ const ForeignerManagementScreen = ({navigation}) => {
     navigation.navigate('AddForeigner');
   };
   
-  // Get status display based on data
+  // Map status code sang text khi hiển thị
   const getStatusDisplay = (foreigner) => {
+    if (foreigner.status && STATUS_MAP[foreigner.status]) return STATUS_MAP[foreigner.status];
     if (foreigner.status) return foreigner.status;
-    
-    // Fallback logic if status is not set
-    if (checkIfExpired(foreigner.visaExpiryDate) || 
-        checkIfExpired(foreigner.workPermitExpiryDate) || 
-        checkIfExpired(foreigner.residenceCardExpiry)) {
-      return STATUS_EXPIRED;
-    }
-    
-    return STATUS_ACTIVE;
+    // Fallback logic nếu không có status
+    return '';
   };
   
   const getStatusStyle = (status) => {
@@ -283,33 +295,17 @@ const ForeignerManagementScreen = ({navigation}) => {
                   Tất cả
                 </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.statusChip, statusFilter === STATUS_ACTIVE && styles.activeStatusChip]}
-                onPress={() => setStatusFilter(STATUS_ACTIVE)}
-              >
-                <Text style={[styles.statusChipText, statusFilter === STATUS_ACTIVE && styles.activeStatusChipText]}>
-                  Đang hoạt động
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.statusChip, statusFilter === STATUS_PENDING && styles.activeStatusChip]}
-                onPress={() => setStatusFilter(STATUS_PENDING)}
-              >
-                <Text style={[styles.statusChipText, statusFilter === STATUS_PENDING && styles.activeStatusChipText]}>
-                  Chờ xác nhận
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.statusChip, statusFilter === STATUS_EXPIRED && styles.activeStatusChip]}
-                onPress={() => setStatusFilter(STATUS_EXPIRED)}
-              >
-                <Text style={[styles.statusChipText, statusFilter === STATUS_EXPIRED && styles.activeStatusChipText]}>
-                  Hết hạn
-                </Text>
-              </TouchableOpacity>
+              {statusOptions.map(code => (
+                <TouchableOpacity
+                  key={code}
+                  style={[styles.statusChip, statusFilter === code && styles.activeStatusChip]}
+                  onPress={() => setStatusFilter(code)}
+                >
+                  <Text style={[styles.statusChipText, statusFilter === code && styles.activeStatusChipText]}>
+                    {STATUS_MAP[code] || code}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
           

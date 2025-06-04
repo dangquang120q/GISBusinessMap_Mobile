@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import BusinessBranchService from '../../services/BusinessBranchService';
-
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';  
 const BusinessFacilityScreen = ({navigation}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -45,14 +45,13 @@ const BusinessFacilityScreen = ({navigation}) => {
       }
       
       const result = await BusinessBranchService.getAllByBusiness(params);
-      
       if (result && result.items) {
         // Chuyển đổi dữ liệu API sang định dạng dùng trong UI
         const transformedData = result.items.map(item => ({
           id: item.id.toString(),
           name: item.branchName || 'Chưa có tên',
           address: formatAddress(item),
-          status: item.isActive ? 'Hoạt động' : item.status === 'Chờ phê duyệt' ? 'Chờ phê duyệt' : 'Không hoạt động',
+          status: item.isActive ? 'Hoạt động' : (item.status || 'Không hoạt động'),
           licenseNumber: item.businessCode || 'Chưa có mã',
           operationDate: formatDate(item.establishedDate),
           expiryDate: formatDate(item.deactivationDate),
@@ -60,15 +59,17 @@ const BusinessFacilityScreen = ({navigation}) => {
           contactPhone: item.phoneNumber || 'Chưa có',
           contactEmail: item.email || 'Chưa có',
           businessType: item.businessTypeName || 'Khác',
+          businessTypeIcon: item.businessTypeIcon || 'business',
+          businessTypeColor: item.color || '#085924',
           area: '',
           employees: 0,
-          // Thêm các thông tin bổ sung
           website: item.website || '',
           socialMediaUrl: item.socialMediaUrl || '',
           rating: item.rating || 0,
           latitude: item.latitude,
           longitude: item.longitude,
-          // Lưu trữ dữ liệu gốc từ API
+          districtName: item.districtName || '',
+          wardName: item.wardName || '',
           rawData: item
         }));
         
@@ -106,7 +107,11 @@ const BusinessFacilityScreen = ({navigation}) => {
   // Tải danh sách khi component mount và khi search/filter thay đổi
   useEffect(() => {
     fetchBusinessFacilities();
-  }, []);
+    const unsubscribe = navigation.addListener('focus', () => {
+      fetchBusinessFacilities();
+    });
+    return unsubscribe;
+  }, [navigation]);
   
   // Áp dụng tìm kiếm
   const handleSearch = () => {
@@ -167,7 +172,15 @@ const BusinessFacilityScreen = ({navigation}) => {
         <View style={styles.cardTextContainer}>
           <Text style={styles.cardTitle}>{item.name}</Text>
           <Text style={styles.cardSubtitle}>{item.address}</Text>
-          <Text style={styles.cardSubtitle}>Loại hình: {item.businessType}</Text>
+          <View style={styles.businessTypeContainer}>
+            <MaterialIcons
+              name={item.businessTypeIcon ? item.businessTypeIcon.replace(/_/g, '-') : 'business'}
+              size={18}
+              color={item.businessTypeColor}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={styles.cardSubtitle}>Loại hình: {item.businessType}</Text>
+          </View>
           <View style={[
             styles.statusBadge, 
             item.status === 'Hoạt động' ? styles.activeStatus : 
@@ -833,6 +846,12 @@ const styles = StyleSheet.create({
   modalApplyButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  businessTypeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    marginBottom: 2,
   },
 });
 

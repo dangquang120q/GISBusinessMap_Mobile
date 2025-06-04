@@ -148,7 +148,10 @@ class BusinessBranchService {
       if (branchData.businessTypeId !== undefined && branchData.businessTypeId !== null) {
         branchData.businessTypeId = String(branchData.businessTypeId);
       }
-      
+      if(branchData.status === 'Chờ xác thực'){
+        branchData.status = 'P';
+      }
+      console.log(branchData);
       const response = await api.post('/api/services/app/BusinessBranches/CreateByBusiness', branchData);
       return response.result;
     } catch (error) {
