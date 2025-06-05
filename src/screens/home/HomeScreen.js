@@ -355,7 +355,6 @@ export default function HomeScreen() {
     }
     
     console.log('Updating map markers with facilities:', facilities.length);
-    
     if (facilities.length === 0) {
       console.log('No facilities to display on map');
       return;
@@ -422,6 +421,7 @@ export default function HomeScreen() {
     const selectedType = businessTypes.find(type => type.id === typeId);
     if (!selectedType) return;
 
+    setSearchKeyword('');
     // Filter facilities by selected business type
     const filtered = allFacilities.filter(f => f.businessTypeId === typeId);
     setFilteredFacilities(filtered);
@@ -2985,8 +2985,12 @@ export default function HomeScreen() {
         </ScrollView>
         
         {/* Search Results */}
-        {filteredFacilities.length > 0 && (
-          <View style={styles.searchResults}>
+
+        {searchKeyword.trim() !== '' && !isFilterBottomSheetVisible && (
+          <View
+          style={[styles.searchResults, {top: 60}]
+          }
+          >
             <FlatList
               data={filteredFacilities}
               keyExtractor={(item) => item.id.toString()}
