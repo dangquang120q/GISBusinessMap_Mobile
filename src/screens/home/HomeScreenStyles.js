@@ -1271,6 +1271,72 @@ const styles = StyleSheet.create({
     backgroundColor: '#7ca294',
     opacity: 0.8,
   },
+  filterBottomSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  filterBottomSheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  filterBottomSheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#ddd',
+    borderRadius: 2,
+    position: 'absolute',
+    top: 8,
+    alignSelf: 'center',
+  },
+  filterBottomSheetTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  filterBottomSheetCloseButton: {
+    position: 'absolute',
+    right: 16,
+    top: 16,
+  },
+  filterBottomSheetContent: {
+    flex: 1,
+  },
+  filteredFacilityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  filteredFacilityInfo: {
+    flex: 1,
+  },
+  filteredFacilityName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
+    marginBottom: 4,
+  },
+  filteredFacilityAddress: {
+    fontSize: 14,
+    color: '#666',
+  },
 });
-
 export default styles; 
