@@ -33,7 +33,7 @@ const AddForeignerScreen = ({ navigation }) => {
   const [datePickerField, setDatePickerField] = useState(null);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [datePickerValue, setDatePickerValue] = useState(new Date());
-
+  
   const [formData, setFormData] = useState({
     fullName: '',
     gender: '',
@@ -160,7 +160,7 @@ const AddForeignerScreen = ({ navigation }) => {
         };
         const result = await ForeignersService.createByBusiness(data);
         showSuccess('Đăng ký người nước ngoài thành công');
-        navigation.goBack();
+              navigation.goBack();
       } catch (err) {
         showError('Không thể đăng ký người nước ngoài. Vui lòng thử lại sau.');
       } finally {
@@ -392,7 +392,7 @@ const AddForeignerScreen = ({ navigation }) => {
           <View style={styles.row}>
             <View style={[styles.inputContainer, styles.halfInput]}>
               <Text style={styles.inputLabel}>Ngày cấp hộ chiếu</Text>
-              <TouchableOpacity
+                <TouchableOpacity 
                 style={[styles.input, styles.dateInput]}
                 onPress={() => handleDateFieldPress('passportIssuedDate')}
               >
@@ -400,7 +400,7 @@ const AddForeignerScreen = ({ navigation }) => {
                   {formData.passportIssuedDate || 'Chọn ngày cấp'}
                 </Text>
                 <Ionicons name="calendar" size={20} color="#666" style={styles.inputIconRight} />
-              </TouchableOpacity>
+                </TouchableOpacity>
             </View>
             <View style={[styles.inputContainer, styles.halfInput]}>
               <Text style={styles.inputLabel}>Nơi cấp hộ chiếu</Text>
@@ -480,13 +480,13 @@ const AddForeignerScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             <View style={[styles.inputContainer, styles.halfInput]}>
-              <Text style={styles.inputLabel}>Cửa khẩu nhập cảnh</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Nhập cửa khẩu nhập cảnh"
-                value={formData.entryPort}
+            <Text style={styles.inputLabel}>Cửa khẩu nhập cảnh</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nhập cửa khẩu nhập cảnh"
+              value={formData.entryPort}
                 onChangeText={text => handleInputChange('entryPort', text)}
-              />
+            />
             </View>
           </View>
           <View style={styles.inputContainer}>
@@ -591,16 +591,16 @@ const AddForeignerScreen = ({ navigation }) => {
         </View>
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Ghi chú</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
+            <TextInput
+              style={[styles.input, styles.textArea]}
             placeholder="Nhập ghi chú (nếu có)"
-            value={formData.notes}
+              value={formData.notes}
             onChangeText={text => handleInputChange('notes', text)}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
+              multiline
+              numberOfLines={4}
+              textAlignVertical="top"
+            />
+          </View>
         <View style={styles.formSection}>
           <Text style={styles.sectionTitle}>Trạng thái</Text>
           <TextInput
@@ -610,14 +610,14 @@ const AddForeignerScreen = ({ navigation }) => {
           />
         </View>
         <View style={styles.buttonsContainer}>
-          <TouchableOpacity
+          <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => navigation.goBack()}
             disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Hủy bỏ</Text>
           </TouchableOpacity>
-          <TouchableOpacity
+          <TouchableOpacity 
             style={styles.submitButton}
             onPress={handleSubmit}
             disabled={loading}

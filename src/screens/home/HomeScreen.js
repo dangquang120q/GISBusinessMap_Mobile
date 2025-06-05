@@ -354,20 +354,21 @@ export default function HomeScreen() {
       return;
     }
     
-    // Use filtered facilities if filter is active, otherwise use all facilities
-    const markersData = isFilterBottomSheetVisible && selectedFilterType 
-      ? facilities.filter(f => f.businessTypeId === selectedFilterType.id)
-      : facilities;
+    console.log('Updating map markers with facilities:', facilities.length);
     
-    if (!markersData || markersData.length === 0) {
+    if (facilities.length === 0) {
       console.log('No facilities to display on map');
       return;
     }
     
     try {
-      const facilitiesWithStringIds = markersData.map(facility => {
+      // Ensure all facility IDs are properly converted to strings for comparison
+      const facilitiesWithStringIds = facilities.map(facility => {
         if (!facility) return null;
+        
+        // Make sure the id is always a string to avoid type comparison issues
         const id = String(facility.id || '');
+        
         return {
           id: id,
           name: String(facility.name || ''),
@@ -379,49 +380,41 @@ export default function HomeScreen() {
           status: String(facility.status || ''),
           businessTypeId: Number(facility.businessTypeId || 0)
         };
-      }).filter(Boolean);
+      }).filter(Boolean); // Remove any null entries
       
+      // Properly escape the JSON string for safe injection into JavaScript
       const jsonString = JSON.stringify(facilitiesWithStringIds)
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'")
         .replace(/"/g, '\\"');
       
+      console.log(`Sending ${facilitiesWithStringIds.length} markers to map`);
+      
+      // Pass filtered facilities to WebView using a safe approach
       const jsCode = `
         (function() {
           try {
-            if (window.markersLayer) {
-              map.removeLayer(window.markersLayer);
+            const markersJSON = "${jsonString}";
+            const markers = JSON.parse(markersJSON);
+            console.log('Received markers in WebView:', markers.length);
+            if (typeof window.addMarkers === 'function') {
+              window.addMarkers(markers);
+            } else {
+              console.error('addMarkers function not defined in WebView');
             }
-            window.markersLayer = L.layerGroup().addTo(map);
-            const markers = JSON.parse("${jsonString}");
-            markers.forEach(marker => {
-              const leafletMarker = L.marker(
-                [marker.latitude, marker.longitude],
-                { icon: createIcon(marker.businessTypeId, map.getZoom(), false, marker.iconName, marker.status, marker.iconColor) }
-              ).addTo(window.markersLayer);
-              leafletMarker.on('click', () => {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'markerClick',
-                  facility: marker
-                }));
-              });
-            });
             return true;
-          } catch(e) { return false; }
+          } catch(e) {
+            console.error('Error adding markers:', e);
+            return false;
+          }
         })();
       `;
+      
       webViewRef.current.injectJavaScript(jsCode);
     } catch (error) {
       console.error('Error preparing markers for map:', error);
     }
   };
-
-  // Add useEffect to update markers when filter changes
-  useEffect(() => {
-    if (mapLoaded) {
-      updateMapMarkers();
-    }
-  }, [isFilterBottomSheetVisible, selectedFilterType, facilities, mapLoaded]);
 
   // Simplified filter change handler
   const handleFilterChange = (businessTypeId) => {
@@ -429,11 +422,8 @@ export default function HomeScreen() {
     const selectedType = businessTypes.find(type => type.id === typeId);
     if (!selectedType) return;
 
-    // Clear search when opening filter
-    setSearchKeyword('');
-
     // Filter facilities by selected business type
-    const filtered = facilities.filter(f => f.businessTypeId === typeId);
+    const filtered = allFacilities.filter(f => f.businessTypeId === typeId);
     setFilteredFacilities(filtered);
     setSelectedFilterType(selectedType);
     setIsFilterBottomSheetVisible(true);
@@ -446,23 +436,8 @@ export default function HomeScreen() {
         .replace(/"/g, '\\"');
 
       webViewRef.current.injectJavaScript(`
-        if (window.markersLayer) {
-          map.removeLayer(window.markersLayer);
-        }
-        window.markersLayer = L.layerGroup().addTo(map);
-        const markers = ${jsonString};
-        markers.forEach(marker => {
-          const leafletMarker = L.marker(
-            [marker.latitude, marker.longitude],
-            { icon: createIcon(marker.businessTypeId, map.getZoom(), false, marker.iconName, marker.status, marker.iconColor) }
-          ).addTo(window.markersLayer);
-          leafletMarker.on('click', () => {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'markerClick',
-              facility: marker
-            }));
-          });
-        });
+        window.markersData = ${jsonString};
+        updateMarkers(window.markersData);
         map.setView([${mapCenter.latitude}, ${mapCenter.longitude}], 14);
         true;
       `);
@@ -2776,23 +2751,8 @@ export default function HomeScreen() {
         .replace(/"/g, '\\"');
 
       webViewRef.current.injectJavaScript(`
-        if (window.markersLayer) {
-          map.removeLayer(window.markersLayer);
-        }
-        window.markersLayer = L.layerGroup().addTo(map);
-        const markers = ${jsonString};
-        markers.forEach(marker => {
-          const leafletMarker = L.marker(
-            [marker.latitude, marker.longitude],
-            { icon: createIcon(marker.businessTypeId, map.getZoom(), false, marker.iconName, marker.status, marker.iconColor) }
-          ).addTo(window.markersLayer);
-          leafletMarker.on('click', () => {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'markerClick',
-              facility: marker
-            }));
-          });
-        });
+        window.markersData = ${jsonString};
+        updateMarkers(window.markersData);
         true;
       `);
     }
@@ -3025,32 +2985,53 @@ export default function HomeScreen() {
         </ScrollView>
         
         {/* Search Results */}
-        {searchKeyword.trim() !== '' && !isFilterBottomSheetVisible && (
-          <View
-            style={[
-              styles.searchResults,
-              {
-                top: 60,
-              },
-            ]}
-          >
+        {filteredFacilities.length > 0 && (
+          <View style={styles.searchResults}>
             <FlatList
-              data={searchResults}
+              data={filteredFacilities}
               keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.searchResultItem}
-                  onPress={() => {
-                    if (item.type === 'facility') {
-                      handleViewFacilityDetails(item);
-                    } else if (item.type === 'businessType') {
-                      handleFilterChange(item.id);
-                    }
-                  }}
-                >
-                  {/* ... rest of your render item code ... */}
-                </TouchableOpacity>
-              )}
+              renderItem={({item}) => {
+                // Convert businessTypeId to number for proper comparison
+                const typeId = typeof item.businessTypeId === 'string' ? 
+                  parseInt(item.businessTypeId, 10) : item.businessTypeId;
+                
+                // Find matching business type
+                const businessType = businessTypes.find(type => type.id === typeId) || {};
+                
+                return (
+                  <TouchableOpacity
+                    style={styles.searchResultItem}
+                    onPress={() => focusFacility(item)}>
+                    <View style={styles.searchResultIconContainer}>
+                      <View>
+                        <MaterialIcons 
+                          name={businessType.businessTypeIcon ? businessType.businessTypeIcon.replace(/_/g, '-') : 'business'} 
+                          size={16} 
+                          color={businessType.color ? businessType.color : '#666'} 
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.searchResultTextContainer}>
+                      <Text style={styles.searchResultName}>
+                        {item.name}
+                        {item.status && (
+                          <Text style={{
+                            fontSize: 12,
+                            color: item.status === 'A' ? '#085924' : '#f39c12',
+                            marginLeft: 5
+                          }}>
+                            {' '}{item.status === 'A' ? '✓' : '⏱️'}
+                          </Text>
+                        )}
+                      </Text>
+                      <Text style={styles.searchResultAddress}>{item.address}</Text>
+                    </View>
+                    <View>
+                      <Ionicons name="chevron-forward" size={16} color="#085924" />
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
         )}
