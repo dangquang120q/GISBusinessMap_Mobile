@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,9 @@ import {
   Dimensions,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import SosService from '../services/SosService';
+import { usePermissions } from '../hooks/usePermissions';
+import { showError } from '../utils/PopupUtils';
 
 const EmergencyScreen = ({ onClose }) => {
   // State cho các modal SOS
@@ -15,6 +18,9 @@ const EmergencyScreen = ({ onClose }) => {
   const [isSOSSuccessModalVisible, setIsSOSSuccessModalVisible] = useState(false);
   const [selectedEmergencyType, setSelectedEmergencyType] = useState(null);
   const [isConfirmChecked, setIsConfirmChecked] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+
+  const { locationPermissionGranted, requestLocationPermission } = usePermissions();
 
   // Danh sách các loại khẩn cấp
   const emergencyTypes = [
@@ -25,25 +31,57 @@ const EmergencyScreen = ({ onClose }) => {
   ];
 
   // Xử lý khi chọn loại khẩn cấp
-  const handleEmergencyTypeSelect = (type) => {
+  const handleEmergencyTypeSelect = async (type) => {
     setSelectedEmergencyType(type);
-    setIsConfirmChecked(false); // Reset checkbox when opening confirmation modal
+    setIsConfirmChecked(false);
+
+    // Kiểm tra quyền truy cập vị trí
+    if (!locationPermissionGranted) {
+      const granted = await requestLocationPermission();
+      if (!granted) {
+        showError('Vui lòng cấp quyền truy cập vị trí để sử dụng tính năng SOS');
+        return;
+      }
+    }
+
     setIsSOSConfirmModalVisible(true);
   };
 
   // Xử lý khi xác nhận gửi SOS
-  const handleSOSConfirm = () => {
-    setIsSOSConfirmModalVisible(false);
-    // Gửi thông tin SOS đến API (trong ứng dụng thực tế)
-    // sendSOSAlert(selectedEmergencyType);
-    
-    // Hiển thị thông báo thành công
-    setIsSOSSuccessModalVisible(true);
+  const handleSOSConfirm = async () => {
+    if (!isConfirmChecked || isSending) return;
+
+    try {
+      setIsSending(true);
+      await SosService.startSosTracking();
+      
+      setIsSOSConfirmModalVisible(false);
+      setIsSOSSuccessModalVisible(true);
+    } catch (error) {
+      showError(error.message || 'Không thể gửi tín hiệu SOS. Vui lòng thử lại sau.');
+    } finally {
+      setIsSending(false);
+    }
   };
+
+  // Cleanup khi component unmount
+  useEffect(() => {
+    return () => {
+      if (SosService.isSOSActive()) {
+        SosService.stopSosTracking();
+      }
+    };
+  }, []);
 
   // Xử lý khi tick vào checkbox xác nhận
   const toggleConfirmCheckbox = () => {
     setIsConfirmChecked(!isConfirmChecked);
+  };
+
+  // Xử lý khi đóng modal thành công
+  const handleSuccessModalClose = () => {
+    setIsSOSSuccessModalVisible(false);
+    if (onClose) onClose();
   };
 
   return (
@@ -122,7 +160,7 @@ const EmergencyScreen = ({ onClose }) => {
               </Text>
               
               {/* Checkbox xác nhận */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.checkboxContainer}
                 onPress={toggleConfirmCheckbox}
               >
@@ -139,6 +177,7 @@ const EmergencyScreen = ({ onClose }) => {
               <TouchableOpacity 
                 style={styles.modalCancelButton}
                 onPress={() => setIsSOSConfirmModalVisible(false)}
+                disabled={isSending}
               >
                 <Text style={styles.modalCancelButtonText}>Hủy bỏ</Text>
               </TouchableOpacity>
@@ -146,16 +185,16 @@ const EmergencyScreen = ({ onClose }) => {
               <TouchableOpacity 
                 style={[
                   styles.modalConfirmButton, 
-                  !isConfirmChecked && styles.modalConfirmButtonDisabled
+                  (!isConfirmChecked || isSending) && styles.modalConfirmButtonDisabled
                 ]}
                 onPress={handleSOSConfirm}
-                disabled={!isConfirmChecked}
+                disabled={!isConfirmChecked || isSending}
               >
                 <Text style={[
                   styles.modalConfirmButtonText,
-                  !isConfirmChecked && styles.modalConfirmButtonTextDisabled
+                  (!isConfirmChecked || isSending) && styles.modalConfirmButtonTextDisabled
                 ]}>
-                  Gửi
+                  {isSending ? 'Đang gửi...' : 'Gửi'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -168,7 +207,7 @@ const EmergencyScreen = ({ onClose }) => {
         visible={isSOSSuccessModalVisible}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setIsSOSSuccessModalVisible(false)}
+        onRequestClose={handleSuccessModalClose}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -186,14 +225,15 @@ const EmergencyScreen = ({ onClose }) => {
               <Text style={styles.modalText}>
                 Hãy giữ liên lạc, đơn vị chức năng sẽ liên hệ hỗ trợ trong thời gian sớm nhất!
               </Text>
+              
+              <Text style={styles.modalWarningText}>
+                Vị trí của bạn đang được theo dõi để hỗ trợ cứu hộ. Vui lòng không tắt ứng dụng.
+              </Text>
             </View>
             
             <TouchableOpacity 
               style={styles.modalCloseButton}
-              onPress={() => {
-                setIsSOSSuccessModalVisible(false);
-                if (onClose) onClose();
-              }}
+              onPress={handleSuccessModalClose}
             >
               <Text style={styles.modalCloseButtonText}>Đóng</Text>
             </TouchableOpacity>

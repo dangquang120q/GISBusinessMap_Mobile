@@ -355,14 +355,18 @@ export default function HomeScreen() {
     }
     
     console.log('Updating map markers with facilities:', facilities.length);
-    if (facilities.length === 0) {
+    const markersData = isFilterBottomSheetVisible && selectedFilterType
+    ? facilities.filter(facility => facility.businessTypeId === selectedFilterType.id)
+    : facilities;
+
+    if (markersData.length === 0) {
       console.log('No facilities to display on map');
       return;
     }
     
     try {
       // Ensure all facility IDs are properly converted to strings for comparison
-      const facilitiesWithStringIds = facilities.map(facility => {
+      const facilitiesWithStringIds = markersData.map(facility => {
         if (!facility) return null;
         
         // Make sure the id is always a string to avoid type comparison issues

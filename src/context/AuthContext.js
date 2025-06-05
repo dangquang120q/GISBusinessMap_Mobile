@@ -3,6 +3,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {API_URL} from '../config';
 import { api } from '../services/api';
+import { AppConsts } from '../config';
 
 export const AuthContext = createContext();
 
@@ -23,9 +24,10 @@ export const AuthProvider = ({children}) => {
                 rememberClient
             });
             
-            // Save token and update authentication state
+            // Save tokens
             setUserToken(response.data.result.accessToken);
             await AsyncStorage.setItem('userToken', response.data.result.accessToken);
+            await AsyncStorage.setItem('enc_auth_token', response.data.result.encryptedAccessToken);
             
             // Set user role
             const role = response.data.result.userType ?? 1;

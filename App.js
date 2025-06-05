@@ -10,6 +10,7 @@ import InfoPopup from './src/components/InfoPopup';
 import ConfirmationPopup from './src/components/ConfirmationPopup';
 import {setErrorHandler} from './src/services/api';
 import {PopupUtilsInitializer} from './src/utils/PopupUtils';
+import PermissionHandler from './src/components/PermissionHandler';
 
 // Wrapper component to connect Popups with PopupContext
 const PopupHandler = () => {
@@ -69,6 +70,7 @@ function App() {
     <PopupProvider>
       <ConfigurationProvider>
         <AuthProvider>
+          <PermissionHandler />
           <AppNav />
           <PopupHandler />
         </AuthProvider>
